@@ -1,72 +1,88 @@
 import re
 from typing import Dict, List, Any, Optional
 
-# --- TAXONOMY DOMAINS & SUBSYSTEMS DEFINITION ---
+# --- EXPANDED TAXONOMY DOMAINS & SUBSYSTEMS ---
 TAXONOMY_RULES = {
+    "Operating Systems & Low-Level": {
+        "keywords": ["kernel", "operating-system", "os", "linux", "embedded", "firmware", "driver", "hardware", "cpu", "arm", "risc-v", "hypervisor", "virtualization", "system-programming"],
+        "subsystems": {
+            "Kernel & Core OS": ["kernel", "linux-kernel", "bootloader", "os-kernel", "monolithic-kernel", "microkernel"],
+            "Embedded & IoT Firmware": ["firmware", "embedded", "arduino", "esp32", "microcontroller", "stm32", "rtos"],
+            "Emulators & Hypervisors": ["emulator", "hypervisor", "virtualization", "qemu", "kvm", "game-engine"]
+        }
+    },
     "Databases & Storage": {
-        "keywords": ["database", "datastore", "key-value", "relational", "sql", "nosql", "timeseries", "vector-db", "graph-database", "embedded-db"],
+        "keywords": ["database", "datastore", "key-value", "relational", "sql", "nosql", "timeseries", "vector-db", "graph-database", "embedded-db", "sqlite", "postgres", "mysql", "redis", "mongodb", "cache", "storage"],
         "subsystems": {
             "Vector Database": ["vector-search", "vector-database", "embeddings", "approximate-nearest-neighbor", "ann", "faiss", "hnsw", "milvus", "qdrant", "weaviate", "chroma"],
             "Distributed SQL Engine": ["distributed-sql", "newsql", "spanner", "cockroachdb", "tidb", "yugabyte", "citus", "distributed-database"],
-            "Key-Value & In-Memory Store": ["key-value", "redis", "memcached", "in-memory", "rocksdb", "leveldb", "badgerdb", "kv-store", "lsm-tree"],
-            "Analytical & Columnar (OLAP)": ["olap", "columnar", "clickhouse", "duckdb", "data-warehouse", "parquet", "arrow", "analytics-database"],
+            "Key-Value & In-Memory Store": ["key-value", "redis", "memcached", "in-memory", "rocksdb", "leveldb", "badgerdb", "kv-store", "lsm-tree", "caching"],
+            "Analytical & Columnar (OLAP)": ["olap", "columnar", "clickhouse", "duckdb", "data-warehouse", "parquet", "arrow", "analytics-database", "big-data", "hadoop", "spark"],
             "Time-Series Database": ["timeseries", "time-series", "influxdb", "timescaledb", "telemetry-db", "metrics-storage"],
             "Document & Graph Store": ["document-store", "mongodb", "graph-database", "neo4j", "rdf", "triplestore", "knowledge-graph"],
             "Storage Engine & Consensus": ["storage-engine", "raft", "paxos", "wal", "replication", "distributed-consensus", "etcd", "b-tree", "lsm"]
         }
     },
     "AI & Machine Learning": {
-        "keywords": ["machine-learning", "deep-learning", "ai", "artificial-intelligence", "llm", "neural-network", "nlp", "computer-vision", "transformer"],
+        "keywords": ["machine-learning", "deep-learning", "ai", "artificial-intelligence", "llm", "neural-network", "nlp", "computer-vision", "transformer", "pytorch", "tensorflow", "diffusion", "stable-diffusion", "generative-ai"],
         "subsystems": {
-            "LLM Inference & Serving": ["llm-inference", "inference-engine", "vllm", "llama.cpp", "ollama", "tgi", "tensorrt", "model-serving", "onnxruntime"],
-            "Model Training & Fine-Tuning": ["fine-tuning", "lora", "qlora", "deepspeed", "megatron", "distributed-training", "gradient-descent", "pytorch-lightning", "axolotl"],
-            "Autonomous Agents & Workflows": ["agentic", "agents", "langchain", "llamaindex", "crewai", "autogen", "task-automation", "prompt-engineering", "function-calling"],
-            "Computer Vision & Multimodal": ["computer-vision", "object-detection", "yolo", "segmentation", "diffusion", "stable-diffusion", "text-to-image", "ocr"],
+            "LLM Inference & Serving": ["llm-inference", "inference-engine", "vllm", "llama.cpp", "ollama", "tgi", "tensorrt", "model-serving", "onnxruntime", "gguf"],
+            "Model Training & Fine-Tuning": ["fine-tuning", "lora", "qlora", "deepspeed", "megatron", "distributed-training", "gradient-descent", "pytorch-lightning", "axolotl", "training"],
+            "Autonomous Agents & Workflows": ["agentic", "agents", "langchain", "llamaindex", "crewai", "autogen", "task-automation", "prompt-engineering", "function-calling", "agent"],
+            "Computer Vision & Multimodal": ["computer-vision", "object-detection", "yolo", "segmentation", "diffusion", "stable-diffusion", "text-to-image", "ocr", "image-generation"],
             "MLOps & Model Registry": ["mlops", "model-registry", "experiment-tracking", "mlflow", "wandb", "feature-store", "data-versioning", "dvc"],
-            "NLP & Speech Recognition": ["nlp", "whisper", "speech-to-text", "text-to-speech", "audio-processing", "embeddings", "tokenization", "huggingface"]
+            "NLP & Speech Recognition": ["nlp", "whisper", "speech-to-text", "text-to-speech", "audio-processing", "embeddings", "tokenization", "huggingface", "tts"]
         }
     },
     "Cloud & Infrastructure": {
-        "keywords": ["infrastructure", "cloud-native", "devops", "kubernetes", "container", "orchestration", "serverless", "iac", "monitoring"],
+        "keywords": ["infrastructure", "cloud-native", "devops", "kubernetes", "container", "orchestration", "serverless", "iac", "monitoring", "docker", "terraform", "helm", "cloud"],
         "subsystems": {
-            "Container Orchestration & Runtime": ["kubernetes", "k8s", "containerd", "docker", "cgroups", "podman", "mesos", "scheduler", "wasm-runtime"],
-            "Infrastructure as Code (IaC)": ["terraform", "opentofu", "pulumi", "cloudformation", "ansible", "provisioning", "gitops", "argocd", "flux"],
+            "Container Orchestration & Runtime": ["kubernetes", "k8s", "containerd", "docker", "cgroups", "podman", "mesos", "scheduler", "wasm-runtime", "containers"],
+            "Infrastructure as Code (IaC)": ["terraform", "opentofu", "pulumi", "cloudformation", "ansible", "provisioning", "gitops", "argocd", "flux", "iac"],
             "Service Mesh & API Gateway": ["service-mesh", "api-gateway", "envoy", "istio", "traefik", "reverse-proxy", "load-balancer", "caddy", "nginx", "kong"],
             "Observability & Tracing": ["observability", "opentelemetry", "prometheus", "grafana", "tracing", "distributed-tracing", "jaeger", "metrics", "apm", "logging"],
             "Edge & Serverless Computing": ["serverless", "edge-computing", "lambda", "functions", "faas", "cloudflare-workers", "deno-deploy"]
         }
     },
     "Security & Cryptography": {
-        "keywords": ["security", "cybersecurity", "cryptography", "infosec", "authentication", "authorization", "penetration-testing", "vulnerability"],
+        "keywords": ["security", "cybersecurity", "cryptography", "infosec", "authentication", "authorization", "penetration-testing", "vulnerability", "auth", "oauth", "password", "crypto", "encryption", "hacking", "osint"],
         "subsystems": {
-            "Zero Trust & Identity/Auth": ["auth", "authentication", "authorization", "oauth2", "oidc", "sso", "identity-provider", "keycloak", "rbac", "zero-trust"],
+            "Zero Trust & Identity/Auth": ["auth", "authentication", "authorization", "oauth2", "oidc", "sso", "identity-provider", "keycloak", "rbac", "zero-trust", "jwt", "passwords"],
             "Secrets & Key Management": ["secrets-management", "vault", "kms", "encryption-at-rest", "pki", "certificates", "hsm"],
-            "Vulnerability & Static Analysis": ["sast", "dast", "security-scanner", "vulnerability-scanner", "cve", "static-analysis", "trivy", "semgrep", "osint"],
+            "Vulnerability & Static Analysis": ["sast", "dast", "security-scanner", "vulnerability-scanner", "cve", "static-analysis", "trivy", "semgrep", "osint", "scanner"],
             "Cryptography & ZK Proofs": ["cryptography", "zero-knowledge", "zk-snark", "elliptic-curve", "post-quantum", "tls", "wireguard", "end-to-end-encryption"],
-            "Penetration Testing & Red Team": ["red-team", "pentesting", "exploit", "reverse-engineering", "malware-analysis", "packet-sniffer", "metasploit", "wireshark"]
+            "Penetration Testing & Red Team": ["red-team", "pentesting", "exploit", "reverse-engineering", "malware-analysis", "packet-sniffer", "metasploit", "wireshark", "payload"]
         }
     },
     "Developer Tooling & Compilers": {
-        "keywords": ["developer-tools", "devtools", "compiler", "bundler", "transpiler", "linter", "formatter", "cli", "profiler", "debugger"],
+        "keywords": ["developer-tools", "devtools", "compiler", "bundler", "transpiler", "linter", "formatter", "cli", "profiler", "debugger", "git", "terminal", "shell", "editor", "ide", "vim", "neovim", "testing"],
         "subsystems": {
-            "Compilers & Runtimes": ["compiler", "interpreter", "llvm", "bytecode", "jit", "virtual-machine", "runtime", "v8", "webassembly", "rustc"],
-            "Bundlers & Build Systems": ["bundler", "build-system", "vite", "webpack", "turborepo", "bazel", "esbuild", "rollup", "package-manager"],
+            "Compilers & Runtimes": ["compiler", "interpreter", "llvm", "bytecode", "jit", "virtual-machine", "runtime", "v8", "webassembly", "rustc", "python", "golang"],
+            "Bundlers & Build Systems": ["bundler", "build-system", "vite", "webpack", "turborepo", "bazel", "esbuild", "rollup", "package-manager", "npm", "cargo"],
             "Linters & Code Quality": ["linter", "code-formatter", "static-analysis", "eslint", "prettier", "biome", "ruff", "ast-parser"],
-            "Testing & QA Automation": ["testing", "e2e-testing", "playwright", "cypress", "unit-testing", "fuzzing", "mocking", "benchmark"],
-            "Terminal & CLI Utilities": ["cli", "terminal", "tui", "command-line", "shell", "shell-extension", "zsh", "prompt"]
+            "Testing & QA Automation": ["testing", "e2e-testing", "playwright", "cypress", "unit-testing", "fuzzing", "mocking", "benchmark", "test-framework"],
+            "Terminal & Editor Utilities": ["cli", "terminal", "tui", "command-line", "shell", "shell-extension", "zsh", "prompt", "neovim", "vim", "tmux"]
         }
     },
     "Web Platforms & Frameworks": {
-        "keywords": ["web-framework", "frontend", "backend", "fullstack", "react", "vue", "svelte", "http-server", "rest-api", "graphql"],
+        "keywords": ["web-framework", "frontend", "backend", "fullstack", "react", "vue", "svelte", "http-server", "rest-api", "graphql", "javascript", "typescript", "html", "css", "nodejs", "web"],
         "subsystems": {
-            "Full-Stack & SSR Frameworks": ["fullstack", "ssr", "nextjs", "remix", "nuxt", "sveltekit", "astro", "fastapi", "django", "express", "actix-web", "fiber"],
-            "UI Component Architecture": ["ui-library", "component-library", "design-system", "tailwind", "radix-ui", "shadcn", "css-in-js", "animation"],
-            "API Architecture (GraphQL/gRPC)": ["graphql", "grpc", "trpc", "rest-api", "protobuf", "openapi", "websocket", "realtime-web"],
+            "Full-Stack & SSR Frameworks": ["fullstack", "ssr", "nextjs", "remix", "nuxt", "sveltekit", "astro", "fastapi", "django", "express", "actix-web", "fiber", "rails", "spring-boot"],
+            "UI Component Architecture": ["ui-library", "component-library", "design-system", "tailwind", "radix-ui", "shadcn", "css-in-js", "animation", "icons"],
+            "API Architecture (GraphQL/gRPC)": ["graphql", "grpc", "trpc", "rest-api", "protobuf", "openapi", "websocket", "realtime-web", "api"],
             "State Management & Data Fetching": ["state-management", "redux", "zustand", "tanstack-query", "swr", "reactive", "signals"]
         }
     },
+    "Education & Curated Learning": {
+        "keywords": ["tutorial", "education", "roadmap", "curated-list", "cheatsheet", "interview", "computer-science", "learning", "algorithm", "books", "guide", "free-programming-books"],
+        "subsystems": {
+            "Learning Roadmaps & Study Plans": ["roadmap", "study-plan", "interview", "coding-interview", "guide", "career"],
+            "Curated Resources & Awesome Lists": ["awesome", "awesome-list", "resources", "curated-list", "public-apis"],
+            "Interactive Tutorials & Exercises": ["tutorial", "build-your-own", "project-based", "practice", "algorithms", "data-structures"]
+        }
+    },
     "Networking & Distributed Systems": {
-        "keywords": ["networking", "distributed-systems", "p2p", "mesh", "protocol", "transport", "webrtc", "message-broker"],
+        "keywords": ["networking", "distributed-systems", "p2p", "mesh", "protocol", "transport", "webrtc", "message-broker", "rpc", "bittorrent", "socket"],
         "subsystems": {
             "Event Streaming & Message Broker": ["message-broker", "event-driven", "kafka", "rabbitmq", "nats", "pulsar", "sqs", "pubsub"],
             "P2P & Decentralized Networking": ["peer-to-peer", "p2p", "bittorrent", "ipfs", "libp2p", "dht", "decentralized"],
@@ -83,7 +99,9 @@ CURATED_LIST_PATTERNS = [
     re.compile(r"\bresources list\b", re.IGNORECASE),
     re.compile(r"\bcheatsheet\b", re.IGNORECASE),
     re.compile(r"\broadmap\b", re.IGNORECASE),
-    re.compile(r"\binterview-questions\b", re.IGNORECASE)
+    re.compile(r"\binterview-questions\b", re.IGNORECASE),
+    re.compile(r"\bstudy plan\b", re.IGNORECASE),
+    re.compile(r"\bbuild your own\b", re.IGNORECASE)
 ]
 
 # --- ARCHITECTURAL PRIMITIVES LEXICON ---
@@ -202,7 +220,7 @@ def classify_artifact(repo_name: str, description: str, topics: List[str]) -> st
         if pattern.search(repo_name) or pattern.search(description):
             return "Curated List / Docs"
             
-    if any(t in ["awesome", "awesome-list", "roadmap", "cheatsheet", "reading-list"] for t in topics):
+    if any(t in ["awesome", "awesome-list", "roadmap", "cheatsheet", "reading-list", "learning", "tutorial"] for t in topics):
         return "Curated List / Docs"
 
     if any(k in full_text for k in ["template", "boilerplate", "starter kit", "scaffold"]):
@@ -280,6 +298,7 @@ def enrich_repository_record(raw_repo: Dict[str, Any]) -> Dict[str, Any]:
     name = raw_repo.get("name", "")
     owner = raw_repo.get("owner", {}).get("login") if isinstance(raw_repo.get("owner"), dict) else raw_repo.get("owner", "")
     description = raw_repo.get("description") or ""
+    readme_snippet = raw_repo.get("readme_snippet") or ""
     topics = raw_repo.get("topics") or []
     language = raw_repo.get("language") or "Other"
     stars = int(raw_repo.get("stargazers_count") or raw_repo.get("stars") or 0)
@@ -294,8 +313,8 @@ def enrich_repository_record(raw_repo: Dict[str, Any]) -> Dict[str, Any]:
     artifact = classify_artifact(name, description, topics)
     domain, subsystem = classify_domain_and_subsystem(name, description, topics, language)
 
-    # Full text corpus for deep keyword mining
-    corpus = f"{name} {description} {' '.join(topics)} {language}".lower()
+    # Full text corpus including README snippet for deep keyword mining
+    corpus = f"{name} {description} {readme_snippet} {' '.join(topics)} {language}".lower()
 
     # Deep enrichments
     primitives = match_lexicon_rules(corpus, PRIMITIVE_RULES)
