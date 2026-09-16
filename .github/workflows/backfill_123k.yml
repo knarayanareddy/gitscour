@@ -1,46 +1,30 @@
-name: 123k Repositories Autonomous Backfill Matrix
+name: 123k Repositories Autonomous Backfill
 
 on:
   workflow_dispatch:
     inputs:
-      full_crawl:
-        description: 'Execute full 123k crawling matrix'
+      min_stars:
+        description: 'Lowest star threshold to enumerate'
         required: true
-        default: 'true'
+        default: '500'
   schedule:
     # Runs monthly on the 1st at 00:00 UTC for deep backfill
     - cron: '0 0 1 * *'
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
+  pull-requests: write
 
 concurrency:
   group: "backfill-123k"
   cancel-in-progress: false
 
 jobs:
-  harvest-matrix:
+  enumerate-and-rebuild:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix:
-        # 12 parallel star intervals covering the entire 500..500k continuum (<1000 per window)
-        window:
-          - "stars:>50000"
-          - "stars:25000..50000"
-          - "stars:15000..25000"
-          - "stars:10000..15000"
-          - "stars:6500..10000"
-          - "stars:4500..6500"
-          - "stars:3000..4500"
-          - "stars:2000..3000"
-          - "stars:1400..2000"
-          - "stars:950..1400"
-          - "stars:650..950"
-          - "stars:500..650"
+    timeout-minutes: 180
+    env:
+      MIN_STARS: ${{ github.event.inputs.min_stars || '500' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -50,85 +34,66 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Harvest Window
+      # A single job, not a star-window matrix: GitHub truncates every search
+      # query at 1,000 results, so the old 12-way matrix could never capture
+      # more than ~12,000 records per run and could never share a resume point.
+      # The enumerator instead partitions the star continuum into ~180 windows
+      # that each fit under that cap and checkpoints each window it finishes.
+      - name: Enumerate every repository above the threshold
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          python3 pipeline/backfill_worker.py --window "${{ matrix.window }}"
+          python3 pipeline/harvest_enumerate.py \
+            --min-stars "$MIN_STARS" \
+            --output harvest/raw_repos.jsonl \
+            --manifest harvest/windows_done.jsonl \
+            --concurrency 12 --rps 8
 
-      - name: Upload Window Chunk Artifact
+      - name: Classify and rebuild catalog artefacts
+        run: |
+          python3 pipeline/rebuild_catalog.py \
+            --harvest harvest/raw_repos.jsonl \
+            --min-stars "$MIN_STARS"
+
+      - name: Verify catalog integrity
+        run: python3 pipeline/verify_catalog.py --min-stars "$MIN_STARS"
+
+      - name: Upload harvest checkpoint
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunk-${{ strategy.job-index }}
-          path: chunk_*.json
-          retention-days: 1
+          name: harvest-checkpoint
+          path: harvest/
+          retention-days: 7
+          if-no-files-found: ignore
 
-  consolidate-and-deploy:
-    needs: harvest-matrix
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Download All Chunks
-        uses: actions/download-artifact@v4
-        with:
-          path: chunks
-
-      - name: Consolidate & Re-Shard
+      - name: Open backfill pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 -c "
-          import os, glob, json, sys
-          sys.path.append('pipeline')
-          from shard_manager import build_sharded_dataset
+          set -euo pipefail
+          if git diff --quiet -- web/public && git diff --cached --quiet -- web/public; then
+            echo "No catalog changes detected; nothing to propose."
+            exit 0
+          fi
+          REPO_COUNT=$(python3 -c "import json;print(len(json.load(open('web/public/catalog-packed.json'))['rows']))")
+          BRANCH="backfill/$(date -u +%Y%m%d-%H%M)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add web/public
+          git commit -q -m "data: backfill catalog to ${REPO_COUNT} repositories (>= ${MIN_STARS} stars)"
+          git push -u origin "$BRANCH"
+          cat > pr_body.md <<EOF
+          Automated backfill run for \`${{ github.ref_name }}\` (run \`${{ github.run_id }}\`).
 
-          # Load existing catalog
-          existing = []
-          if os.path.exists('web/public/repos.json'):
-              existing = json.load(open('web/public/repos.json'))
+          - Enumerated every repository at or above ${MIN_STARS} stars with \`pipeline/harvest_enumerate.py\`
+          - Classified and re-sharded with \`pipeline/rebuild_catalog.py\`
+          - Tier-1 packed index now holds **${REPO_COUNT}** repositories
+          - \`pipeline/verify_catalog.py\` passed on the regenerated artefacts
 
-          merged = {r['id']: r for r in existing}
-          for f in glob.glob('chunks/**/*.json', recursive=True):
-              try:
-                  items = json.load(open(f))
-                  for it in items:
-                      merged[it['id']] = it
-              except Exception as e:
-                  print('Error reading chunk:', f, e)
-
-          all_repos = sorted(list(merged.values()), key=lambda x: x['stars'], reverse=True)
-          print(f'Consolidated total repositories: {len(all_repos)}')
-          build_sharded_dataset(all_repos, base_dir='web/public')
-          "
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: web/package-lock.json
-
-      - name: Install Frontend Dependencies
-        working-directory: web
-        run: npm ci
-
-      - name: Build Web Explorer
-        working-directory: web
-        run: npm run build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'web/dist'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          Merging deploys the refreshed catalog via \`deploy.yml\`.
+          EOF
+          gh pr create --base "${{ github.ref_name }}" --head "$BRANCH" \
+            --title "data: backfill catalog to ${REPO_COUNT} repositories" \
+            --body-file pr_body.md || true

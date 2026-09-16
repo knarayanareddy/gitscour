@@ -85,7 +85,7 @@ export default function App() {
     return (text || "other-general").toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   };
 
-  // 1. Fetch & Unpack Packed Index (51,192 repositories in <3.3MB gzip)
+  // 1. Fetch & Unpack Packed Index (123,153 repositories in ~7.8MB gzip)
   useEffect(() => {
     fetch('./catalog-packed.json')
       .then((res) => {
@@ -255,7 +255,7 @@ export default function App() {
     return ['all', ...Array.from(set).sort()];
   }, [repos]);
 
-  // Tokenized Search Engine (Sub-5ms across 51,000+ records)
+  // Tokenized Search Engine (Sub-5ms across 123,000+ records)
   const filteredRepos = useMemo(() => {
     const queryTokens = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
@@ -298,13 +298,13 @@ export default function App() {
                   GitScour
                 </span>
                 <span className="num text-[11px] px-2.5 py-0.5 rounded-full bg-white/[0.05] text-zinc-300 border border-white/[0.10] font-bold">
-                  {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : '50k+ DB'}
+                  {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : '123k+ DB'}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-signal-ok/[0.08] text-signal-ok border border-signal-ok/20 font-mono hidden sm:inline">
                   Packed &bull; 3.2MB Gzip
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 hidden sm:block">Deep Architectural Taxonomy &amp; 3D Knowledge Galaxy across 51,000+ Repositories</p>
+              <p className="text-xs text-zinc-400 hidden sm:block">Deep Architectural Taxonomy &amp; 3D Knowledge Galaxy across 123,000+ Repositories</p>
             </div>
           </div>
 
@@ -380,7 +380,7 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-white/30 border-t-transparent rounded-full animate-spin" />
-            <p className="text-zinc-400 text-xs font-mono">Unpacking 51,000+ repository index into WebAssembly memory...</p>
+            <p className="text-zinc-400 text-xs font-mono">Unpacking 123,000+ repository index into WebAssembly memory...</p>
           </div>
         ) : activeTab === 'inspire' ? (
           /* SYNERGETIC TECH STACK ARCHITECT & POOLING SANDBOX */
@@ -434,7 +434,7 @@ export default function App() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Tokenized search across 51,000+ repos: try 'sql vector', 'local llm', 'simd', or 'caching'..."
+                  placeholder="Tokenized search across 123,000+ repos: try 'sql vector', 'local llm', 'simd', or 'caching'..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -595,7 +595,7 @@ export default function App() {
                 Matching <strong className="num text-white">{filteredRepos.length.toLocaleString()}</strong> repositories (showing top <span className="num">{Math.min(visibleRepos.length, filteredRepos.length)}</span>)
               </span>
               <span className="text-zinc-500 hidden sm:inline">
-                51k+ Index &bull; Sub-5ms Token Search &bull; Progressive Windowing Active
+                123k+ Index &bull; Sub-5ms Token Search &bull; Progressive Windowing Active
               </span>
             </div>
 
