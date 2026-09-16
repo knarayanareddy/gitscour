@@ -140,7 +140,7 @@ When deploying an AI agent to build this repository, instruct it to assume these
   - **Dynamic Topologies**:
     1. *Domain Planetary Clusters*: Group tools into gravitational clusters by AI layer.
     2. *Galaxy Spiral*: Galactic arms sorted by inference vs. training vs. agents.
-  - **Cosmic Parallax Atmosphere**: Dynamic starfield, radial lighting vignette, and chromatic glow matching domain colors.
+  - **Cosmic Parallax Atmosphere**: Dynamic starfield on the `#07080a` canvas, neutral radial vignette, and desaturated domain hues (~30% saturation) so clusters read as hue rather than neon.
   - **Smooth Fly-To Camera**: Smooth interpolation towards focused nodes.
   - **Neighborhood Semantic Graph**: Highlights bridges between compatible AI tech (e.g., Qdrant $\leftrightarrow$ Ollama $\leftrightarrow$ LangGraph).
 
@@ -157,10 +157,44 @@ When deploying an AI agent to build this repository, instruct it to assume these
 
 ### Recommended Stack
 - **Frontend Framework**: React 18 + Vite (Clean, minimal footprint, < 250 KB JS bundle).
-- **Styling**: Tailwind CSS (Dark-mode first, GitHub/Linear-inspired aesthetic).
+- **Styling**: Tailwind CSS (Dark-mode first, Obsidian-inspired monochrome theme — see *Visual Language* below).
 - **Icons**: Lucide React.
 - **Visualization**: Optimized Custom 3D Canvas Projection (60 FPS on all laptops and phones without Three.js bundle weight).
 - **Deployment**: GitHub Pages (`gh-pages` / GitHub Actions).
+
+### Visual Language: Obsidian Dark Palette
+The interface is deliberately monochrome. Depth is expressed through a four-step
+surface ladder and 1px white hairlines — never through colored fills — and the
+only solid accent in the system is inverted ink (near-white on near-black).
+
+| Token | Value | Role |
+| --- | --- | --- |
+| `--obs-base` | `#07080a` | Page canvas and 2D canvas backdrop |
+| `--obs-inset` | `#050608` | Recessed wells: inputs, code blocks, stat grids |
+| `--obs-surface` | `#0c0e12` | Cards, panels, modal body |
+| `--obs-raised` | `#101216` | Sticky bars, modal chrome, hover state |
+| `--obs-line` | `rgba(255,255,255,0.08)` | Hairline border (wired to Tailwind `borderColor.DEFAULT`, so a bare `border` is already correct) |
+| `--obs-ink` | `#eceef2` | Primary text and inverted button fill |
+| `--obs-muted` | `#8f949e` | Secondary text |
+| `--obs-faint` | `#61656d` | Tertiary text and separators |
+
+Tokens live in `web/src/index.css` (`:root`) and are mirrored as Tailwind
+utilities (`bg-obs-*`, `text-obs-*`) in `web/tailwind.config.js`.
+
+Design rules:
+1. **No purple, indigo, or violet anywhere** — including the 3D canvas. Galaxy
+   domain hues are desaturated (~30% saturation) so clusters separate by hue
+   without emitting neon glow.
+2. **Accents are achromatic.** Active/selected states use
+   `bg-white/[0.08]` + `ring-1 ring-inset ring-white/[0.14]`; the single solid
+   action style is `.btn-primary` (ink fill, base-colored label).
+3. **Every number is monospace tabular.** Both the `.num` component class and the
+   `font-mono` base rule set `font-variant-numeric: tabular-nums slashed-zero`
+   with `font-feature-settings: "tnum" 1, "zero" 1`, so star/fork/score columns
+   never shift width as values change.
+4. **Semantic color is state, not decoration**, and is muted to match:
+   `signal.ok #7fbf9b`, `signal.star #d8b26a`, `signal.warn #d0a06a`,
+   `signal.risk #c98375`, `signal.info #8aa7c4`.
 
 ### Suggested Repository File Structure
 ```

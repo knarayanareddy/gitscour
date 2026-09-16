@@ -52,18 +52,19 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { panRef.current = pan; }, [pan]);
 
-  // Distinct chromatic palettes & neon glow for domains
+  // Desaturated Obsidian domain palette — hue separation without neon glow.
+  // No purple/violet/pink: the canvas stays achromatic apart from these hues.
   const DOMAIN_CONFIG = {
-    "Databases & Storage": { hex: "#38bdf8", glow: "rgba(56, 189, 248, 0.5)", name: "Databases" },
-    "AI & Machine Learning": { hex: "#c084fc", glow: "rgba(192, 132, 252, 0.5)", name: "AI / ML" },
-    "Cloud & Infrastructure": { hex: "#2dd4bf", glow: "rgba(45, 212, 191, 0.5)", name: "Cloud & Infra" },
-    "Security & Cryptography": { hex: "#f87171", glow: "rgba(248, 113, 113, 0.5)", name: "Security" },
-    "Developer Tooling & Compilers": { hex: "#34d399", glow: "rgba(52, 211, 153, 0.5)", name: "Dev Tools" },
-    "Web Platforms & Frameworks": { hex: "#fbbf24", glow: "rgba(251, 191, 36, 0.5)", name: "Web Platforms" },
-    "Operating Systems & Low-Level": { hex: "#a78bfa", glow: "rgba(167, 139, 250, 0.5)", name: "Systems / OS" },
-    "Education & Curated Learning": { hex: "#22d3ee", glow: "rgba(34, 211, 238, 0.5)", name: "Education" },
-    "Networking & Distributed Systems": { hex: "#f472b6", glow: "rgba(244, 114, 182, 0.5)", name: "Networking" },
-    "Other / General": { hex: "#94a3b8", glow: "rgba(148, 163, 184, 0.45)", name: "General" }
+    "Databases & Storage": { hex: "#7ea3c4", glow: "rgba(126, 163, 196, 0.28)", name: "Databases" },
+    "AI & Machine Learning": { hex: "#d3a273", glow: "rgba(211, 162, 115, 0.28)", name: "AI / ML" },
+    "Cloud & Infrastructure": { hex: "#6fb3ab", glow: "rgba(111, 179, 171, 0.28)", name: "Cloud & Infra" },
+    "Security & Cryptography": { hex: "#cd8371", glow: "rgba(205, 131, 113, 0.28)", name: "Security" },
+    "Developer Tooling & Compilers": { hex: "#85bb94", glow: "rgba(133, 187, 148, 0.28)", name: "Dev Tools" },
+    "Web Platforms & Frameworks": { hex: "#c9b877", glow: "rgba(201, 184, 119, 0.28)", name: "Web Platforms" },
+    "Operating Systems & Low-Level": { hex: "#aeb6bf", glow: "rgba(174, 182, 191, 0.26)", name: "Systems / OS" },
+    "Education & Curated Learning": { hex: "#a9bc7d", glow: "rgba(169, 188, 125, 0.28)", name: "Education" },
+    "Networking & Distributed Systems": { hex: "#86bcc4", glow: "rgba(134, 188, 196, 0.28)", name: "Networking" },
+    "Other / General": { hex: "#767b85", glow: "rgba(118, 123, 133, 0.24)", name: "General" }
   };
 
   // Cosmic Background Starfield
@@ -298,18 +299,18 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       const sinY = Math.sin(rotRef.current.y);
 
       // Deep Space Canvas Background with Radial Cosmic Vignette
-      ctx.fillStyle = '#060911';
+      ctx.fillStyle = '#07080a';
       ctx.fillRect(0, 0, width, height);
 
       const grad = ctx.createRadialGradient(cx, cy, 60, cx, cy, width * 0.7);
-      grad.addColorStop(0, 'rgba(24, 30, 48, 0.6)');
-      grad.addColorStop(0.6, 'rgba(10, 14, 24, 0.4)');
-      grad.addColorStop(1, 'rgba(6, 9, 17, 0.95)');
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.045)');
+      grad.addColorStop(0.6, 'rgba(12, 14, 18, 0.35)');
+      grad.addColorStop(1, 'rgba(7, 8, 10, 0.96)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, width, height);
 
       // Render Background Starfield
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.26)';
       backgroundStars.forEach((star) => {
         const x1 = star.x * cosY - star.z * sinY;
         const z1 = star.z * cosY + star.x * sinY;
@@ -372,7 +373,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
           const alpha = isLinkActive ? 0.9 : 0.08;
 
-          ctx.strokeStyle = isLinkActive ? '#818cf8' : src.color.hex;
+          ctx.strokeStyle = isLinkActive ? '#eceef2' : src.color.hex;
           ctx.lineWidth = isLinkActive ? 1.8 : 0.7;
           ctx.globalAlpha = alpha;
           ctx.beginPath();
@@ -432,8 +433,8 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         // Node Label (Visible for landmark nodes > 45k stars, selected/hovered nodes, or search matches)
         const showLabel = isSelected || isHovered || matchesSearch || node.stars > 45000 || (curZoom > 1.4 && node.screenSize > 5.5);
         if (showLabel) {
-          ctx.font = `${isSelected || isHovered ? 'bold 11px' : '9px'} -apple-system, BlinkMacSystemFont, sans-serif`;
-          ctx.fillStyle = isSelected || isHovered || matchesSearch ? '#ffffff' : 'rgba(226, 232, 240, 0.85)';
+          ctx.font = `${isSelected || isHovered ? 'bold 11px' : '9px'} ui-monospace, SFMono-Regular, Menlo, monospace`;
+          ctx.fillStyle = isSelected || isHovered || matchesSearch ? '#ffffff' : 'rgba(236, 238, 242, 0.78)';
           ctx.textAlign = 'center';
           ctx.fillText(node.name, node.screenX, node.screenY - node.screenSize - 5);
         }
@@ -521,7 +522,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   };
 
   return (
-    <div className="relative w-full h-[700px] bg-[#060911] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col select-none">
+    <div className="relative w-full h-[700px] bg-obs-base rounded-2xl border border-white/[0.07] overflow-hidden shadow-2xl flex flex-col select-none">
       <div 
         ref={containerRef}
         className="relative flex-1 w-full h-full cursor-grab active:cursor-grabbing"
@@ -539,18 +540,18 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
           <div className="flex items-center gap-2">
             {/* Search within 3D Space */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
               <input
                 type="text"
                 placeholder="Find node in 3D (e.g. 'react', 'duckdb')..."
                 value={graphSearch}
                 onChange={(e) => setGraphSearch(e.target.value)}
-                className="bg-[#161b22]/90 backdrop-blur-md border border-slate-700/80 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 w-52 sm:w-60 transition-all"
+                className="bg-obs-surface/90 backdrop-blur-md border border-white/[0.09] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] w-52 sm:w-60 transition-all"
               />
               {graphSearch && (
                 <button
                   onClick={() => setGraphSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -558,11 +559,11 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
             </div>
 
             {/* Layout Topology Selector */}
-            <div className="bg-[#161b22]/90 backdrop-blur-md border border-slate-800 rounded-xl p-1 flex items-center text-xs">
+            <div className="bg-obs-surface/90 backdrop-blur-md border border-white/[0.07] rounded-xl p-1 flex items-center text-xs">
               <button
                 onClick={() => setViewMode('clusters')}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                  viewMode === 'clusters' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                  viewMode === 'clusters' ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 Domain Clusters
@@ -570,7 +571,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
               <button
                 onClick={() => setViewMode('starfield')}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                  viewMode === 'starfield' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                  viewMode === 'starfield' ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 Galaxy Spiral
@@ -578,7 +579,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
               <button
                 onClick={() => setViewMode('spherical')}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                  viewMode === 'spherical' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                  viewMode === 'spherical' ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 Sphere
@@ -592,8 +593,8 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
               onClick={() => setAutoRotate(!autoRotate)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium border backdrop-blur-md transition-colors shadow-lg flex items-center gap-1.5 ${
                 autoRotate 
-                  ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/40' 
-                  : 'bg-[#161b22]/90 text-slate-400 border-slate-800 hover:text-white'
+                  ? 'bg-white/[0.07] text-zinc-100 border-white/[0.14]' 
+                  : 'bg-obs-surface/90 text-zinc-400 border-white/[0.07] hover:text-white'
               }`}
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -605,8 +606,8 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
               onClick={() => setShowSettingsPanel(!showSettingsPanel)}
               className={`p-2 rounded-xl text-xs font-medium border backdrop-blur-md transition-colors shadow-lg flex items-center gap-1.5 ${
                 showSettingsPanel 
-                  ? 'bg-indigo-600 text-white border-indigo-500' 
-                  : 'bg-[#161b22]/90 text-slate-400 border-slate-800 hover:text-white'
+                  ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white border-white/[0.18]' 
+                  : 'bg-obs-surface/90 text-zinc-400 border-white/[0.07] hover:text-white'
               }`}
               title="Graph Physics & Filters Palette"
             >
@@ -625,7 +626,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                 setSelectedNode(null);
                 setIsolateFocusMode(false);
               }}
-              className="p-2 bg-[#161b22]/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl shadow-lg transition-colors"
+              className="p-2 bg-obs-surface/90 hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.07] rounded-xl shadow-lg transition-colors"
               title="Reset View"
             >
               <Eye className="w-4 h-4" />
@@ -637,14 +638,14 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         <div className="absolute right-4 top-20 flex flex-col gap-1.5 z-10 pointer-events-auto">
           <button
             onClick={() => setZoom((z) => Math.min(2.8, z + 0.25))}
-            className="p-2 bg-[#161b22]/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-lg shadow-lg transition-colors"
+            className="p-2 bg-obs-surface/90 hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.07] rounded-lg shadow-lg transition-colors"
             title="Zoom In"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={() => setZoom((z) => Math.max(0.4, z - 0.25))}
-            className="p-2 bg-[#161b22]/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-lg shadow-lg transition-colors"
+            className="p-2 bg-obs-surface/90 hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.07] rounded-lg shadow-lg transition-colors"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4" />
@@ -653,15 +654,15 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
         {/* Obsidian / Second Brain Graph Settings Palette (Slide-out) */}
         {showSettingsPanel && (
-          <div className="absolute top-16 right-4 z-20 pointer-events-auto w-72 bg-[#161b22]/95 border border-slate-700/80 backdrop-blur-md p-4 rounded-2xl shadow-2xl space-y-4 animate-in fade-in slide-in-from-right duration-150 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="absolute top-16 right-4 z-20 pointer-events-auto w-72 bg-obs-surface/95 border border-white/[0.09] backdrop-blur-md p-4 rounded-2xl shadow-2xl space-y-4 animate-in fade-in slide-in-from-right duration-150 text-xs">
+            <div className="flex items-center justify-between border-b border-white/[0.07] pb-2">
               <span className="font-bold text-white flex items-center gap-1.5">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+                <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-300" />
                 <span>3D Physics & Visuals</span>
               </span>
               <button
                 onClick={() => setShowSettingsPanel(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-zinc-400 hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -669,16 +670,16 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
             {/* Node Sizing Metric */}
             <div>
-              <label className="text-[10px] font-semibold uppercase text-slate-400 block mb-1">
+              <label className="text-[10px] font-semibold uppercase text-zinc-400 block mb-1">
                 Node Sizing Metric
               </label>
-              <div className="grid grid-cols-3 gap-1 bg-[#0d1117] p-1 rounded-lg border border-slate-800">
+              <div className="grid grid-cols-3 gap-1 bg-obs-inset p-1 rounded-lg border border-white/[0.07]">
                 {['stars', 'forks', 'uniform'].map((m) => (
                   <button
                     key={m}
                     onClick={() => setNodeSizingMetric(m)}
                     className={`py-1 text-[11px] rounded capitalize transition-colors ${
-                      nodeSizingMetric === m ? 'bg-indigo-600 text-white font-medium' : 'text-slate-400 hover:text-white'
+                      nodeSizingMetric === m ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white font-medium' : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     {m}
@@ -690,10 +691,10 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
             {/* Repulsion Force Slider */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-[10px] font-semibold uppercase text-slate-400">
+                <label className="text-[10px] font-semibold uppercase text-zinc-400">
                   Cluster Repulsion Force
                 </label>
-                <span className="font-mono text-indigo-400">{repulsionForce.toFixed(1)}x</span>
+                <span className="font-mono text-zinc-300">{repulsionForce.toFixed(1)}x</span>
               </div>
               <input
                 type="range"
@@ -702,25 +703,25 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                 step="0.1"
                 value={repulsionForce}
                 onChange={(e) => setRepulsionForce(parseFloat(e.target.value))}
-                className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                className="w-full cursor-pointer"
               />
             </div>
 
             {/* Neighborhood Hop Depth */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-[10px] font-semibold uppercase text-slate-400">
+                <label className="text-[10px] font-semibold uppercase text-zinc-400">
                   Neighborhood Depth
                 </label>
-                <span className="font-mono text-indigo-400">{hopDepth} Hop{hopDepth > 1 ? 's' : ''}</span>
+                <span className="font-mono text-zinc-300">{hopDepth} Hop{hopDepth > 1 ? 's' : ''}</span>
               </div>
-              <div className="grid grid-cols-2 gap-1 bg-[#0d1117] p-1 rounded-lg border border-slate-800">
+              <div className="grid grid-cols-2 gap-1 bg-obs-inset p-1 rounded-lg border border-white/[0.07]">
                 {[1, 2].map((h) => (
                   <button
                     key={h}
                     onClick={() => setHopDepth(h)}
                     className={`py-1 text-[11px] rounded transition-colors ${
-                      hopDepth === h ? 'bg-indigo-600 text-white font-medium' : 'text-slate-400 hover:text-white'
+                      hopDepth === h ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white font-medium' : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     {h} Hop{h > 1 ? 's' : ''}
@@ -730,32 +731,32 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
             </div>
 
             {/* Visual Toggles */}
-            <div className="pt-2 border-t border-slate-800 space-y-2">
-              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+            <div className="pt-2 border-t border-white/[0.07] space-y-2">
+              <label className="flex items-center justify-between text-zinc-300 cursor-pointer">
                 <span>Moving Link Particles</span>
                 <input
                   type="checkbox"
                   checked={enableParticles}
                   onChange={(e) => setEnableParticles(e.target.checked)}
-                  className="accent-indigo-500 rounded"
+                  className="accent-white rounded"
                 />
               </label>
-              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+              <label className="flex items-center justify-between text-zinc-300 cursor-pointer">
                 <span>Additive Bloom Halos</span>
                 <input
                   type="checkbox"
                   checked={enableBloom}
                   onChange={(e) => setEnableBloom(e.target.checked)}
-                  className="accent-indigo-500 rounded"
+                  className="accent-white rounded"
                 />
               </label>
-              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+              <label className="flex items-center justify-between text-zinc-300 cursor-pointer">
                 <span>Isolate Focused Cluster</span>
                 <input
                   type="checkbox"
                   checked={isolateFocusMode}
                   onChange={(e) => setIsolateFocusMode(e.target.checked)}
-                  className="accent-indigo-500 rounded"
+                  className="accent-white rounded"
                 />
               </label>
             </div>
@@ -764,10 +765,10 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
         {/* Focused Architecture Inspector Sidebar */}
         {selectedNode && (
-          <div className="absolute top-16 left-4 z-20 pointer-events-auto max-w-sm w-full bg-[#161b22]/95 border border-indigo-500/50 backdrop-blur-md p-5 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-left duration-200">
+          <div className="absolute top-16 left-4 z-20 pointer-events-auto max-w-sm w-full bg-obs-surface/95 border border-white/[0.16] backdrop-blur-md p-5 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-left duration-200">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div>
-                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-white/[0.06] text-zinc-100 border border-white/[0.12]">
                   {selectedNode.domain}
                 </span>
                 <h3 className="text-base font-bold text-white mt-1">
@@ -776,42 +777,42 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
               </div>
               <button
                 onClick={() => setSelectedNode(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.06]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed mb-3">
+            <p className="text-xs text-zinc-300 line-clamp-3 leading-relaxed mb-3">
               {selectedNode.repo.description}
             </p>
 
-            <div className="bg-[#0d1117] p-3 rounded-xl border border-slate-800 mb-3 space-y-1.5 text-[11px]">
+            <div className="bg-obs-inset p-3 rounded-xl border border-white/[0.07] mb-3 space-y-1.5 text-[11px]">
               <div className="flex justify-between">
-                <span className="text-slate-400">Stars:</span>
-                <span className="font-mono text-amber-400 font-semibold">{selectedNode.stars.toLocaleString()}★</span>
+                <span className="text-zinc-400">Stars:</span>
+                <span className="font-mono text-signal-star font-semibold">{selectedNode.stars.toLocaleString()}★</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Subsystem:</span>
-                <span className="text-emerald-400 font-medium">{selectedNode.subsystem}</span>
+                <span className="text-zinc-400">Subsystem:</span>
+                <span className="text-signal-ok font-medium">{selectedNode.subsystem}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Language:</span>
-                <span className="text-indigo-300 font-medium">{selectedNode.language}</span>
+                <span className="text-zinc-400">Language:</span>
+                <span className="text-zinc-100 font-medium">{selectedNode.language}</span>
               </div>
             </div>
 
             {/* Neighborhood / Connected Repos (Interactive Hops) */}
             <div className="mb-4">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-1.5 flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1">
-                  <Network className="w-3 h-3 text-indigo-400" />
-                  <span>Connected Tech ({connectedNeighborhood.activeLinks.length})</span>
+                  <Network className="w-3 h-3 text-zinc-300" />
+                  <span>Connected Tech (<span className="num">{connectedNeighborhood.activeLinks.length}</span>)</span>
                 </span>
                 <button
                   onClick={() => setIsolateFocusMode(!isolateFocusMode)}
                   className={`text-[10px] px-1.5 py-0.5 rounded border ${
-                    isolateFocusMode ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300' : 'bg-slate-800 border-slate-700 text-slate-400'
+                    isolateFocusMode ? 'bg-white/[0.07] border-white/[0.18] text-zinc-100' : 'bg-white/[0.05] border-white/[0.10] text-zinc-400'
                   }`}
                 >
                   {isolateFocusMode ? 'Isolated' : 'Isolate'}
@@ -819,7 +820,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
               </span>
               <div className="max-h-28 overflow-y-auto space-y-1 text-xs">
                 {connectedNeighborhood.activeLinks.length === 0 ? (
-                  <span className="text-slate-500 text-[11px] italic">No direct semantic bridges in view</span>
+                  <span className="text-zinc-500 text-[11px] italic">No direct semantic bridges in view</span>
                 ) : (
                   connectedNeighborhood.activeLinks.slice(0, 6).map((link, idx) => {
                     const other = link.source.id === selectedNode.id ? link.target : link.source;
@@ -827,10 +828,10 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                       <div
                         key={idx}
                         onClick={() => flyToNode(other)}
-                        className="flex items-center justify-between p-1.5 rounded-lg bg-slate-800/80 hover:bg-indigo-600/20 text-slate-200 hover:text-white cursor-pointer border border-slate-700/50 transition-colors"
+                        className="flex items-center justify-between p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.06] text-zinc-200 hover:text-white cursor-pointer border border-white/[0.07] transition-colors"
                       >
                         <span className="truncate max-w-[170px] font-medium">{other.name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">{link.relationship.split('(')[0]}</span>
+                        <span className="text-[10px] text-zinc-400 font-mono">{link.relationship.split('(')[0]}</span>
                       </div>
                     );
                   })
@@ -839,10 +840,10 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+            <div className="flex items-center gap-2 pt-2 border-t border-white/[0.07]">
               <button
                 onClick={() => onSelectRepo && onSelectRepo(selectedNode.repo)}
-                className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition-colors flex items-center justify-center gap-1.5"
+                className="btn-primary flex-1 py-2 rounded-xl text-xs font-semibold transition-colors"
               >
                 <span>Deep Inspect Sheet</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -851,7 +852,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                 href={`https://github.com/${selectedNode.owner}/${selectedNode.name}`}
                 target="_blank"
                 rel="noreferrer"
-                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-colors"
+                className="p-2 bg-white/[0.05] hover:bg-white/[0.09] text-zinc-300 hover:text-white rounded-xl border border-white/[0.10] transition-colors"
                 title="View on GitHub"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -862,42 +863,42 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
         {/* Hover Inspection Tooltip (When Not Selected) */}
         {hoveredNode && !selectedNode && (
-          <div className="absolute bottom-4 left-4 z-20 pointer-events-none max-w-sm bg-[#161b22]/95 border border-indigo-500/40 backdrop-blur-md p-3.5 rounded-xl shadow-2xl animate-in fade-in duration-100">
+          <div className="absolute bottom-4 left-4 z-20 pointer-events-none max-w-sm bg-obs-surface/95 border border-white/[0.14] backdrop-blur-md p-3.5 rounded-xl shadow-2xl animate-in fade-in duration-100">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-white/[0.06] text-zinc-100 border border-white/[0.12]">
                 {hoveredNode.domain}
               </span>
-              <span className="text-[10px] font-mono text-amber-400 font-semibold">
+              <span className="text-[10px] font-mono text-signal-star font-semibold">
                 {hoveredNode.stars.toLocaleString()}★
               </span>
             </div>
             <h4 className="text-sm font-bold text-white mb-0.5">
               {hoveredNode.owner} / {hoveredNode.name}
             </h4>
-            <p className="text-[11px] text-slate-300 line-clamp-2 mb-2">
+            <p className="text-[11px] text-zinc-300 line-clamp-2 mb-2">
               {hoveredNode.repo.description}
             </p>
-            <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1.5 border-t border-slate-800">
-              <span className="text-emerald-400 font-medium">Subsystem: {hoveredNode.subsystem}</span>
-              <span className="text-indigo-300 font-mono">Click to lock &amp; inspect</span>
+            <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1.5 border-t border-white/[0.07]">
+              <span className="text-signal-ok font-medium">Subsystem: {hoveredNode.subsystem}</span>
+              <span className="text-zinc-100 font-mono">Click to lock &amp; inspect</span>
             </div>
           </div>
         )}
 
         {/* Interactive Controls Legend */}
-        <div className="absolute bottom-4 right-4 z-10 pointer-events-auto hidden sm:flex items-center gap-3 bg-[#161b22]/85 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-800 text-[10px] text-slate-400">
+        <div className="absolute bottom-4 right-4 z-10 pointer-events-auto hidden sm:flex items-center gap-3 bg-obs-surface/85 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/[0.07] text-[10px] text-zinc-400">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-indigo-400" />
+            <span className="w-2 h-2 rounded-full bg-white/70" />
             Drag to Rotate
           </span>
-          <span className="text-slate-700">&bull;</span>
+          <span className="text-zinc-700">&bull;</span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="w-2 h-2 rounded-full bg-signal-ok" />
             Shift+Drag to Pan
           </span>
-          <span className="text-slate-700">&bull;</span>
+          <span className="text-zinc-700">&bull;</span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span className="w-2 h-2 rounded-full bg-signal-star" />
             Scroll to Zoom
           </span>
         </div>

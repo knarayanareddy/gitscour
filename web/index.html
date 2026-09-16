@@ -1,12 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%2307080a'/><g fill='none' stroke='%23eceef2' stroke-width='1.3' stroke-linejoin='round'><path d='M12 4.5 4.5 8l7.5 3.5L19.5 8 12 4.5Z'/><path d='M4.5 12.2 12 15.7l7.5-3.5'/><path d='M4.5 16.2 12 19.7l7.5-3.5'/></g></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#07080a" />
+    <meta name="description" content="GitScour — a queried, taxonomized knowledge base of 51,000+ high-star GitHub repositories with a 3D topological explorer." />
     <title>GitScour — Queried High-Star GitHub Knowledge Base</title>
+    <style>
+      /* Kill the white paint flash before Tailwind hydrates */
+      html,
+      body {
+        background-color: #07080a;
+      }
+    </style>
   </head>
-  <body class="bg-slate-950 text-slate-100 min-h-screen">
+  <body class="bg-obs-base text-obs-ink min-h-screen antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
