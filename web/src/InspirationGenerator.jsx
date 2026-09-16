@@ -403,7 +403,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                 Live Architecture Pooling &amp; Compatibility Test Harness
               </span>
               <span className="text-xs text-zinc-500">&bull;</span>
-              <span className="text-xs text-zinc-400">Deterministic Pairwise Verification Across 51,000+ Repos</span>
+              <span className="text-xs text-zinc-400">Deterministic Pairwise Verification Across 123,000+ Repos</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               Test &amp; Pool Your Custom Tech Stack
@@ -495,7 +495,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500" />
                       <input
                         type="text"
-                        placeholder="Search 51k repos..."
+                        placeholder="Search 123k repos..."
                         value={slotSearches[idx] || ''}
                         onChange={(e) => setSlotSearches(prev => ({ ...prev, [idx]: e.target.value }))}
                         className="w-full bg-obs-surface border border-white/[0.09] rounded-lg pl-7 pr-2 py-1 text-[11px] text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07]"

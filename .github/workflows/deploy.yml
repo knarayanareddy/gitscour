@@ -4,12 +4,13 @@ on:
   push:
     branches: [ main, arena/* ]
   schedule:
-    # Run automatically every Monday at 02:00 UTC to sync and classify new >500 star repos
+    # Rebuild the site weekly. Data refreshes happen in the backfill workflow,
+    # which opens a PR -- see .github/workflows/backfill_123k.yml.
     - cron: '0 2 * * 1'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -29,11 +30,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Run Live Scale Harvester & Taxonomy Engine
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python3 pipeline/harvest_scale.py
+      # Deploys are reproducible: this workflow publishes exactly the catalog
+      # committed to the branch. It used to run `pipeline/harvest_scale.py`
+      # here, which rebuilt the Tier-1 fallback index and every Tier-2 shard
+      # from `web/public/repos.json`. That file only carried a stale subset of
+      # the catalog, so a scheduled deploy silently shrank the deployed shards
+      # and emptied their deep-intel fields. Live ingestion now belongs to the
+      # backfill workflow, which commits its output instead of mutating a build.
+      - name: Verify Catalog Integrity
+        run: python3 pipeline/verify_catalog.py
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

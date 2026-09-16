@@ -244,4 +244,4 @@ To replicate this exact build for AI tools, provide this markdown specification 
 
 ---
 
-*Specification verified against GitScour production benchmarks (51,192 verified repositories, 870KB-3.2MB gzip index, sub-5ms search).*
+*Specification verified against GitScour production benchmarks (123,153 repositories verified live against the GitHub API, 1MB-7.8MB gzip index, sub-5ms search).*
