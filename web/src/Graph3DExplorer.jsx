@@ -3,29 +3,37 @@ import {
   Compass, RotateCcw, ZoomIn, ZoomOut, Eye, Layers, Sparkles, 
   Cpu, Database, Shield, Zap, Info, Filter, X, Search, Maximize2,
   SlidersHorizontal, Target, Crosshair, ArrowRight, Play, ExternalLink,
-  Share2, Network
+  Share2, Network, Sliders, Activity, Focus, Orbit, Radio
 } from 'lucide-react';
 
 export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Viewport / Camera Transformation State
+  // Camera & Perspective Transformation State
   const [rotation, setRotation] = useState({ x: 0.32, y: -0.45 });
   const [zoom, setZoom] = useState(1.0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [autoRotate, setAutoRotate] = useState(true);
 
-  // Visual Modes & Controls
-  const [bloomIntensity, setBloomIntensity] = useState(true);
+  // Advanced Visual Controls & Modes
   const [viewMode, setViewMode] = useState('clusters'); // 'clusters' | 'spherical' | 'starfield'
   const [graphSearch, setGraphSearch] = useState('');
   const [selectedNode, setSelectedNode] = useState(null);
   const [hoveredNode, setHoveredNode] = useState(null);
   const [filterDomain, setFilterDomain] = useState(selectedDomain || 'all');
-  const [hopDepth, setHopDepth] = useState(1);
+  const [filterMinStars, setFilterMinStars] = useState(500);
 
-  // Interaction Refs (Prevent React re-render churn in 60fps loop)
+  // Second Brain / Obsidian & 3D Force Graph Interactive Controls
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [nodeSizingMetric, setNodeSizingMetric] = useState('stars'); // 'stars' | 'forks' | 'uniform'
+  const [repulsionForce, setRepulsionForce] = useState(1.0);
+  const [enableParticles, setEnableParticles] = useState(true);
+  const [enableBloom, setEnableBloom] = useState(true);
+  const [hopDepth, setHopDepth] = useState(1); // 1 or 2 hops
+  const [isolateFocusMode, setIsolateFocusMode] = useState(false);
+
+  // Interaction Refs (for 60 FPS physics & rendering loops)
   const isDragging = useRef(false);
   const isPanning = useRef(false);
   const prevMousePos = useRef({ x: 0, y: 0 });
@@ -34,8 +42,9 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   const autoRotateRef = useRef(true);
   const zoomRef = useRef(1.0);
   const panRef = useRef({ x: 0, y: 0 });
+  const particleOffsetRef = useRef(0);
 
-  // Camera Fly-To Animation Ref
+  // Camera Fly-To & Pivot Animation Ref
   const targetCam = useRef(null);
 
   useEffect(() => { rotRef.current = rotation; }, [rotation]);
@@ -45,37 +54,38 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
   // Distinct chromatic palettes & neon glow for domains
   const DOMAIN_CONFIG = {
-    "Databases & Storage": { hex: "#38bdf8", glow: "rgba(56, 189, 248, 0.45)", name: "Databases" },
-    "AI & Machine Learning": { hex: "#c084fc", glow: "rgba(192, 132, 252, 0.45)", name: "AI / ML" },
-    "Cloud & Infrastructure": { hex: "#2dd4bf", glow: "rgba(45, 212, 191, 0.45)", name: "Cloud & Infra" },
-    "Security & Cryptography": { hex: "#f87171", glow: "rgba(248, 113, 113, 0.45)", name: "Security" },
-    "Developer Tooling & Compilers": { hex: "#34d399", glow: "rgba(52, 211, 153, 0.45)", name: "Dev Tools" },
-    "Web Platforms & Frameworks": { hex: "#fbbf24", glow: "rgba(251, 191, 36, 0.45)", name: "Web Platforms" },
-    "Operating Systems & Low-Level": { hex: "#a78bfa", glow: "rgba(167, 139, 250, 0.45)", name: "Systems / OS" },
-    "Education & Curated Learning": { hex: "#22d3ee", glow: "rgba(34, 211, 238, 0.45)", name: "Education" },
-    "Networking & Distributed Systems": { hex: "#f472b6", glow: "rgba(244, 114, 182, 0.45)", name: "Networking" },
-    "Other / General": { hex: "#94a3b8", glow: "rgba(148, 163, 184, 0.4)", name: "General" }
+    "Databases & Storage": { hex: "#38bdf8", glow: "rgba(56, 189, 248, 0.5)", name: "Databases" },
+    "AI & Machine Learning": { hex: "#c084fc", glow: "rgba(192, 132, 252, 0.5)", name: "AI / ML" },
+    "Cloud & Infrastructure": { hex: "#2dd4bf", glow: "rgba(45, 212, 191, 0.5)", name: "Cloud & Infra" },
+    "Security & Cryptography": { hex: "#f87171", glow: "rgba(248, 113, 113, 0.5)", name: "Security" },
+    "Developer Tooling & Compilers": { hex: "#34d399", glow: "rgba(52, 211, 153, 0.5)", name: "Dev Tools" },
+    "Web Platforms & Frameworks": { hex: "#fbbf24", glow: "rgba(251, 191, 36, 0.5)", name: "Web Platforms" },
+    "Operating Systems & Low-Level": { hex: "#a78bfa", glow: "rgba(167, 139, 250, 0.5)", name: "Systems / OS" },
+    "Education & Curated Learning": { hex: "#22d3ee", glow: "rgba(34, 211, 238, 0.5)", name: "Education" },
+    "Networking & Distributed Systems": { hex: "#f472b6", glow: "rgba(244, 114, 182, 0.5)", name: "Networking" },
+    "Other / General": { hex: "#94a3b8", glow: "rgba(148, 163, 184, 0.45)", name: "General" }
   };
 
-  // Background Starfield Particles
+  // Cosmic Background Starfield
   const backgroundStars = useMemo(() => {
     const stars = [];
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < 280; i++) {
       stars.push({
-        x: (Math.random() - 0.5) * 1600,
-        y: (Math.random() - 0.5) * 1600,
-        z: (Math.random() - 0.5) * 1600,
-        size: Math.random() * 1.5 + 0.4,
-        alpha: Math.random() * 0.6 + 0.2
+        x: (Math.random() - 0.5) * 1800,
+        y: (Math.random() - 0.5) * 1800,
+        z: (Math.random() - 0.5) * 1800,
+        size: Math.random() * 1.5 + 0.3,
+        alpha: Math.random() * 0.6 + 0.15
       });
     }
     return stars;
   }, []);
 
-  // 1. Build Graph Topology & Synthesize Multi-Hop Semantic Relationships
+  // 1. Build Graph Topology, Node Geometries & Force-Layout Positioning
   const { nodes, links, domainClusters, nodeLookup } = useMemo(() => {
     const validRepos = repos.filter((r) => {
       if (filterDomain !== 'all' && r.domain !== filterDomain) return false;
+      if (r.stars < filterMinStars) return false;
       return true;
     });
 
@@ -85,46 +95,54 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     domainNames.forEach((d, idx) => {
       const angle = (idx / domainNames.length) * Math.PI * 2;
       const elevation = ((idx % 2 === 0 ? 1 : -1) * 0.35);
-      const clusterRadius = 310;
+      const clusterRadius = 310 * repulsionForce;
       clusterCenters[d] = {
         x: Math.cos(angle) * clusterRadius,
-        y: elevation * 140,
+        y: elevation * 140 * repulsionForce,
         z: Math.sin(angle) * clusterRadius
       };
     });
 
-    // Create 3D Nodes
     const lookup = {};
-    const graphNodes = validRepos.slice(0, 1500).map((repo, idx) => {
+    const sampleLimit = Math.min(validRepos.length, 1600);
+    const graphNodes = validRepos.slice(0, sampleLimit).map((repo, idx) => {
       let x = 0, y = 0, z = 0;
 
       if (viewMode === 'clusters') {
         const center = clusterCenters[repo.domain] || { x: 0, y: 0, z: 0 };
         const phi = Math.acos(-1 + (2 * (idx % 32)) / 32);
         const theta = Math.sqrt(32 * Math.PI) * phi;
-        const orbitDist = 55 + (idx % 12) * 14;
+        const orbitDist = (55 + (idx % 12) * 14) * repulsionForce;
 
         x = center.x + Math.sin(phi) * Math.cos(theta) * orbitDist;
         y = center.y + Math.sin(phi) * Math.sin(theta) * orbitDist;
         z = center.z + Math.cos(phi) * orbitDist;
       } else if (viewMode === 'spherical') {
-        const phi = Math.acos(-1 + (2 * idx) / validRepos.length);
-        const theta = Math.sqrt(validRepos.length * Math.PI) * phi;
-        const r = 360;
+        const phi = Math.acos(-1 + (2 * idx) / sampleLimit);
+        const theta = Math.sqrt(sampleLimit * Math.PI) * phi;
+        const r = 360 * repulsionForce;
         x = r * Math.sin(phi) * Math.cos(theta);
         y = r * Math.sin(phi) * Math.sin(theta);
         z = r * Math.cos(phi);
       } else {
-        // Starfield galaxy spiral
+        // Logarithmic Galaxy Spiral
         const arm = idx % 4;
-        const angle = (idx / validRepos.length) * Math.PI * 6 + (arm * (Math.PI / 2));
-        const dist = 50 + Math.pow(idx / validRepos.length, 0.7) * 450;
+        const angle = (idx / sampleLimit) * Math.PI * 6 + (arm * (Math.PI / 2));
+        const dist = (50 + Math.pow(idx / sampleLimit, 0.7) * 460) * repulsionForce;
         x = Math.cos(angle) * dist;
-        y = ((idx % 30) - 15) * 8;
+        y = ((idx % 30) - 15) * 8 * repulsionForce;
         z = Math.sin(angle) * dist;
       }
 
-      const size = Math.max(3.2, Math.min(10.5, Math.log10(repo.stars) * 1.75));
+      // Dynamic Node Sizing
+      let size = 4.0;
+      if (nodeSizingMetric === 'stars') {
+        size = Math.max(3.2, Math.min(10.5, Math.log10(repo.stars) * 1.75));
+      } else if (nodeSizingMetric === 'forks') {
+        size = Math.max(3.2, Math.min(10.5, Math.log10(Math.max(repo.forks, 10)) * 2.0));
+      } else {
+        size = 5.0;
+      }
 
       const nodeObj = {
         id: repo.id,
@@ -134,6 +152,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         domain: repo.domain,
         subsystem: repo.subsystem,
         stars: repo.stars,
+        forks: repo.forks,
         language: repo.language,
         primitives: repo.primitives || [],
         compatibility: repo.compatibility || [],
@@ -148,9 +167,9 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       return nodeObj;
     });
 
-    // 2. Synthesize High-Signal Relationships & Complementary Links
+    // 2. Synthesize High-Signal Relationships & Multi-Hop Bridges
     const graphLinks = [];
-    const maxLinkNodes = Math.min(graphNodes.length, 400);
+    const maxLinkNodes = Math.min(graphNodes.length, 450);
 
     for (let i = 0; i < maxLinkNodes; i++) {
       for (let j = i + 1; j < maxLinkNodes; j++) {
@@ -182,46 +201,59 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     }
 
     return { nodes: graphNodes, links: graphLinks, domainClusters: domainNames, nodeLookup: lookup };
-  }, [repos, filterDomain, viewMode]);
+  }, [repos, filterDomain, filterMinStars, viewMode, repulsionForce, nodeSizingMetric]);
 
-  // Compute Neighbors for Selected or Hovered Node
+  // Active Focus & Connected Neighborhood Computation (with Hop Depth support)
   const activeFocusNode = selectedNode || hoveredNode;
   const connectedNeighborhood = useMemo(() => {
     if (!activeFocusNode) return { neighborIds: new Set(), activeLinks: [] };
 
     const neighborIds = new Set([activeFocusNode.id]);
-    const activeLinks = [];
+    const hop1Links = [];
 
+    // Hop 1
     links.forEach((l) => {
       if (l.source.id === activeFocusNode.id) {
         neighborIds.add(l.target.id);
-        activeLinks.push(l);
+        hop1Links.push(l);
       } else if (l.target.id === activeFocusNode.id) {
         neighborIds.add(l.source.id);
-        activeLinks.push(l);
+        hop1Links.push(l);
       }
     });
 
-    return { neighborIds, activeLinks };
-  }, [activeFocusNode, links]);
+    // Hop 2 (If depth slider is set to 2)
+    if (hopDepth > 1) {
+      const hop1Ids = Array.from(neighborIds);
+      links.forEach((l) => {
+        if (hop1Ids.includes(l.source.id)) {
+          neighborIds.add(l.target.id);
+        } else if (hop1Ids.includes(l.target.id)) {
+          neighborIds.add(l.source.id);
+        }
+      });
+    }
 
-  // Smooth Fly-To Animation Helper
+    return { neighborIds, activeLinks: hop1Links };
+  }, [activeFocusNode, links, hopDepth]);
+
+  // Smooth Fly-To Camera Transition (Geocentric Pivot Around Selected Node)
   const flyToNode = useCallback((node) => {
     setSelectedNode(node);
     setAutoRotate(false);
 
-    // Calculate angle towards node to center it
+    // Calculate angle towards node to center it in viewport
     const targetRotY = -Math.atan2(node.baseX, node.baseZ);
-    const targetRotX = 0.2;
+    const targetRotX = 0.22;
     targetCam.current = {
       targetRotX,
       targetRotY,
-      targetZoom: 1.6,
+      targetZoom: 1.65,
       frames: 35
     };
   }, []);
 
-  // 3. Render Canvas & 3D Perspective Projection Engine with Dynamic Bloom (60 FPS)
+  // 3. Render Canvas & 3D Perspective Projection Engine (60 FPS)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -246,7 +278,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       const cy = height / 2 + panRef.current.y;
       const curZoom = zoomRef.current;
 
-      // Handle Camera Interpolation (Fly-to)
+      // Handle Smooth Camera Interpolation (Fly-to)
       if (targetCam.current && targetCam.current.frames > 0) {
         const t = targetCam.current;
         rotRef.current.x += (t.targetRotX - rotRef.current.x) * 0.12;
@@ -255,8 +287,10 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         t.frames--;
         if (t.frames === 0) targetCam.current = null;
       } else if (autoRotateRef.current) {
-        rotRef.current.y += 0.0024;
+        rotRef.current.y += 0.0022;
       }
+
+      particleOffsetRef.current = (particleOffsetRef.current + 0.006) % 1.0;
 
       const cosX = Math.cos(rotRef.current.x);
       const sinX = Math.sin(rotRef.current.x);
@@ -264,13 +298,13 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       const sinY = Math.sin(rotRef.current.y);
 
       // Deep Space Canvas Background with Radial Cosmic Vignette
-      ctx.fillStyle = '#070a12';
+      ctx.fillStyle = '#060911';
       ctx.fillRect(0, 0, width, height);
 
-      const grad = ctx.createRadialGradient(cx, cy, 80, cx, cy, width * 0.7);
-      grad.addColorStop(0, 'rgba(26, 32, 53, 0.6)');
+      const grad = ctx.createRadialGradient(cx, cy, 60, cx, cy, width * 0.7);
+      grad.addColorStop(0, 'rgba(24, 30, 48, 0.6)');
       grad.addColorStop(0.6, 'rgba(10, 14, 24, 0.4)');
-      grad.addColorStop(1, 'rgba(7, 10, 18, 0.95)');
+      grad.addColorStop(1, 'rgba(6, 9, 17, 0.95)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, width, height);
 
@@ -281,7 +315,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         const z1 = star.z * cosY + star.x * sinY;
         const y2 = star.y * cosX - z1 * sinX;
         const z2 = z1 * cosX + star.y * sinX;
-        const zAdj = z2 + 800;
+        const zAdj = z2 + 850;
         if (zAdj > 80) {
           const s = (fov / zAdj) * curZoom;
           const sx = cx + x1 * s;
@@ -295,7 +329,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       ctx.globalAlpha = 1.0;
 
       // Project Nodes
-      const lodStarThreshold = curZoom < 0.8 ? 2000 : curZoom < 1.2 ? 1000 : 0;
+      const lodStarThreshold = curZoom < 0.8 ? 2500 : curZoom < 1.2 ? 1200 : 0;
       const searchLower = graphSearch.trim().toLowerCase();
 
       nodes.forEach((node) => {
@@ -314,20 +348,28 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         node.depth = zAdjusted;
       });
 
-      // Filter visible nodes by LOD and depth
-      const visibleNodes = nodes.filter(n => 
-        n.depth > 80 && (n.stars >= lodStarThreshold || 
-        (activeFocusNode && activeFocusNode.id === n.id) ||
-        (searchLower && n.name.toLowerCase().includes(searchLower)))
-      );
+      // Filter visible nodes by LOD, depth, and Isolate Focus Mode
+      const visibleNodes = nodes.filter(n => {
+        if (n.depth <= 80) return false;
+        if (isolateFocusMode && selectedNode && !connectedNeighborhood.neighborIds.has(n.id)) {
+          return false;
+        }
+        return (
+          n.stars >= lodStarThreshold ||
+          (activeFocusNode && connectedNeighborhood.neighborIds.has(n.id)) ||
+          (searchLower && n.name.toLowerCase().includes(searchLower))
+        );
+      });
       visibleNodes.sort((a, b) => b.depth - a.depth);
 
-      // Draw Relationship Links
+      // Draw Relationship Links (Edges) with Directional Particle Beams
       links.forEach((link) => {
         const src = link.source;
         const tgt = link.target;
         if (src.depth > 80 && tgt.depth > 80) {
           const isLinkActive = activeFocusNode && (activeFocusNode.id === src.id || activeFocusNode.id === tgt.id);
+          if (isolateFocusMode && selectedNode && !isLinkActive) return;
+
           const alpha = isLinkActive ? 0.9 : 0.08;
 
           ctx.strokeStyle = isLinkActive ? '#818cf8' : src.color.hex;
@@ -337,18 +379,31 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
           ctx.moveTo(src.screenX, src.screenY);
           ctx.lineTo(tgt.screenX, tgt.screenY);
           ctx.stroke();
+
+          // 3D-Force-Graph / Obsidian Style: Moving Directional Beam Particles
+          if (enableParticles && isLinkActive) {
+            const pRatio = particleOffsetRef.current;
+            const px = src.screenX + (tgt.screenX - src.screenX) * pRatio;
+            const py = src.screenY + (tgt.screenY - src.screenY) * pRatio;
+
+            ctx.beginPath();
+            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.95;
+            ctx.fill();
+          }
         }
       });
       ctx.globalAlpha = 1.0;
 
-      // Draw Nodes with Additive Bloom Core
+      // Draw Nodes with Additive Bloom & Spatial Rims
       visibleNodes.forEach((node) => {
         const isSelected = selectedNode && selectedNode.id === node.id;
         const isHovered = hoveredNode && hoveredNode.id === node.id;
         const isInNeighborhood = connectedNeighborhood.neighborIds.has(node.id);
         const matchesSearch = searchLower && node.name.toLowerCase().includes(searchLower);
 
-        // Highlight Glow
+        // Highlight Glow / Bloom Halos
         if (isSelected || isHovered || matchesSearch) {
           ctx.beginPath();
           ctx.arc(node.screenX, node.screenY, node.screenSize * 3.5, 0, Math.PI * 2);
@@ -361,7 +416,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 1.5;
           ctx.stroke();
-        } else if (bloomIntensity && isInNeighborhood && activeFocusNode) {
+        } else if (enableBloom && isInNeighborhood && activeFocusNode) {
           ctx.beginPath();
           ctx.arc(node.screenX, node.screenY, node.screenSize * 2.0, 0, Math.PI * 2);
           ctx.fillStyle = node.color.glow;
@@ -374,7 +429,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         ctx.fillStyle = isSelected || isHovered ? '#ffffff' : node.color.hex;
         ctx.fill();
 
-        // Node Label (Visible for landmark nodes > 30k stars, selected/hovered nodes, or search matches)
+        // Node Label (Visible for landmark nodes > 45k stars, selected/hovered nodes, or search matches)
         const showLabel = isSelected || isHovered || matchesSearch || node.stars > 45000 || (curZoom > 1.4 && node.screenSize > 5.5);
         if (showLabel) {
           ctx.font = `${isSelected || isHovered ? 'bold 11px' : '9px'} -apple-system, BlinkMacSystemFont, sans-serif`;
@@ -393,7 +448,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       cancelAnimationFrame(animationFrameId.current);
       window.removeEventListener('resize', handleResize);
     };
-  }, [nodes, links, hoveredNode, selectedNode, connectedNeighborhood, graphSearch, bloomIntensity]);
+  }, [nodes, links, hoveredNode, selectedNode, connectedNeighborhood, graphSearch, enableBloom, enableParticles, isolateFocusMode]);
 
   // Mouse & Touch Controls
   const handleMouseDown = (e) => {
@@ -434,7 +489,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       return;
     }
 
-    // Raycast / Proximity check
+    // Raycast / Proximity Check
     let found = null;
     let closestDist = 18;
 
@@ -466,7 +521,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   };
 
   return (
-    <div className="relative w-full h-[680px] bg-[#070a12] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col select-none">
+    <div className="relative w-full h-[700px] bg-[#060911] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col select-none">
       <div 
         ref={containerRef}
         className="relative flex-1 w-full h-full cursor-grab active:cursor-grabbing"
@@ -490,7 +545,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                 placeholder="Find node in 3D (e.g. 'react', 'duckdb')..."
                 value={graphSearch}
                 onChange={(e) => setGraphSearch(e.target.value)}
-                className="bg-[#161b22]/90 backdrop-blur-md border border-slate-700/80 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 w-56 sm:w-64 transition-all"
+                className="bg-[#161b22]/90 backdrop-blur-md border border-slate-700/80 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 w-52 sm:w-60 transition-all"
               />
               {graphSearch && (
                 <button
@@ -545,6 +600,19 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
               <span>{autoRotate ? 'Orbiting' : 'Orbit'}</span>
             </button>
 
+            {/* Obsidian / Second Brain Settings Drawer Toggle */}
+            <button
+              onClick={() => setShowSettingsPanel(!showSettingsPanel)}
+              className={`p-2 rounded-xl text-xs font-medium border backdrop-blur-md transition-colors shadow-lg flex items-center gap-1.5 ${
+                showSettingsPanel 
+                  ? 'bg-indigo-600 text-white border-indigo-500' 
+                  : 'bg-[#161b22]/90 text-slate-400 border-slate-800 hover:text-white'
+              }`}
+              title="Graph Physics & Filters Palette"
+            >
+              <Sliders className="w-4 h-4" />
+            </button>
+
             {/* Reset Perspective */}
             <button
               onClick={() => {
@@ -555,6 +623,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                 setPan({ x: 0, y: 0 });
                 setZoom(1.0);
                 setSelectedNode(null);
+                setIsolateFocusMode(false);
               }}
               className="p-2 bg-[#161b22]/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl shadow-lg transition-colors"
               title="Reset View"
@@ -564,7 +633,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
           </div>
         </div>
 
-        {/* Zoom Overlay Tools */}
+        {/* Zoom Controls */}
         <div className="absolute right-4 top-20 flex flex-col gap-1.5 z-10 pointer-events-auto">
           <button
             onClick={() => setZoom((z) => Math.min(2.8, z + 0.25))}
@@ -581,6 +650,117 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
             <ZoomOut className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Obsidian / Second Brain Graph Settings Palette (Slide-out) */}
+        {showSettingsPanel && (
+          <div className="absolute top-16 right-4 z-20 pointer-events-auto w-72 bg-[#161b22]/95 border border-slate-700/80 backdrop-blur-md p-4 rounded-2xl shadow-2xl space-y-4 animate-in fade-in slide-in-from-right duration-150 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="font-bold text-white flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+                <span>3D Physics & Visuals</span>
+              </span>
+              <button
+                onClick={() => setShowSettingsPanel(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Node Sizing Metric */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase text-slate-400 block mb-1">
+                Node Sizing Metric
+              </label>
+              <div className="grid grid-cols-3 gap-1 bg-[#0d1117] p-1 rounded-lg border border-slate-800">
+                {['stars', 'forks', 'uniform'].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setNodeSizingMetric(m)}
+                    className={`py-1 text-[11px] rounded capitalize transition-colors ${
+                      nodeSizingMetric === m ? 'bg-indigo-600 text-white font-medium' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Repulsion Force Slider */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-[10px] font-semibold uppercase text-slate-400">
+                  Cluster Repulsion Force
+                </label>
+                <span className="font-mono text-indigo-400">{repulsionForce.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="2.0"
+                step="0.1"
+                value={repulsionForce}
+                onChange={(e) => setRepulsionForce(parseFloat(e.target.value))}
+                className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+              />
+            </div>
+
+            {/* Neighborhood Hop Depth */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-[10px] font-semibold uppercase text-slate-400">
+                  Neighborhood Depth
+                </label>
+                <span className="font-mono text-indigo-400">{hopDepth} Hop{hopDepth > 1 ? 's' : ''}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1 bg-[#0d1117] p-1 rounded-lg border border-slate-800">
+                {[1, 2].map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => setHopDepth(h)}
+                    className={`py-1 text-[11px] rounded transition-colors ${
+                      hopDepth === h ? 'bg-indigo-600 text-white font-medium' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {h} Hop{h > 1 ? 's' : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Visual Toggles */}
+            <div className="pt-2 border-t border-slate-800 space-y-2">
+              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+                <span>Moving Link Particles</span>
+                <input
+                  type="checkbox"
+                  checked={enableParticles}
+                  onChange={(e) => setEnableParticles(e.target.checked)}
+                  className="accent-indigo-500 rounded"
+                />
+              </label>
+              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+                <span>Additive Bloom Halos</span>
+                <input
+                  type="checkbox"
+                  checked={enableBloom}
+                  onChange={(e) => setEnableBloom(e.target.checked)}
+                  className="accent-indigo-500 rounded"
+                />
+              </label>
+              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+                <span>Isolate Focused Cluster</span>
+                <input
+                  type="checkbox"
+                  checked={isolateFocusMode}
+                  onChange={(e) => setIsolateFocusMode(e.target.checked)}
+                  className="accent-indigo-500 rounded"
+                />
+              </label>
+            </div>
+          </div>
+        )}
 
         {/* Focused Architecture Inspector Sidebar */}
         {selectedNode && (
@@ -621,11 +801,21 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
               </div>
             </div>
 
-            {/* Neighborhood / Connected Repos */}
+            {/* Neighborhood / Connected Repos (Interactive Hops) */}
             <div className="mb-4">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-1.5 flex items-center gap-1">
-                <Network className="w-3 h-3 text-indigo-400" />
-                <span>Connected Tech ({connectedNeighborhood.activeLinks.length})</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Network className="w-3 h-3 text-indigo-400" />
+                  <span>Connected Tech ({connectedNeighborhood.activeLinks.length})</span>
+                </span>
+                <button
+                  onClick={() => setIsolateFocusMode(!isolateFocusMode)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                    isolateFocusMode ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300' : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  {isolateFocusMode ? 'Isolated' : 'Isolate'}
+                </button>
               </span>
               <div className="max-h-28 overflow-y-auto space-y-1 text-xs">
                 {connectedNeighborhood.activeLinks.length === 0 ? (
