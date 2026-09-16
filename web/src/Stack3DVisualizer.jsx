@@ -27,13 +27,14 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
   useEffect(() => { autoRotateRef.current = autoRotate; }, [autoRotate]);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
-  // Color palette for roles
+  // Role palette — mirrors the desaturated Obsidian domain hues so the stack
+  // constellation reads as part of the same system as the 3D galaxy.
   const ROLE_COLORS = [
-    { hex: "#38bdf8", glow: "rgba(56, 189, 248, 0.45)" }, // Layer 1 (Storage)
-    { hex: "#c084fc", glow: "rgba(192, 132, 252, 0.45)" }, // Layer 2 (Inference)
-    { hex: "#34d399", glow: "rgba(52, 211, 153, 0.45)" }, // Layer 3 (Backend)
-    { hex: "#fbbf24", glow: "rgba(251, 191, 36, 0.45)" }, // Layer 4 (Frontend)
-    { hex: "#f472b6", glow: "rgba(244, 114, 182, 0.45)" }, // Layer 5 (Security/DevTools)
+    { hex: "#7ea3c4", glow: "rgba(126, 163, 196, 0.24)" }, // Layer 1 (Storage)
+    { hex: "#d3a273", glow: "rgba(211, 162, 115, 0.24)" }, // Layer 2 (Inference)
+    { hex: "#85bb94", glow: "rgba(133, 187, 148, 0.24)" }, // Layer 3 (Backend)
+    { hex: "#c9b877", glow: "rgba(201, 184, 119, 0.24)" }, // Layer 4 (Frontend)
+    { hex: "#cd8371", glow: "rgba(205, 131, 113, 0.24)" }, // Layer 5 (Security/DevTools)
   ];
 
   // 1. Calculate 3D Cylindrical Ring & Pillar Layout for the Stack
@@ -126,13 +127,13 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
       const sinY = Math.sin(rotRef.current.y);
 
       // Deep Space Vignette
-      ctx.fillStyle = '#060911';
+      ctx.fillStyle = '#07080a';
       ctx.fillRect(0, 0, width, height);
 
       const grad = ctx.createRadialGradient(cx, cy, 30, cx, cy, width * 0.65);
       grad.addColorStop(0, 'rgba(20, 26, 45, 0.6)');
-      grad.addColorStop(0.7, 'rgba(10, 13, 22, 0.4)');
-      grad.addColorStop(1, 'rgba(6, 9, 17, 0.95)');
+      grad.addColorStop(0.7, 'rgba(12, 14, 18, 0.35)');
+      grad.addColorStop(1, 'rgba(7, 8, 10, 0.96)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, width, height);
 
@@ -164,7 +165,7 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
             ((selectedPair.source.id === src.id && selectedPair.target.id === tgt.id) ||
              (selectedPair.source.id === tgt.id && selectedPair.target.id === src.id));
 
-          let strokeColor = bridge.isSynergy ? '#10b981' : bridge.isFriction ? '#f59e0b' : '#6366f1';
+          let strokeColor = bridge.isSynergy ? '#7fbf9b' : bridge.isFriction ? '#d0a06a' : '#8f949e';
           let lineWidth = isBridgeSelected ? 2.5 : bridge.isSynergy ? 1.8 : 1.2;
           let alpha = isBridgeSelected ? 0.95 : 0.45;
 
@@ -183,7 +184,7 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
 
           ctx.beginPath();
           ctx.arc(px, py, bridge.isSynergy ? 3.0 : 2.2, 0, Math.PI * 2);
-          ctx.fillStyle = bridge.isSynergy ? '#34d399' : bridge.isFriction ? '#fbbf24' : '#a5b4fc';
+          ctx.fillStyle = bridge.isSynergy ? '#a9d8c1' : bridge.isFriction ? '#e6c48c' : '#ffffff';
           ctx.globalAlpha = 0.9;
           ctx.fill();
         }
@@ -214,13 +215,13 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
         ctx.stroke();
 
         // Label Tag
-        ctx.font = 'bold 11px -apple-system, sans-serif';
+        ctx.font = 'bold 11px ui-monospace, SFMono-Regular, Menlo, monospace';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.fillText(node.name, node.screenX, node.screenY - node.screenSize - 6);
 
-        ctx.font = '9px -apple-system, sans-serif';
-        ctx.fillStyle = 'rgba(203, 213, 225, 0.8)';
+        ctx.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace';
+        ctx.fillStyle = 'rgba(236, 238, 242, 0.72)';
         ctx.fillText(`L0${node.idx + 1}: ${node.role}`, node.screenX, node.screenY + node.screenSize + 14);
       });
 
@@ -282,7 +283,7 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
   };
 
   return (
-    <div className="bg-[#090d16] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl relative select-none">
+    <div className="bg-obs-base border border-white/[0.07] rounded-2xl overflow-hidden shadow-2xl relative select-none">
       {/* 3D Canvas Container */}
       <div 
         ref={containerRef}
@@ -296,11 +297,11 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
 
         {/* Top Floating Badge */}
         <div className="absolute top-3 left-3 flex items-center gap-2 z-10 pointer-events-auto">
-          <div className="bg-[#161b22]/90 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-lg text-xs">
-            <Compass className="w-4 h-4 text-indigo-400 animate-spin-slow" />
+          <div className="bg-obs-surface/90 backdrop-blur-md border border-white/[0.07] rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-lg text-xs">
+            <Compass className="w-4 h-4 text-zinc-300 animate-spin-slow" />
             <span className="font-semibold text-white">3D Stack Constellation</span>
-            <span className="text-slate-600">|</span>
-            <span className="text-[11px] font-mono text-emerald-400 font-bold">
+            <span className="text-zinc-600">|</span>
+            <span className="text-[11px] font-mono text-signal-ok font-bold">
               {bridges.length} Verified Bridges
             </span>
           </div>
@@ -309,8 +310,8 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
             onClick={() => setAutoRotate(!autoRotate)}
             className={`px-2.5 py-1.5 rounded-xl text-xs font-medium border backdrop-blur-md transition-colors shadow-lg flex items-center gap-1.5 ${
               autoRotate 
-                ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/40' 
-                : 'bg-[#161b22]/90 text-slate-400 border-slate-800 hover:text-white'
+                ? 'bg-white/[0.07] text-zinc-100 border-white/[0.14]' 
+                : 'bg-obs-surface/90 text-zinc-400 border-white/[0.07] hover:text-white'
             }`}
           >
             <RotateCcw className="w-3 h-3" />
@@ -322,14 +323,14 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
         <div className="absolute top-3 right-3 flex flex-col gap-1 z-10 pointer-events-auto">
           <button
             onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
-            className="p-1.5 bg-[#161b22]/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-lg shadow-lg"
+            className="p-1.5 bg-obs-surface/90 hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.07] rounded-lg shadow-lg"
             title="Zoom In"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setZoom((z) => Math.max(0.6, z - 0.2))}
-            className="p-1.5 bg-[#161b22]/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-lg shadow-lg"
+            className="p-1.5 bg-obs-surface/90 hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.07] rounded-lg shadow-lg"
             title="Zoom Out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
@@ -337,14 +338,14 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
         </div>
 
         {/* Legend */}
-        <div className="absolute bottom-3 left-3 z-10 pointer-events-auto hidden sm:flex items-center gap-3 bg-[#161b22]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[10px]">
-          <span className="flex items-center gap-1 text-emerald-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+        <div className="absolute bottom-3 left-3 z-10 pointer-events-auto hidden sm:flex items-center gap-3 bg-obs-surface/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/[0.07] text-[10px]">
+          <span className="flex items-center gap-1 text-signal-ok">
+            <span className="w-2 h-2 rounded-full bg-signal-ok" />
             High Synergy (In-Process / Shared Primitives)
           </span>
-          <span className="text-slate-700">&bull;</span>
-          <span className="flex items-center gap-1 text-amber-400">
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
+          <span className="text-zinc-700">&bull;</span>
+          <span className="flex items-center gap-1 text-signal-star">
+            <span className="w-2 h-2 rounded-full bg-signal-star" />
             IPC / Network Boundary
           </span>
         </div>

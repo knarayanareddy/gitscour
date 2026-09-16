@@ -2,11 +2,226 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ---------------------------------------------------------------------------
+ * Obsidian Dark — base tokens
+ *
+ * Single source of truth for the palette. Tailwind's `obs.*` colors mirror
+ * these values; anything not expressible as a utility (canvas fallbacks,
+ * scrollbars, form controls) reads them from here.
+ * ------------------------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces — depth is carried by hairlines, not by fill */
+  --obs-base: #07080a;
+  --obs-inset: #050608;
+  --obs-surface: #0c0e12;
+  --obs-raised: #101216;
+
+  /* White hairlines */
+  --obs-line: rgba(255, 255, 255, 0.08);
+  --obs-line-soft: rgba(255, 255, 255, 0.05);
+  --obs-line-strong: rgba(255, 255, 255, 0.16);
+
+  /* Ink ramp. Markup currently sets text with the neutral `zinc` ramp; these
+     are the canonical values when a surface-specific tone is needed. */
+  --obs-ink: #eceef2;
+  --obs-muted: #8f949e;
+  --obs-faint: #61656d;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', 'JetBrains Mono', Menlo,
+    Consolas, 'Liberation Mono', monospace;
+}
+
+@layer base {
+  html {
+    background-color: var(--obs-base);
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--obs-base);
+    color: var(--obs-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+
+  /* Every monospace run carries tabular figures so counters never jitter */
+  .font-mono,
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+  }
+
+  pre,
+  code {
+    font-size: 0.95em;
+  }
+
+  /* Native controls must not invert to a light widget on this canvas */
+  input,
+  select,
+  textarea,
+  button {
+    color-scheme: dark;
+    font-family: inherit;
+  }
+
+  option {
+    background-color: var(--obs-surface);
+    color: var(--obs-ink);
+  }
+
+  /* Slider: thin hairline track, white thumb */
+  input[type='range'] {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    height: 14px;
+    cursor: pointer;
+  }
+
+  input[type='range']::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    margin-top: -4.5px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+  }
+
+  input[type='range']::-moz-range-track {
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  input[type='range']::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.6);
+  }
+
+  /* Checkbox: white check on a hairline box */
+  input[type='checkbox'] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid var(--obs-line-strong);
+    background: var(--obs-inset);
+    display: inline-grid;
+    place-content: center;
+    cursor: pointer;
+  }
+
+  input[type='checkbox']::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    transform: scale(0);
+    transition: transform 90ms ease-out;
+    background: #ffffff;
+    clip-path: polygon(14% 44%, 0 60%, 42% 100%, 100% 18%, 84% 4%, 39% 68%);
+  }
+
+  input[type='checkbox']:checked::after {
+    transform: scale(1);
+  }
+
+  /* Hairline scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+    background-clip: padding-box;
+  }
+
+  :focus-visible {
+    outline: 1px solid rgba(255, 255, 255, 0.35);
+    outline-offset: 1px;
+  }
+}
+
+@layer components {
+  /**
+   * Tabular monospace numerals for quantitative readouts (stars, forks,
+   * scores, counts). Use on any element that renders a number.
+   *
+   * Bare `border` already draws a white hairline: tailwind.config.js sets
+   * `borderColor.DEFAULT` to rgba(255,255,255,0.08), so surfaces express depth
+   * with `border` + `border-white/[0.07]` rather than with fill.
+   */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+    letter-spacing: 0.01em;
+  }
+
+  /* The one solid action style: inverted ink, no colored fill */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: var(--obs-ink);
+    color: var(--obs-base);
+    border-radius: 10px;
+    font-weight: 600;
+    transition: background-color 140ms ease, box-shadow 140ms ease;
+    box-shadow: 0 10px 26px -18px rgba(236, 238, 242, 0.6);
+  }
+
+  .btn-primary:hover {
+    background-color: #ffffff;
+  }
+
+  .btn-primary:focus-visible {
+    outline: 1px solid rgba(255, 255, 255, 0.5);
+  }
 }

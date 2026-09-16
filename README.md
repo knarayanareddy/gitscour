@@ -29,6 +29,31 @@ GitScour eliminates traditional backend database costs by combining static pre-i
 
 ---
 
+## 🎨 Design System — Obsidian Dark
+
+The UI is monochrome by design: depth comes from a four-step surface ladder and
+1px white hairlines, never from colored fills, and every number is set in
+monospace with tabular figures.
+
+| Surface | Value | Used for |
+| --- | --- | --- |
+| `--obs-base` | `#07080a` | Page canvas, 3D canvas backdrop |
+| `--obs-inset` | `#050608` | Inputs, code blocks, stat wells |
+| `--obs-surface` | `#0c0e12` | Cards, panels, modal body |
+| `--obs-raised` | `#101216` | Sticky bars, modal chrome, hover |
+| `--obs-line` | `rgba(255,255,255,0.08)` | Hairline border (Tailwind `border` default) |
+| `--obs-ink` | `#eceef2` | Primary text, inverted buttons |
+
+There is no purple/indigo accent anywhere in the app, including the 3D galaxy —
+domain hues are desaturated so clusters separate without glowing. Semantic
+colors are reserved for state and muted to match (`signal.ok`, `signal.star`,
+`signal.warn`, `signal.risk`, `signal.info`). Tokens live in
+`web/src/index.css`; the Tailwind mirror (`bg-obs-*`, `text-obs-*`) is in
+`web/tailwind.config.js`, and the full rationale is in
+[`docs/AI_TOOLS_METHODOLOGY_BLUEPRINT.md`](docs/AI_TOOLS_METHODOLOGY_BLUEPRINT.md#visual-language-obsidian-dark-palette).
+
+---
+
 ## 🚀 Quick Start
 
 ### 1. Run the Web Application Locally

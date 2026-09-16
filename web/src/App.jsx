@@ -284,27 +284,27 @@ export default function App() {
   }, [filteredRepos, visibleCount]);
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-obs-base text-zinc-100 flex flex-col font-sans selection:bg-white/20">
       {/* Top Header */}
-      <header className="border-b border-slate-800 bg-[#0d1117]/95 sticky top-0 z-30 backdrop-blur-md">
+      <header className="border-b border-white/[0.07] bg-obs-base/95 sticky top-0 z-30 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white p-2 rounded-xl shadow-md shadow-indigo-500/20">
+            <div className="bg-gradient-to-tr from-white/[0.16] to-white/[0.04] ring-1 ring-inset ring-white/[0.12] text-white p-2 rounded-xl">
               <Database className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
+                <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-500 bg-clip-text text-transparent">
                   GitScour
                 </span>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
+                <span className="num text-[11px] px-2.5 py-0.5 rounded-full bg-white/[0.05] text-zinc-300 border border-white/[0.10] font-bold">
                   {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : '50k+ DB'}
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono hidden sm:inline">
+                <span className="text-[10px] px-2 py-0.5 rounded bg-signal-ok/[0.08] text-signal-ok border border-signal-ok/20 font-mono hidden sm:inline">
                   Packed &bull; 3.2MB Gzip
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Deep Architectural Taxonomy &amp; 3D Knowledge Galaxy across 51,000+ Repositories</p>
+              <p className="text-xs text-zinc-400 hidden sm:block">Deep Architectural Taxonomy &amp; 3D Knowledge Galaxy across 51,000+ Repositories</p>
             </div>
           </div>
 
@@ -313,8 +313,8 @@ export default function App() {
               onClick={() => setActiveTab('explorer')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 activeTab === 'explorer'
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]'
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
@@ -324,19 +324,19 @@ export default function App() {
               onClick={() => setActiveTab('inspire')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 activeTab === 'inspire'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <Sparkles className="w-3.5 h-3.5 text-signal-star" />
               <span>Stack Architect</span>
             </button>
             <button
               onClick={() => setActiveTab('graph3d')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 activeTab === 'graph3d'
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]'
               }`}
             >
               <Compass className="w-3.5 h-3.5" />
@@ -346,13 +346,13 @@ export default function App() {
             {/* Share Link Button */}
             <button
               onClick={copyShareableLink}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-300 hover:text-white rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium border border-slate-700/80 transition-colors ml-1"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-zinc-300 hover:text-white rounded-lg bg-white/[0.05] hover:bg-white/[0.09] text-xs font-medium border border-white/[0.09] transition-colors ml-1"
               title="Share Current URL Query & View"
             >
               {urlShareCopied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Copied!</span>
+                  <Check className="w-3.5 h-3.5 text-signal-ok" />
+                  <span className="text-signal-ok">Copied!</span>
                 </>
               ) : (
                 <>
@@ -366,7 +366,7 @@ export default function App() {
               href="https://github.com/knarayanareddy/gitscour"
               target="_blank"
               rel="noreferrer"
-              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
               title="View on GitHub"
             >
               <Globe className="w-4 h-4" />
@@ -379,8 +379,8 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
-            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-400 text-xs font-mono">Unpacking 51,000+ repository index into WebAssembly memory...</p>
+            <div className="w-8 h-8 border-2 border-white/30 border-t-transparent rounded-full animate-spin" />
+            <p className="text-zinc-400 text-xs font-mono">Unpacking 51,000+ repository index into WebAssembly memory...</p>
           </div>
         ) : activeTab === 'inspire' ? (
           /* SYNERGETIC TECH STACK ARCHITECT & POOLING SANDBOX */
@@ -391,23 +391,23 @@ export default function App() {
         ) : activeTab === 'graph3d' ? (
           /* 3D GRAPH EXPLORER VIEW */
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#161b22] border border-slate-800 rounded-xl p-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-obs-surface border border-white/[0.07] rounded-xl p-4 shadow-sm">
               <div>
                 <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-indigo-400" />
-                  3D Topological Knowledge Galaxy ({repos.length.toLocaleString()} Nodes)
+                  <Compass className="w-4 h-4 text-zinc-300" />
+                  3D Topological Knowledge Galaxy (<span className="num">{repos.length.toLocaleString()}</span> Nodes)
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-zinc-400 mt-0.5">
                   Explore force-directed topologies, directional beam particles, and multi-hop neighborhood bridges.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-400 whitespace-nowrap">Filter Cluster:</label>
+                <label className="text-xs text-zinc-400 whitespace-nowrap">Filter Cluster:</label>
                 <select
                   value={selectedDomain}
                   onChange={(e) => setSelectedDomain(e.target.value)}
-                  className="bg-[#0d1117] border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="bg-obs-inset border border-white/[0.10] rounded-lg px-2.5 py-1 text-xs text-zinc-200 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07]"
                 >
                   {domains.map((d) => (
                     <option key={d} value={d}>
@@ -428,10 +428,10 @@ export default function App() {
           /* CATALOG EXPLORER */
           <div className="space-y-6">
             {/* Filter Hub */}
-            <div className="bg-[#161b22] border border-slate-800 rounded-xl p-4 shadow-sm space-y-4">
+            <div className="bg-obs-surface border border-white/[0.07] rounded-xl p-4 shadow-sm space-y-4">
               {/* Search Bar */}
               <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                 <input
                   type="text"
                   placeholder="Tokenized search across 51,000+ repos: try 'sql vector', 'local llm', 'simd', or 'caching'..."
@@ -440,21 +440,21 @@ export default function App() {
                     setSearchQuery(e.target.value);
                     setVisibleCount(36);
                   }}
-                  className="w-full bg-[#0d1117] border border-slate-700/80 rounded-lg pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-obs-inset border border-white/[0.09] rounded-lg pl-10 pr-4 py-2.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] transition-colors"
                 />
               </div>
 
               {/* Inspiration Discovery Quick-Pills */}
               <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                <span className="text-[11px] text-slate-500 font-semibold mr-1 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-400" />
+                <span className="text-[11px] text-zinc-500 font-semibold mr-1 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-signal-star" />
                   Quick Discover:
                 </span>
                 {DISCOVERY_PILLS.map((pill) => (
                   <button
                     key={pill.label}
                     onClick={() => applyDiscoveryPill(pill)}
-                    className="px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-indigo-600/20 text-slate-300 hover:text-indigo-300 border border-slate-700 hover:border-indigo-500/40 text-[10px] font-medium transition-all"
+                    className="px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.10] hover:border-white/25 text-[10px] font-medium transition-all"
                   >
                     {pill.label}
                   </button>
@@ -464,7 +464,7 @@ export default function App() {
               {/* Multi-Facet Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
                     Domain / Genre
                   </label>
                   <select
@@ -474,7 +474,7 @@ export default function App() {
                       setSelectedSubsystem('all');
                       setVisibleCount(36);
                     }}
-                    className="w-full bg-[#0d1117] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 truncate"
+                    className="w-full bg-obs-inset border border-white/[0.10] rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
                   >
                     {domains.map((d) => (
                       <option key={d} value={d}>
@@ -485,7 +485,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
                     Subsystem / Layer
                   </label>
                   <select
@@ -494,7 +494,7 @@ export default function App() {
                       setSelectedSubsystem(e.target.value);
                       setVisibleCount(36);
                     }}
-                    className="w-full bg-[#0d1117] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 truncate"
+                    className="w-full bg-obs-inset border border-white/[0.10] rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
                   >
                     {subsystems.map((s) => (
                       <option key={s} value={s}>
@@ -505,7 +505,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
                     Architectural Primitive
                   </label>
                   <select
@@ -514,7 +514,7 @@ export default function App() {
                       setSelectedPrimitive(e.target.value);
                       setVisibleCount(36);
                     }}
-                    className="w-full bg-[#0d1117] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 truncate"
+                    className="w-full bg-obs-inset border border-white/[0.10] rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
                   >
                     {primitives.map((p) => (
                       <option key={p} value={p}>
@@ -525,7 +525,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
                     Language
                   </label>
                   <select
@@ -534,7 +534,7 @@ export default function App() {
                       setSelectedLanguage(e.target.value);
                       setVisibleCount(36);
                     }}
-                    className="w-full bg-[#0d1117] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 truncate"
+                    className="w-full bg-obs-inset border border-white/[0.10] rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
                   >
                     {languages.map((l) => (
                       <option key={l} value={l}>
@@ -545,7 +545,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
                     Artifact Distinction
                   </label>
                   <select
@@ -554,7 +554,7 @@ export default function App() {
                       setSelectedArtifact(e.target.value);
                       setVisibleCount(36);
                     }}
-                    className="w-full bg-[#0d1117] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 truncate"
+                    className="w-full bg-obs-inset border border-white/[0.10] rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
                   >
                     {artifacts.map((a) => (
                       <option key={a} value={a}>
@@ -566,10 +566,10 @@ export default function App() {
 
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
                       Min Stars
                     </label>
-                    <span className="text-[10px] text-amber-400 font-mono font-medium">
+                    <span className="text-[10px] text-signal-star font-mono font-medium">
                       {minStars.toLocaleString()}★
                     </span>
                   </div>
@@ -583,18 +583,18 @@ export default function App() {
                       setMinStars(Number(e.target.value));
                       setVisibleCount(36);
                     }}
-                    className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg mt-1"
+                    className="w-full cursor-pointer mt-1"
                   />
                 </div>
               </div>
             </div>
 
             {/* Stats Summary */}
-            <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+            <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
               <span>
-                Matching <strong className="text-white">{filteredRepos.length.toLocaleString()}</strong> repositories (showing top {Math.min(visibleRepos.length, filteredRepos.length)})
+                Matching <strong className="num text-white">{filteredRepos.length.toLocaleString()}</strong> repositories (showing top <span className="num">{Math.min(visibleRepos.length, filteredRepos.length)}</span>)
               </span>
-              <span className="text-slate-500 hidden sm:inline">
+              <span className="text-zinc-500 hidden sm:inline">
                 51k+ Index &bull; Sub-5ms Token Search &bull; Progressive Windowing Active
               </span>
             </div>
@@ -605,40 +605,40 @@ export default function App() {
                 <div
                   key={repo.id}
                   onClick={() => handleOpenRepoModal(repo)}
-                  className="bg-[#161b22] border border-slate-800/90 rounded-xl p-5 hover:border-indigo-500/50 hover:bg-[#1a212d] transition-all cursor-pointer flex flex-col justify-between group shadow-sm relative overflow-hidden"
+                  className="bg-obs-surface border border-white/[0.07] rounded-xl p-5 hover:border-white/25 hover:bg-obs-raised transition-all cursor-pointer flex flex-col justify-between group shadow-sm relative overflow-hidden"
                 >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-indigo-500/5 to-transparent rounded-bl-full pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-white/[0.045] to-transparent rounded-bl-full pointer-events-none" />
 
                   <div>
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-base font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors break-all">
-                        <span className="text-slate-400 font-normal">{repo.owner} / </span>
+                      <h3 className="text-base font-semibold text-zinc-100 group-hover:text-white transition-colors break-all">
+                        <span className="text-zinc-400 font-normal">{repo.owner} / </span>
                         {repo.name}
                       </h3>
-                      <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors shrink-0" />
+                      <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors shrink-0" />
                     </div>
 
                     {/* Taxonomy Chips */}
                     <div className="flex flex-wrap gap-1.5 mb-2.5">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/[0.08] text-white border border-white/[0.14]">
                         {repo.domain}
                       </span>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.04] text-zinc-300 border border-white/[0.08]">
                         {repo.subsystem}
                       </span>
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400">
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-zinc-500">
                         {repo.artifact}
                       </span>
                     </div>
 
                     {/* Plain-English Hook: What It Does */}
-                    <div className="bg-[#0d1117] p-2.5 rounded-lg border border-slate-800/90 mb-3">
-                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-indigo-400 uppercase tracking-wide mb-1">
-                        <Lightbulb className="w-3 h-3 text-indigo-400" />
+                    <div className="bg-obs-inset p-2.5 rounded-lg border border-white/[0.07] mb-3">
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-300 uppercase tracking-wide mb-1">
+                        <Lightbulb className="w-3 h-3 text-zinc-300" />
                         <span>The Simple Explanation</span>
                       </div>
-                      <p className="text-xs text-slate-200 leading-relaxed line-clamp-2">
+                      <p className="text-xs text-zinc-200 leading-relaxed line-clamp-2">
                         {repo.hook || repo.description}
                       </p>
                     </div>
@@ -647,9 +647,9 @@ export default function App() {
                     <div className="space-y-1.5 mb-4">
                       {repo.primitives && repo.primitives.length > 0 && (
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <Cpu className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <Cpu className="w-3 h-3 text-signal-ok shrink-0" />
                           {repo.primitives.map((prim) => (
-                            <span key={prim} className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950/40 text-emerald-300 border border-emerald-500/30">
+                            <span key={prim} className="text-[10px] px-1.5 py-0.2 rounded bg-signal-ok/[0.08] text-signal-ok border border-signal-ok/25">
                               {prim}
                             </span>
                           ))}
@@ -659,21 +659,21 @@ export default function App() {
                   </div>
 
                   {/* Card Footer */}
-                  <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                  <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
                     <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-1 text-amber-400 font-medium">
-                        <Star className="w-3.5 h-3.5 fill-amber-400/20" />
-                        <span>{repo.stars.toLocaleString()}</span>
+                      <div className="flex items-center space-x-1 text-signal-star font-medium">
+                        <Star className="w-3.5 h-3.5 fill-signal-star/20" />
+                        <span className="num">{repo.stars.toLocaleString()}</span>
                       </div>
-                      <div className="flex items-center space-x-1 text-slate-400">
+                      <div className="flex items-center space-x-1 text-zinc-400">
                         <GitFork className="w-3.5 h-3.5" />
-                        <span>{repo.forks.toLocaleString()}</span>
+                        <span className="num">{repo.forks.toLocaleString()}</span>
                       </div>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <span className="text-[11px] font-mono text-slate-300">{repo.language}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                      <span className="text-[11px] font-mono text-zinc-300">{repo.language}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-white/[0.05] text-zinc-300 border border-white/[0.10]">
                         {repo.license}
                       </span>
                     </div>
@@ -687,10 +687,10 @@ export default function App() {
               <div className="flex justify-center pt-4">
                 <button
                   onClick={() => setVisibleCount((prev) => prev + 36)}
-                  className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-2 shadow-sm"
+                  className="px-6 py-2.5 bg-white/[0.05] hover:bg-white/[0.09] text-white rounded-xl text-xs font-semibold border border-white/[0.10] transition-colors flex items-center gap-2 shadow-sm"
                 >
-                  <span>Load More Repositories ({(filteredRepos.length - visibleCount).toLocaleString()} remaining)</span>
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <span>Load More Repositories (<span className="num">{(filteredRepos.length - visibleCount).toLocaleString()}</span> remaining)</span>
+                  <ChevronDown className="w-4 h-4 text-zinc-400" />
                 </button>
               </div>
             )}
@@ -701,20 +701,20 @@ export default function App() {
       {/* Deep Repository Architecture & Inspiration Modal */}
       {activeRepoDetails && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#161b22] border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-obs-surface border border-white/[0.07] rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Top Header */}
-            <div className="p-6 border-b border-slate-800 bg-[#1b212b] flex items-start justify-between">
+            <div className="p-6 border-b border-white/[0.07] bg-obs-raised flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/[0.08] text-white border border-white/[0.14] font-semibold">
                     {activeRepoDetails.domain}
                   </span>
-                  <span className="text-xs text-slate-400">&bull;</span>
-                  <span className="text-xs text-slate-300 font-medium">
+                  <span className="text-xs text-zinc-400">&bull;</span>
+                  <span className="text-xs text-zinc-300 font-medium">
                     {activeRepoDetails.subsystem}
                   </span>
                   {loadingShard && (
-                    <span className="text-[10px] text-indigo-400 flex items-center gap-1 animate-pulse">
+                    <span className="text-[10px] text-zinc-300 flex items-center gap-1 animate-pulse">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       Loading deep shard...
                     </span>
@@ -726,20 +726,20 @@ export default function App() {
               </div>
               <button
                 onClick={() => setActiveRepoModal(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.06] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Navigation Tabs */}
-            <div className="flex items-center border-b border-slate-800 bg-[#141922] px-6 gap-6 text-xs font-semibold">
+            <div className="flex items-center border-b border-white/[0.07] bg-obs-raised px-6 gap-6 text-xs font-semibold">
               <button
                 onClick={() => setModalTab('overview')}
                 className={`py-3 border-b-2 transition-colors flex items-center gap-2 ${
                   modalTab === 'overview'
-                    ? 'border-indigo-500 text-indigo-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-white/80 text-white'
+                    : 'border-transparent text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
@@ -749,8 +749,8 @@ export default function App() {
                 onClick={() => setModalTab('superpowers')}
                 className={`py-3 border-b-2 transition-colors flex items-center gap-2 ${
                   modalTab === 'superpowers'
-                    ? 'border-indigo-500 text-indigo-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-white/80 text-white'
+                    : 'border-transparent text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 <Zap className="w-4 h-4" />
@@ -760,8 +760,8 @@ export default function App() {
                 onClick={() => setModalTab('quickstart')}
                 className={`py-3 border-b-2 transition-colors flex items-center gap-2 ${
                   modalTab === 'quickstart'
-                    ? 'border-indigo-500 text-indigo-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-white/80 text-white'
+                    : 'border-transparent text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 <Play className="w-4 h-4" />
@@ -774,81 +774,81 @@ export default function App() {
               {modalTab === 'overview' && (
                 <div className="space-y-6">
                   {/* The "Explain Like I Have Zero Knowledge" Section */}
-                  <div className="bg-gradient-to-br from-indigo-950/40 via-slate-900 to-[#161b22] p-4 rounded-xl border border-indigo-500/30 space-y-3">
-                    <div className="flex items-center gap-2 text-indigo-300 font-bold uppercase tracking-wider text-[11px]">
-                      <Lightbulb className="w-4 h-4 text-indigo-400" />
+                  <div className="bg-obs-sheen bg-obs-raised p-4 rounded-xl border border-white/[0.12] space-y-3">
+                    <div className="flex items-center gap-2 text-zinc-100 font-bold uppercase tracking-wider text-[11px]">
+                      <Lightbulb className="w-4 h-4 text-zinc-300" />
                       <span>What does this project actually do?</span>
                     </div>
-                    <p className="text-slate-100 text-sm leading-relaxed font-medium">
+                    <p className="text-zinc-100 text-sm leading-relaxed font-medium">
                       {activeRepoDetails.beginner_intel?.what_it_does || activeRepoDetails.hook || activeRepoDetails.description}
                     </p>
                   </div>
 
                   {/* Why it matters & when to choose it */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-[#0d1117] p-4 rounded-xl border border-slate-800 space-y-2">
-                      <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-xs">
+                    <div className="bg-obs-inset p-4 rounded-xl border border-white/[0.07] space-y-2">
+                      <div className="flex items-center gap-1.5 text-signal-star font-semibold text-xs">
                         <Flame className="w-3.5 h-3.5" />
                         <span>Why does this project exist?</span>
                       </div>
-                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                      <p className="text-zinc-300 leading-relaxed text-[11px]">
                         {activeRepoDetails.beginner_intel?.why_it_matters || "Created to solve critical scalability, performance, and developer ergonomics problems in its domain."}
                       </p>
                     </div>
 
-                    <div className="bg-[#0d1117] p-4 rounded-xl border border-slate-800 space-y-2">
-                      <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-xs">
+                    <div className="bg-obs-inset p-4 rounded-xl border border-white/[0.07] space-y-2">
+                      <div className="flex items-center gap-1.5 text-signal-ok font-semibold text-xs">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>When should you use this?</span>
                       </div>
-                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                      <p className="text-zinc-300 leading-relaxed text-[11px]">
                         {activeRepoDetails.beginner_intel?.when_to_use || "Best suited for modern applications requiring production-grade performance and active maintenance."}
                       </p>
                     </div>
                   </div>
 
                   {/* Vital Stats & Maturity */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#0d1117] p-3 rounded-xl border border-slate-800">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-obs-inset p-3 rounded-xl border border-white/[0.07]">
                     <div>
-                      <span className="text-slate-500 block text-[10px]">Community Stars</span>
-                      <span className="text-sm font-semibold text-amber-400 flex items-center gap-1 mt-0.5">
-                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                      <span className="text-zinc-500 block text-[10px]">Community Stars</span>
+                      <span className="num text-sm font-semibold text-signal-star flex items-center gap-1 mt-0.5">
+                        <Star className="w-3.5 h-3.5 fill-signal-star" />
                         {activeRepoDetails.stars.toLocaleString()}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block text-[10px]">Fork Count</span>
-                      <span className="text-sm font-semibold text-slate-200 flex items-center gap-1 mt-0.5">
+                      <span className="text-zinc-500 block text-[10px]">Fork Count</span>
+                      <span className="num text-sm font-semibold text-zinc-200 flex items-center gap-1 mt-0.5">
                         <GitFork className="w-3.5 h-3.5" />
                         {activeRepoDetails.forks.toLocaleString()}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block text-[10px]">Primary Language</span>
-                      <span className="text-sm font-semibold text-indigo-300 mt-0.5 block">
+                      <span className="text-zinc-500 block text-[10px]">Primary Language</span>
+                      <span className="text-sm font-semibold text-zinc-100 mt-0.5 block">
                         {activeRepoDetails.language}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block text-[10px]">Maturity Rating</span>
-                      <span className="text-xs font-semibold text-emerald-400 mt-0.5 block truncate" title={activeRepoDetails.maturity?.rating}>
+                      <span className="text-zinc-500 block text-[10px]">Maturity Rating</span>
+                      <span className="text-xs font-semibold text-signal-ok mt-0.5 block truncate" title={activeRepoDetails.maturity?.rating}>
                         {activeRepoDetails.maturity?.rating || "Production Tested"}
                       </span>
                     </div>
                   </div>
 
                   {/* Commercial License Clear Assessment */}
-                  <div className="bg-[#0d1117] p-4 rounded-xl border border-slate-800 space-y-2">
+                  <div className="bg-obs-inset p-4 rounded-xl border border-white/[0.07] space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <ShieldAlert className="w-4 h-4 text-indigo-400" />
-                        <span className="font-semibold text-slate-200">Commercial Usability &amp; License Risk</span>
+                        <ShieldAlert className="w-4 h-4 text-zinc-300" />
+                        <span className="font-semibold text-zinc-200">Commercial Usability &amp; License Risk</span>
                       </div>
-                      <span className="font-mono text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                      <span className="font-mono text-zinc-100 bg-white/[0.05] px-2 py-0.5 rounded border border-white/[0.10]">
                         {activeRepoDetails.license}
                       </span>
                     </div>
-                    <div className="text-slate-400 leading-relaxed text-[11px]">
+                    <div className="text-zinc-400 leading-relaxed text-[11px]">
                       <strong>Commercial Status:</strong> {activeRepoDetails.license_intel?.commercial || "Permissive Open Source"} &mdash; {activeRepoDetails.license_intel?.desc || "Review repository license for details."}
                     </div>
                   </div>
@@ -858,8 +858,8 @@ export default function App() {
               {modalTab === 'superpowers' && (
                 <div className="space-y-6">
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-3 flex items-center gap-1.5">
-                      <Zap className="w-4 h-4 text-amber-400" />
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 block mb-3 flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-signal-star" />
                       Key Superpowers &amp; Breakthrough Features
                     </label>
                     <div className="space-y-2">
@@ -868,8 +868,8 @@ export default function App() {
                         "Active open-source community support and extensive documentation",
                         "Seamless integration into modern production ecosystems"
                       ]).map((power, idx) => (
-                        <div key={idx} className="flex items-start gap-2.5 bg-[#0d1117] p-3 rounded-xl border border-slate-800/90 text-slate-200 text-xs leading-relaxed">
-                          <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <div key={idx} className="flex items-start gap-2.5 bg-obs-inset p-3 rounded-xl border border-white/[0.07] text-zinc-200 text-xs leading-relaxed">
+                          <Check className="w-4 h-4 text-signal-ok shrink-0 mt-0.5" />
                           <span>{power}</span>
                         </div>
                       ))}
@@ -877,13 +877,13 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-3 flex items-center gap-1.5">
-                      <GitCompare className="w-4 h-4 text-cyan-400" />
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 block mb-3 flex items-center gap-1.5">
+                      <GitCompare className="w-4 h-4 text-signal-info" />
                       Notable Alternatives &amp; How It Compares
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {(activeRepoDetails.beginner_intel?.alternatives || ["Standard libraries", "Managed Cloud APIs"]).map((alt, idx) => (
-                        <span key={idx} className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 font-medium text-xs">
+                        <span key={idx} className="px-3 py-1.5 rounded-lg bg-white/[0.05] text-zinc-200 border border-white/[0.10] font-medium text-xs">
                           {alt}
                         </span>
                       ))}
@@ -895,19 +895,19 @@ export default function App() {
               {modalTab === 'quickstart' && (
                 <div className="space-y-6">
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
-                      <Play className="w-4 h-4 text-emerald-400" />
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 block mb-2 flex items-center gap-1.5">
+                      <Play className="w-4 h-4 text-signal-ok" />
                       Immediate Run / Installation Snippet
                     </label>
-                    <div className="relative bg-[#0d1117] border border-slate-800 rounded-xl p-3 font-mono text-emerald-400 text-xs">
+                    <div className="relative bg-obs-inset border border-white/[0.07] rounded-xl p-3 font-mono text-signal-ok text-xs">
                       <pre className="overflow-x-auto whitespace-pre-wrap">{activeRepoDetails.quickstart_code}</pre>
                       <button
                         onClick={() => copyToClipboard(activeRepoDetails.quickstart_code, 'quickstart')}
-                        className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-white rounded bg-slate-800 border border-slate-700 transition-colors"
+                        className="absolute top-3 right-3 p-1.5 text-zinc-400 hover:text-white rounded bg-white/[0.05] border border-white/[0.10] transition-colors"
                         title="Copy command"
                       >
                         {copiedText === 'quickstart' ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <Check className="w-3.5 h-3.5 text-signal-ok" />
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
@@ -916,18 +916,18 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 block mb-2">
                       Git Clone Command
                     </label>
-                    <div className="flex items-center justify-between bg-[#0d1117] border border-slate-800 rounded-lg p-2.5 font-mono text-slate-300">
+                    <div className="flex items-center justify-between bg-obs-inset border border-white/[0.07] rounded-lg p-2.5 font-mono text-zinc-300">
                       <span className="truncate mr-2">git clone {activeRepoDetails.url}.git</span>
                       <button
                         onClick={() => copyToClipboard(`git clone ${activeRepoDetails.url}.git`, 'clone')}
-                        className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors shrink-0"
+                        className="p-1 text-zinc-400 hover:text-white rounded hover:bg-white/[0.06] transition-colors shrink-0"
                         title="Copy command"
                       >
                         {copiedText === 'clone' ? (
-                          <Check className="w-4 h-4 text-emerald-400" />
+                          <Check className="w-4 h-4 text-signal-ok" />
                         ) : (
                           <Copy className="w-4 h-4" />
                         )}
@@ -939,15 +939,15 @@ export default function App() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-800 bg-[#1b212b] flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">
+            <div className="p-4 border-t border-white/[0.07] bg-obs-raised flex items-center justify-between">
+              <span className="text-[11px] text-zinc-400">
                 Pushed: {new Date(activeRepoDetails.pushed_at).toLocaleDateString()}
               </span>
               <a
                 href={activeRepoDetails.url}
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5"
+                className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
               >
                 <span>View on GitHub</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -958,7 +958,7 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-[#0d1117] py-4 mt-8 text-center text-xs text-slate-500">
+      <footer className="border-t border-white/[0.06] bg-obs-inset py-4 mt-8 text-center text-xs text-zinc-500">
         <p>GitScour &bull; Open-Source Queriable GitHub Knowledge Base &bull; Hosted 100% Free on GitHub Pages</p>
       </footer>
     </div>
