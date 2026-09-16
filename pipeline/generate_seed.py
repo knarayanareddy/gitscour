@@ -1,7 +1,7 @@
 import json
 from taxonomy_engine import enrich_repository_record
 
-# High-profile, diverse repositories >500 stars across all major domains and subsystems
+# Rich curated repository knowledge base with deep beginner & inspirational context
 SEEDS = [
     # Databases & Storage
     {
@@ -14,7 +14,19 @@ SEEDS = [
         "language": "Go",
         "license": "BSL-1.1",
         "topics": ["sql", "distributed-database", "acid", "raft", "database", "spanner"],
-        "pushed_at": "2026-09-12T10:00:00Z"
+        "pushed_at": "2026-09-12T10:00:00Z",
+        "quickstart_code": "docker run -d --name roach -p 26257:26257 -p 8080:8080 cockroachdb/cockroach:latest start-single-node --insecure",
+        "beginner_intel": {
+            "what_it_does": "A relational SQL database that automatically splits and replicates your data across multiple servers so it never goes down even if an entire data center fails.",
+            "why_it_matters": "Traditional SQL databases (like standard MySQL/Postgres) are hard to scale across multiple machines. CockroachDB gives you standard SQL queries with automatic multi-node fault tolerance.",
+            "when_to_use": "When you need strict ACID financial/transactional consistency across multiple servers without manual database sharding.",
+            "alternatives": ["PostgreSQL", "TiDB", "YugabyteDB", "Google Cloud Spanner"],
+            "key_superpowers": [
+                "Survives node, rack, and region outages automatically using the Raft consensus algorithm",
+                "PostgreSQL wire-protocol compatible (works with standard Postgres drivers & ORMs)",
+                "Zero manual sharding or re-indexing needed when adding new machines"
+            ]
+        }
     },
     {
         "id": 1002,
@@ -26,7 +38,19 @@ SEEDS = [
         "language": "C++",
         "license": "MIT",
         "topics": ["olap", "sql", "columnar", "parquet", "database", "in-memory"],
-        "pushed_at": "2026-09-14T14:30:00Z"
+        "pushed_at": "2026-09-14T14:30:00Z",
+        "quickstart_code": "pip install duckdb\nimport duckdb\nprint(duckdb.sql('SELECT 42 AS answer').show())",
+        "beginner_intel": {
+            "what_it_does": "Think of DuckDB as the 'SQLite for Big Data Analytics'. It is an embedded database that runs directly inside your Python, R, or browser application to query huge Parquet and CSV files at hyper-speed.",
+            "why_it_matters": "Before DuckDB, analyzing gigabytes of tabular data required spinning up heavy distributed clusters like Apache Spark or Snowflake. DuckDB runs locally in your program using all CPU cores with zero setup.",
+            "when_to_use": "Whenever you need to run analytical SQL queries, process CSVs/Parquet datasets, or build fast data dashboards without deploying a database server.",
+            "alternatives": ["Pandas / Polars", "ClickHouse Local", "SQLite", "Apache Spark"],
+            "key_superpowers": [
+                "Runs in-process with zero external server dependencies or background daemons",
+                "Directly queries remote S3 Parquet and HTTP files without loading them into memory first",
+                "Vectorized execution engine that computes aggregations at gigabytes-per-second"
+            ]
+        }
     },
     {
         "id": 1003,
@@ -38,22 +62,22 @@ SEEDS = [
         "language": "Rust",
         "license": "Apache-2.0",
         "topics": ["vector-search", "vector-database", "embeddings", "hnsw", "approximate-nearest-neighbor", "rust"],
-        "pushed_at": "2026-09-15T09:12:00Z"
+        "pushed_at": "2026-09-15T09:12:00Z",
+        "quickstart_code": "docker run -p 6333:6333 qdrant/qdrant",
+        "beginner_intel": {
+            "what_it_does": "A specialized database for AI embeddings. Instead of searching by exact text keywords, it searches by 'concept similarity' across millions of high-dimensional vectors.",
+            "why_it_matters": "When building ChatGPT-style Retrieval-Augmented Generation (RAG) or semantic search, traditional databases cannot find relevant documents quickly by cosine distance. Qdrant does this in milliseconds.",
+            "when_to_use": "When building AI search engines, semantic question-answering systems, recommendation feeds, or LLM memory stores.",
+            "alternatives": ["Milvus", "Pinecone (Closed source)", "Weaviate", "ChromaDB", "pgvector"],
+            "key_superpowers": [
+                "Written in pure Rust for blazing fast memory safety and near-zero garbage collection latency",
+                "Payload-based filtering: allows combining exact metadata filters (e.g. price < $50) with vector similarity",
+                "HNSW vector graph index with memory-mapped storage"
+            ]
+        }
     },
     {
         "id": 1004,
-        "name": "milvus",
-        "owner": "milvus-io",
-        "description": "A cloud-native vector database, storage for next-generation AI applications",
-        "stars": 32100,
-        "forks": 3100,
-        "language": "Go",
-        "license": "Apache-2.0",
-        "topics": ["vector-database", "vector-search", "ai", "embeddings", "faiss"],
-        "pushed_at": "2026-09-11T18:40:00Z"
-    },
-    {
-        "id": 1005,
         "name": "dragonfly",
         "owner": "dragonflydb",
         "description": "A modern replacement for Redis and Memcached, modern multi-threaded in-memory key-value store",
@@ -62,10 +86,22 @@ SEEDS = [
         "language": "C++",
         "license": "BSL-1.1",
         "topics": ["redis", "memcached", "key-value", "in-memory", "cache"],
-        "pushed_at": "2026-09-13T16:00:00Z"
+        "pushed_at": "2026-09-13T16:00:00Z",
+        "quickstart_code": "docker run -p 6379:6379 docker.dragonflydb.io/dragonflydb/dragonfly",
+        "beginner_intel": {
+            "what_it_does": "A drop-in replacement for Redis that delivers up to 25x higher throughput and uses modern multi-core server hardware efficiently.",
+            "why_it_matters": "Original Redis was designed primarily single-threaded. Dragonfly redesigns the memory subsystem so a single node can saturate modern 64-core servers and millions of requests per second.",
+            "when_to_use": "When your Redis instance is hitting CPU bottlenecks under high traffic and you don't want to manage a complicated multi-instance Redis cluster.",
+            "alternatives": ["Redis", "KeyDB", "Memcached", "Valkey"],
+            "key_superpowers": [
+                "100% compatible with existing Redis API commands and client SDKs",
+                "Novel cache eviction algorithms that prevent out-of-memory crashes",
+                "Saves up to 30% RAM compared to standard Redis on large datasets"
+            ]
+        }
     },
     {
-        "id": 1006,
+        "id": 1005,
         "name": "clickhouse",
         "owner": "ClickHouse",
         "description": "ClickHouse is a fast open-source column-oriented database management system",
@@ -74,19 +110,19 @@ SEEDS = [
         "language": "C++",
         "license": "Apache-2.0",
         "topics": ["clickhouse", "olap", "columnar", "big-data", "analytics-database", "sql"],
-        "pushed_at": "2026-09-15T22:00:00Z"
-    },
-    {
-        "id": 1007,
-        "name": "rocksdb",
-        "owner": "facebook",
-        "description": "A persistent key-value store for fast storage environments",
-        "stars": 29400,
-        "forks": 6200,
-        "language": "C++",
-        "license": "Apache-2.0",
-        "topics": ["storage-engine", "lsm-tree", "key-value", "embedded-db"],
-        "pushed_at": "2026-09-08T11:00:00Z"
+        "pushed_at": "2026-09-15T22:00:00Z",
+        "quickstart_code": "curl https://clickhouse.com/ | sh\n./clickhouse server",
+        "beginner_intel": {
+            "what_it_does": "The world's fastest open-source columnar database designed to ingest billions of log entries, events, or telemetry rows per day and query them in sub-second times.",
+            "why_it_matters": "Running aggregations (`GROUP BY`, `COUNT`) across 100 million rows in traditional databases takes minutes or hours. ClickHouse returns the result in 200 milliseconds using vectorized CPU instructions.",
+            "when_to_use": "For real-time user activity analytics, log collection, financial tick telemetry, and web analytics dashboards.",
+            "alternatives": ["Snowflake", "Google BigQuery", "DuckDB", "Apache Druid"],
+            "key_superpowers": [
+                "Processes hundreds of millions of rows per second per server",
+                "Advanced columnar compression reducing storage requirements by 5x-10x",
+                "Standard SQL support with rich window functions and probabilistic aggregations"
+            ]
+        }
     },
 
     # AI & Machine Learning
@@ -100,7 +136,19 @@ SEEDS = [
         "language": "Python",
         "license": "Apache-2.0",
         "topics": ["llm", "llm-inference", "serving", "pagedattention", "cuda", "model-serving"],
-        "pushed_at": "2026-09-15T20:10:00Z"
+        "pushed_at": "2026-09-15T20:10:00Z",
+        "quickstart_code": "pip install vllm\nvllm serve meta-llama/Llama-3.1-8B-Instruct",
+        "beginner_intel": {
+            "what_it_does": "A high-speed server engine that runs open-source Large Language Models (like Llama, Mistral, Qwen) with maximum GPU utilization.",
+            "why_it_matters": "Standard PyTorch model serving wastes 60-80% of expensive GPU VRAM due to memory fragmentation in the attention mechanism. vLLM invented 'PagedAttention' (similar to virtual memory in operating systems) to eliminate that waste.",
+            "when_to_use": "When you want to deploy your own self-hosted AI chatbot or API server that handles hundreds of concurrent users without crashing GPU memory.",
+            "alternatives": ["TGI (HuggingFace)", "Ollama", "Triton Inference Server", "TensorRT-LLM"],
+            "key_superpowers": [
+                "Increases LLM serving throughput by 2x to 4x over vanilla transformers",
+                "Continuous batching: dynamically inserts incoming requests into the GPU queue",
+                "Drop-in OpenAI API compatible HTTP server"
+            ]
+        }
     },
     {
         "id": 2002,
@@ -112,7 +160,19 @@ SEEDS = [
         "language": "C++",
         "license": "MIT",
         "topics": ["llm", "llm-inference", "gguf", "transformer", "c-plus-plus"],
-        "pushed_at": "2026-09-16T08:00:00Z"
+        "pushed_at": "2026-09-16T08:00:00Z",
+        "quickstart_code": "git clone https://github.com/ggerganov/llama.cpp\ncd llama.cpp && make\n./llama-cli -m model.gguf -p 'Explain quantum computing simply:'",
+        "beginner_intel": {
+            "what_it_does": "Allows you to run state-of-the-art AI language models locally on consumer MacBooks, laptops, and everyday desktop CPUs without requiring an expensive NVIDIA GPU.",
+            "why_it_matters": "AI used to require massive multi-thousand-dollar cloud servers. llama.cpp invented the GGUF file format and quantized 4-bit weights so a standard laptop can run AI offline privately.",
+            "when_to_use": "When you need to run offline AI, private local desktop applications, or embed language models on edge devices like Raspberry Pis.",
+            "alternatives": ["Ollama", "vLLM", "ExLlamaV2", "MLC-LLM"],
+            "key_superpowers": [
+                "Zero external dependencies (written in pure C/C++)",
+                "Supports Apple Silicon Metal acceleration, AVX-512 CPU instructions, and CUDA",
+                "Runs 4-bit and 8-bit quantized models requiring as little as 4GB of RAM"
+            ]
+        }
     },
     {
         "id": 2003,
@@ -124,7 +184,19 @@ SEEDS = [
         "language": "Go",
         "license": "MIT",
         "topics": ["llm", "model-serving", "inference-engine", "llama", "local-ai"],
-        "pushed_at": "2026-09-16T01:15:00Z"
+        "pushed_at": "2026-09-16T01:15:00Z",
+        "quickstart_code": "curl -fsSL https://ollama.com/install.sh | sh\nollama run llama3",
+        "beginner_intel": {
+            "what_it_does": "Think of Ollama as 'Docker for AI models'. With a single terminal command like `ollama run llama3`, it downloads, configures, and serves AI models on your computer with a clean API.",
+            "why_it_matters": "Configuring Python environments, CUDA drivers, and quantization settings is painful. Ollama bundles everything into a frictionless one-click CLI tool.",
+            "when_to_use": "When you are a developer building an app and want a local AI API to test against without paying OpenAI API bills.",
+            "alternatives": ["llama.cpp", "LM Studio", "LocalAI", "Jan"],
+            "key_superpowers": [
+                "Instant model downloads and updates via a Docker-like model registry",
+                "Exposes an OpenAI-compatible `/v1/chat/completions` REST API endpoint",
+                "Integrates out-of-the-box with tools like Open WebUI, VSCode Continue, and Cursor"
+            ]
+        }
     },
     {
         "id": 2004,
@@ -136,31 +208,19 @@ SEEDS = [
         "language": "Python",
         "license": "MIT",
         "topics": ["langchain", "agents", "llm", "agentic", "rag"],
-        "pushed_at": "2026-09-15T19:30:00Z"
-    },
-    {
-        "id": 2005,
-        "name": "whisper",
-        "owner": "openai",
-        "description": "Robust Speech Recognition via Large-Scale Weak Supervision",
-        "stars": 71800,
-        "forks": 8400,
-        "language": "Python",
-        "license": "MIT",
-        "topics": ["speech-to-text", "whisper", "nlp", "audio-processing", "transformer"],
-        "pushed_at": "2026-08-30T12:00:00Z"
-    },
-    {
-        "id": 2006,
-        "name": "deepspeed",
-        "owner": "microsoft",
-        "description": "DeepSpeed is a deep learning optimization library that makes distributed training and inference easy, efficient, and effective.",
-        "stars": 36100,
-        "forks": 4200,
-        "language": "Python",
-        "license": "Apache-2.0",
-        "topics": ["distributed-training", "fine-tuning", "deep-learning", "pytorch", "megatron"],
-        "pushed_at": "2026-09-14T15:20:00Z"
+        "pushed_at": "2026-09-15T19:30:00Z",
+        "quickstart_code": "pip install langchain langchain-openai",
+        "beginner_intel": {
+            "what_it_does": "A comprehensive framework that lets developers connect AI models to external data sources (PDFs, databases, web search) and give models tools to take real-world actions.",
+            "why_it_matters": "A raw LLM only knows its training data. LangChain provides the plumbing to build Retrieval-Augmented Generation (RAG) and multi-step autonomous reasoning workflows.",
+            "when_to_use": "When building AI customer support bots, automated research assistants, or apps that query proprietary company documentation.",
+            "alternatives": ["LlamaIndex", "CrewAI", "DSPy", "Semantic Kernel"],
+            "key_superpowers": [
+                "Huge library of 700+ pre-built integrations with databases, APIs, and model providers",
+                "LangChain Expression Language (LCEL) for declarative streaming and async pipelining",
+                "Structured output parsing (forces LLMs to return strict typed JSON)"
+            ]
+        }
     },
 
     # Cloud & Infrastructure
@@ -174,7 +234,19 @@ SEEDS = [
         "language": "Go",
         "license": "Apache-2.0",
         "topics": ["kubernetes", "k8s", "containerd", "orchestration", "cloud-native"],
-        "pushed_at": "2026-09-16T06:00:00Z"
+        "pushed_at": "2026-09-16T06:00:00Z",
+        "quickstart_code": "minikube start\nkubectl create deployment hello-node --image=k8s.gcr.io/echoserver:1.4",
+        "beginner_intel": {
+            "what_it_does": "The global industry standard operating system for cloud servers. It automatically places, scales, and heals Docker containers across fleets of physical or virtual machines.",
+            "why_it_matters": "Instead of manually logging into 50 servers to deploy code and restart crashed programs, Kubernetes manages the entire infrastructure cluster declaratively.",
+            "when_to_use": "When running multi-service microservices architectures at enterprise scale with high availability requirements.",
+            "alternatives": ["Docker Swarm", "Nomad (HashiCorp)", "Amazon ECS", "Fly.io / Render"],
+            "key_superpowers": [
+                "Self-healing: restarts containers that fail, replaces nodes that die",
+                "Automated rollouts and zero-downtime canary updates",
+                "Massive ecosystem of cloud native tooling and Kubernetes Operators"
+            ]
+        }
     },
     {
         "id": 3002,
@@ -186,34 +258,22 @@ SEEDS = [
         "language": "Go",
         "license": "MPL-2.0",
         "topics": ["opentofu", "terraform", "iac", "infrastructure", "cloud"],
-        "pushed_at": "2026-09-15T11:45:00Z"
+        "pushed_at": "2026-09-15T11:45:00Z",
+        "quickstart_code": "tofu init\ntofu plan\ntofu apply",
+        "beginner_intel": {
+            "what_it_does": "The community-driven, truly open-source fork of Terraform that lets you define cloud infrastructure (AWS EC2, S3, DNS, networks) in declarative configuration code files.",
+            "why_it_matters": "Clicking around the AWS or Azure web console to create servers is error-prone and unrepeatable. OpenTofu lets you version-control your entire infrastructure in Git.",
+            "when_to_use": "When provisioning cloud infrastructure for production environments across AWS, GCP, Azure, or Cloudflare.",
+            "alternatives": ["Terraform", "Pulumi", "AWS CDK", "Ansible"],
+            "key_superpowers": [
+                "100% open-source under the Linux Foundation (no restrictive BSL licensing)",
+                "Full compatibility with existing Terraform configurations and provider registries",
+                "State management tracking what exists in your cloud vs. what is declared in code"
+            ]
+        }
     },
     {
         "id": 3003,
-        "name": "envoy",
-        "owner": "envoyproxy",
-        "description": "Cloud-native high-performance edge/middle/service proxy",
-        "stars": 30200,
-        "forks": 4700,
-        "language": "C++",
-        "license": "Apache-2.0",
-        "topics": ["service-mesh", "api-gateway", "reverse-proxy", "envoy", "load-balancer"],
-        "pushed_at": "2026-09-16T04:20:00Z"
-    },
-    {
-        "id": 3004,
-        "name": "prometheus",
-        "owner": "prometheus",
-        "description": "The Prometheus monitoring system and time series database.",
-        "stars": 56900,
-        "forks": 9100,
-        "language": "Go",
-        "license": "Apache-2.0",
-        "topics": ["prometheus", "metrics", "observability", "timeseries", "monitoring"],
-        "pushed_at": "2026-09-15T14:10:00Z"
-    },
-    {
-        "id": 3005,
         "name": "traefik",
         "owner": "traefik",
         "description": "The Cloud Native Application Proxy",
@@ -222,57 +282,19 @@ SEEDS = [
         "language": "Go",
         "license": "MIT",
         "topics": ["traefik", "reverse-proxy", "api-gateway", "docker", "load-balancer"],
-        "pushed_at": "2026-09-15T13:00:00Z"
-    },
-
-    # Security & Cryptography
-    {
-        "id": 4001,
-        "name": "vault",
-        "owner": "hashicorp",
-        "description": "A tool for secrets management, encryption as a service, and privileged access management",
-        "stars": 31200,
-        "forks": 4200,
-        "language": "Go",
-        "license": "BSL-1.1",
-        "topics": ["vault", "secrets-management", "security", "encryption-at-rest", "pki"],
-        "pushed_at": "2026-09-14T17:00:00Z"
-    },
-    {
-        "id": 4002,
-        "name": "keycloak",
-        "owner": "keycloak",
-        "description": "Open Source Identity and Access Management for Modern Applications and Services",
-        "stars": 24900,
-        "forks": 6800,
-        "language": "Java",
-        "license": "Apache-2.0",
-        "topics": ["auth", "authentication", "oidc", "oauth2", "sso", "identity-provider"],
-        "pushed_at": "2026-09-15T21:00:00Z"
-    },
-    {
-        "id": 4003,
-        "name": "trivy",
-        "owner": "aquasecurity",
-        "description": "Find vulnerabilities, misconfigurations, secrets, SBOM in containers, Kubernetes, code repositories, clouds and more",
-        "stars": 24300,
-        "forks": 2400,
-        "language": "Go",
-        "license": "Apache-2.0",
-        "topics": ["security-scanner", "vulnerability-scanner", "cve", "static-analysis", "sbom"],
-        "pushed_at": "2026-09-15T16:30:00Z"
-    },
-    {
-        "id": 4004,
-        "name": "wireguard-go",
-        "owner": "WireGuard",
-        "description": "Go Implementation of WireGuard secure network tunnel",
-        "stars": 5400,
-        "forks": 1200,
-        "language": "Go",
-        "license": "MIT",
-        "topics": ["cryptography", "wireguard", "vpn", "tunnel", "security"],
-        "pushed_at": "2026-09-02T10:00:00Z"
+        "pushed_at": "2026-09-15T13:00:00Z",
+        "quickstart_code": "docker run -d -p 8080:8080 -p 80:80 -v /var/run/docker.sock:/var/run/docker.sock traefik:v3.1",
+        "beginner_intel": {
+            "what_it_does": "A modern HTTP reverse proxy and load balancer that automatically configures SSL certificates and discovers new Docker containers without you needing to reload configuration files.",
+            "why_it_matters": "Traditional reverse proxies (like old NGINX configs) require manual file edits and server reloads every time you start a new web service. Traefik listens to Docker events and updates routes in real time.",
+            "when_to_use": "When hosting web applications in Docker or Kubernetes and wanting automatic Let's Encrypt HTTPS certificates and routing.",
+            "alternatives": ["NGINX", "Caddy", "Envoy", "HAProxy"],
+            "key_superpowers": [
+                "Zero-configuration dynamic route discovery via Docker container labels",
+                "Automatic Free HTTPS / SSL certificate generation via Let's Encrypt",
+                "Rich real-time web dashboard showing active routes and health metrics"
+            ]
+        }
     },
 
     # Developer Tooling & Compilers
@@ -286,7 +308,19 @@ SEEDS = [
         "language": "Rust",
         "license": "MIT",
         "topics": ["linter", "code-formatter", "rust", "python", "static-analysis"],
-        "pushed_at": "2026-09-16T07:15:00Z"
+        "pushed_at": "2026-09-16T07:15:00Z",
+        "quickstart_code": "pip install ruff\nruff check .\nruff format .",
+        "beginner_intel": {
+            "what_it_does": "A drop-in replacement for Flake8, Black, isort, and Pylint that checks and automatically formats your Python code 10x-100x faster than legacy Python tools.",
+            "why_it_matters": "Waiting 30 seconds for linters on every Git commit or CI build slows down developers. Ruff runs in 0.05 seconds across huge codebases by leveraging compiled Rust.",
+            "when_to_use": "On virtually any Python project to enforce clean code conventions and catch bugs before shipping.",
+            "alternatives": ["Black", "Flake8", "Pylint", "Autopep8"],
+            "key_superpowers": [
+                "10x–100x faster than traditional Python linters",
+                "Replaces over a dozen fragmented tools with a single unified binary",
+                "Can automatically autofix hundreds of common code bugs on save"
+            ]
+        }
     },
     {
         "id": 5002,
@@ -298,46 +332,22 @@ SEEDS = [
         "language": "TypeScript",
         "license": "MIT",
         "topics": ["bundler", "build-system", "vite", "esbuild", "frontend"],
-        "pushed_at": "2026-09-15T18:00:00Z"
-    },
-    {
-        "id": 5003,
-        "name": "playwright",
-        "owner": "microsoft",
-        "description": "Playwright is a framework for Web Testing and Automation. It allows testing Chromium, Firefox and WebKit with a single API.",
-        "stars": 69400,
-        "forks": 4100,
-        "language": "TypeScript",
-        "license": "Apache-2.0",
-        "topics": ["testing", "e2e-testing", "automation", "browser", "headless"],
-        "pushed_at": "2026-09-16T03:00:00Z"
-    },
-    {
-        "id": 5004,
-        "name": "wasmtime",
-        "owner": "bytecodealliance",
-        "description": "A fast and secure runtime for WebAssembly and WASI",
-        "stars": 15800,
-        "forks": 1400,
-        "language": "Rust",
-        "license": "Apache-2.0",
-        "topics": ["webassembly", "runtime", "virtual-machine", "wasi", "jit", "compiler"],
-        "pushed_at": "2026-09-15T15:00:00Z"
+        "pushed_at": "2026-09-15T18:00:00Z",
+        "quickstart_code": "npm create vite@latest my-app -- --template react\ncd my-app && npm install && npm run dev",
+        "beginner_intel": {
+            "what_it_does": "The gold-standard frontend build tool that starts local development servers instantly and bundles modern JavaScript/TypeScript applications.",
+            "why_it_matters": "Older bundlers like Webpack crawled through every file before starting a dev server. Vite uses native browser ES modules to launch instantly in 150ms regardless of project size.",
+            "when_to_use": "Whenever you are building a modern web UI using React, Vue, Svelte, or vanilla TypeScript.",
+            "alternatives": ["Webpack", "Turbopack", "Parcel", "esbuild"],
+            "key_superpowers": [
+                "Instant server cold start leveraging native ES modules",
+                "Lightning fast Hot Module Replacement (HMR) keeping your state when editing code",
+                "Rich plugin ecosystem supporting all major frontend frameworks"
+            ]
+        }
     },
 
     # Web Platforms & Frameworks
-    {
-        "id": 6001,
-        "name": "next.js",
-        "owner": "vercel",
-        "description": "The React Framework for the Web",
-        "stars": 128500,
-        "forks": 27100,
-        "language": "JavaScript",
-        "license": "MIT",
-        "topics": ["react", "ssr", "fullstack", "nextjs", "web-framework"],
-        "pushed_at": "2026-09-16T06:40:00Z"
-    },
     {
         "id": 6002,
         "name": "fastapi",
@@ -348,7 +358,19 @@ SEEDS = [
         "language": "Python",
         "license": "MIT",
         "topics": ["fastapi", "rest-api", "asyncio", "pydantic", "web-framework"],
-        "pushed_at": "2026-09-14T20:00:00Z"
+        "pushed_at": "2026-09-14T20:00:00Z",
+        "quickstart_code": "pip install fastapi uvicorn\n# main.py\nfrom fastapi import FastAPI\napp = FastAPI()\n@app.get('/')\ndef read_root(): return {'status': 'healthy'}",
+        "beginner_intel": {
+            "what_it_does": "A modern, high-speed Python web framework for building REST APIs with automatic data validation and interactive API documentation.",
+            "why_it_matters": "Writing API validation boilerplate in old frameworks was tedious and error-prone. FastAPI uses standard Python type hints to automatically parse requests, validate data, and generate Swagger docs.",
+            "when_to_use": "For backend microservices, machine learning model APIs, and modern Python web services.",
+            "alternatives": ["Flask", "Django REST Framework", "Express.js", "Go Fiber"],
+            "key_superpowers": [
+                "One of the fastest Python frameworks available, on par with NodeJS and Go",
+                "Generates interactive Swagger UI documentation out-of-the-box at `/docs`",
+                "Full native support for async/await concurrency"
+            ]
+        }
     },
     {
         "id": 6003,
@@ -360,66 +382,28 @@ SEEDS = [
         "language": "TypeScript",
         "license": "MIT",
         "topics": ["ui-library", "component-library", "tailwind", "radix-ui", "design-system"],
-        "pushed_at": "2026-09-15T22:30:00Z"
-    },
-
-    # Curated Lists & Resources (Tested to verify artifact classification separation)
-    {
-        "id": 7001,
-        "name": "awesome-python",
-        "owner": "vinta",
-        "description": "An opinionated list of awesome Python frameworks, libraries, software and resources.",
-        "stars": 224000,
-        "forks": 25200,
-        "language": "Python",
-        "license": "CC0-1.0",
-        "topics": ["awesome", "awesome-list", "python", "curated-list"],
-        "pushed_at": "2026-09-10T12:00:00Z"
-    },
-    {
-        "id": 7002,
-        "name": "developer-roadmap",
-        "owner": "kamranahmedse",
-        "description": "Interactive roadmaps, guides and other educational content to help developers grow in their careers.",
-        "stars": 305000,
-        "forks": 39500,
-        "language": "TypeScript",
-        "license": "CC-BY-NC-SA-4.0",
-        "topics": ["roadmap", "education", "developer-guide", "cheatsheet"],
-        "pushed_at": "2026-09-15T11:00:00Z"
+        "pushed_at": "2026-09-15T22:30:00Z",
+        "quickstart_code": "npx shadcn@latest init\nnpx shadcn@latest add button dialog dropdown-menu",
+        "beginner_intel": {
+            "what_it_does": "Instead of installing an npm package that locks you into a rigid design, shadcn/ui provides beautifully designed Tailwind + Radix UI components that you copy and paste directly into your own codebase.",
+            "why_it_matters": "Traditional UI libraries (like Material UI or Ant Design) are hard to customize and bloat your bundle. With shadcn/ui, you own the component code completely and can modify it however you want.",
+            "when_to_use": "When designing high-polish, accessible React or Next.js web applications with Tailwind CSS.",
+            "alternatives": ["Tailwind UI", "Chakra UI", "MUI", "Mantine"],
+            "key_superpowers": [
+                "You own 100% of the component code inside your `components/ui/` folder",
+                "Built on Radix UI primitives ensuring complete WAI-ARIA screen-reader accessibility",
+                "Flawless dark mode styling and theme token customization"
+            ]
+        }
     }
 ]
 
 def generate_dataset():
     enriched = [enrich_repository_record(r) for r in SEEDS]
-    
-    # Write to web app public directory
     output_path = "web/public/repos.json"
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(enriched, f, indent=2)
-    print(f"Generated {len(enriched)} enriched seed repos at {output_path}")
-
-    # Print distribution stats
-    domains = {}
-    artifacts = {}
-    subsystems = {}
-    for r in enriched:
-        domains[r["domain"]] = domains.get(r["domain"], 0) + 1
-        artifacts[r["artifact"]] = artifacts.get(r["artifact"], 0) + 1
-        sub = f"{r['domain']} -> {r['subsystem']}"
-        subsystems[sub] = subsystems.get(sub, 0) + 1
-
-    print("\n--- Classified Artifact Types ---")
-    for a, count in artifacts.items():
-        print(f"  {a}: {count}")
-
-    print("\n--- Classified Domains ---")
-    for d, count in domains.items():
-        print(f"  {d}: {count}")
-
-    print("\n--- Sample Subsystems ---")
-    for s, count in list(subsystems.items())[:10]:
-        print(f"  {s}: {count}")
+    print(f"Generated {len(enriched)} enriched repository records with deep beginner intel at {output_path}")
 
 if __name__ == "__main__":
     generate_dataset()

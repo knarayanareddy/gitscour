@@ -29,6 +29,23 @@
       "level": "tier-2",
       "desc": "High ecosystem stability, active community, and proven production deployments."
     },
+    "beginner_intel": {
+      "what_it_does": "A relational SQL database that automatically splits and replicates your data across multiple servers so it never goes down even if an entire data center fails.",
+      "why_it_matters": "Traditional SQL databases (like standard MySQL/Postgres) are hard to scale across multiple machines. CockroachDB gives you standard SQL queries with automatic multi-node fault tolerance.",
+      "when_to_use": "When you need strict ACID financial/transactional consistency across multiple servers without manual database sharding.",
+      "alternatives": [
+        "PostgreSQL",
+        "TiDB",
+        "YugabyteDB",
+        "Google Cloud Spanner"
+      ],
+      "key_superpowers": [
+        "Survives node, rack, and region outages automatically using the Raft consensus algorithm",
+        "PostgreSQL wire-protocol compatible (works with standard Postgres drivers & ORMs)",
+        "Zero manual sharding or re-indexing needed when adding new machines"
+      ]
+    },
+    "quickstart_code": "docker run -d --name roach -p 26257:26257 -p 8080:8080 cockroachdb/cockroach:latest start-single-node --insecure",
     "keywords": [
       "Distributed SQL Engine",
       "Application / Service",
@@ -84,6 +101,23 @@
       "level": "tier-2",
       "desc": "High ecosystem stability, active community, and proven production deployments."
     },
+    "beginner_intel": {
+      "what_it_does": "Think of DuckDB as the 'SQLite for Big Data Analytics'. It is an embedded database that runs directly inside your Python, R, or browser application to query huge Parquet and CSV files at hyper-speed.",
+      "why_it_matters": "Before DuckDB, analyzing gigabytes of tabular data required spinning up heavy distributed clusters like Apache Spark or Snowflake. DuckDB runs locally in your program using all CPU cores with zero setup.",
+      "when_to_use": "Whenever you need to run analytical SQL queries, process CSVs/Parquet datasets, or build fast data dashboards without deploying a database server.",
+      "alternatives": [
+        "Pandas / Polars",
+        "ClickHouse Local",
+        "SQLite",
+        "Apache Spark"
+      ],
+      "key_superpowers": [
+        "Runs in-process with zero external server dependencies or background daemons",
+        "Directly queries remote S3 Parquet and HTTP files without loading them into memory first",
+        "Vectorized execution engine that computes aggregations at gigabytes-per-second"
+      ]
+    },
+    "quickstart_code": "pip install duckdb\nimport duckdb\nprint(duckdb.sql('SELECT 42 AS answer').show())",
     "keywords": [
       "Analytical & Columnar (OLAP)",
       "Application / Service",
@@ -137,6 +171,24 @@
       "level": "tier-2",
       "desc": "High ecosystem stability, active community, and proven production deployments."
     },
+    "beginner_intel": {
+      "what_it_does": "A specialized database for AI embeddings. Instead of searching by exact text keywords, it searches by 'concept similarity' across millions of high-dimensional vectors.",
+      "why_it_matters": "When building ChatGPT-style Retrieval-Augmented Generation (RAG) or semantic search, traditional databases cannot find relevant documents quickly by cosine distance. Qdrant does this in milliseconds.",
+      "when_to_use": "When building AI search engines, semantic question-answering systems, recommendation feeds, or LLM memory stores.",
+      "alternatives": [
+        "Milvus",
+        "Pinecone (Closed source)",
+        "Weaviate",
+        "ChromaDB",
+        "pgvector"
+      ],
+      "key_superpowers": [
+        "Written in pure Rust for blazing fast memory safety and near-zero garbage collection latency",
+        "Payload-based filtering: allows combining exact metadata filters (e.g. price < $50) with vector similarity",
+        "HNSW vector graph index with memory-mapped storage"
+      ]
+    },
+    "quickstart_code": "docker run -p 6333:6333 qdrant/qdrant",
     "keywords": [
       "Vector Database",
       "System Service / Engine",
@@ -162,58 +214,6 @@
   },
   {
     "id": 1004,
-    "name": "milvus",
-    "owner": "milvus-io",
-    "full_name": "milvus-io/milvus",
-    "description": "A cloud-native vector database, storage for next-generation AI applications",
-    "stars": 32100,
-    "forks": 3100,
-    "language": "Go",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Application / Service",
-    "domain": "AI & Machine Learning",
-    "subsystem": "NLP & Speech Recognition",
-    "primitives": [
-      "HNSW / Vector Index"
-    ],
-    "compatibility": [],
-    "usecases": [
-      "Cloud Native Infrastructure"
-    ],
-    "maturity": {
-      "rating": "Production Battle-Tested",
-      "level": "tier-2",
-      "desc": "High ecosystem stability, active community, and proven production deployments."
-    },
-    "keywords": [
-      "NLP & Speech Recognition",
-      "Application / Service",
-      "AI & Machine Learning",
-      "HNSW / Vector Index",
-      "Cloud Native Infrastructure",
-      "vector-database",
-      "vector-search",
-      "ai",
-      "embeddings",
-      "faiss"
-    ],
-    "topics": [
-      "vector-database",
-      "vector-search",
-      "ai",
-      "embeddings",
-      "faiss"
-    ],
-    "url": "https://github.com/milvus-io/milvus",
-    "pushed_at": "2026-09-11T18:40:00Z"
-  },
-  {
-    "id": 1005,
     "name": "dragonfly",
     "owner": "dragonflydb",
     "full_name": "dragonflydb/dragonfly",
@@ -242,6 +242,23 @@
       "level": "tier-2",
       "desc": "High ecosystem stability, active community, and proven production deployments."
     },
+    "beginner_intel": {
+      "what_it_does": "A drop-in replacement for Redis that delivers up to 25x higher throughput and uses modern multi-core server hardware efficiently.",
+      "why_it_matters": "Original Redis was designed primarily single-threaded. Dragonfly redesigns the memory subsystem so a single node can saturate modern 64-core servers and millions of requests per second.",
+      "when_to_use": "When your Redis instance is hitting CPU bottlenecks under high traffic and you don't want to manage a complicated multi-instance Redis cluster.",
+      "alternatives": [
+        "Redis",
+        "KeyDB",
+        "Memcached",
+        "Valkey"
+      ],
+      "key_superpowers": [
+        "100% compatible with existing Redis API commands and client SDKs",
+        "Novel cache eviction algorithms that prevent out-of-memory crashes",
+        "Saves up to 30% RAM compared to standard Redis on large datasets"
+      ]
+    },
+    "quickstart_code": "docker run -p 6379:6379 docker.dragonflydb.io/dragonflydb/dragonfly",
     "keywords": [
       "Key-Value & In-Memory Store",
       "Application / Service",
@@ -265,7 +282,7 @@
     "pushed_at": "2026-09-13T16:00:00Z"
   },
   {
-    "id": 1006,
+    "id": 1005,
     "name": "clickhouse",
     "owner": "ClickHouse",
     "full_name": "ClickHouse/clickhouse",
@@ -294,6 +311,23 @@
       "level": "tier-2",
       "desc": "High ecosystem stability, active community, and proven production deployments."
     },
+    "beginner_intel": {
+      "what_it_does": "The world's fastest open-source columnar database designed to ingest billions of log entries, events, or telemetry rows per day and query them in sub-second times.",
+      "why_it_matters": "Running aggregations (`GROUP BY`, `COUNT`) across 100 million rows in traditional databases takes minutes or hours. ClickHouse returns the result in 200 milliseconds using vectorized CPU instructions.",
+      "when_to_use": "For real-time user activity analytics, log collection, financial tick telemetry, and web analytics dashboards.",
+      "alternatives": [
+        "Snowflake",
+        "Google BigQuery",
+        "DuckDB",
+        "Apache Druid"
+      ],
+      "key_superpowers": [
+        "Processes hundreds of millions of rows per second per server",
+        "Advanced columnar compression reducing storage requirements by 5x-10x",
+        "Standard SQL support with rich window functions and probabilistic aggregations"
+      ]
+    },
+    "quickstart_code": "curl https://clickhouse.com/ | sh\n./clickhouse server",
     "keywords": [
       "Analytical & Columnar (OLAP)",
       "Developer Tool / CLI",
@@ -317,56 +351,6 @@
     ],
     "url": "https://github.com/ClickHouse/clickhouse",
     "pushed_at": "2026-09-15T22:00:00Z"
-  },
-  {
-    "id": 1007,
-    "name": "rocksdb",
-    "owner": "facebook",
-    "full_name": "facebook/rocksdb",
-    "description": "A persistent key-value store for fast storage environments",
-    "stars": 29400,
-    "forks": 6200,
-    "language": "C++",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "System Service / Engine",
-    "domain": "Databases & Storage",
-    "subsystem": "Key-Value & In-Memory Store",
-    "primitives": [
-      "LSM-Tree / B-Tree"
-    ],
-    "compatibility": [],
-    "usecases": [
-      "Edge & Offline Computing"
-    ],
-    "maturity": {
-      "rating": "Production Battle-Tested",
-      "level": "tier-2",
-      "desc": "High ecosystem stability, active community, and proven production deployments."
-    },
-    "keywords": [
-      "Key-Value & In-Memory Store",
-      "System Service / Engine",
-      "Databases & Storage",
-      "LSM-Tree / B-Tree",
-      "Edge & Offline Computing",
-      "storage-engine",
-      "lsm-tree",
-      "key-value",
-      "embedded-db"
-    ],
-    "topics": [
-      "storage-engine",
-      "lsm-tree",
-      "key-value",
-      "embedded-db"
-    ],
-    "url": "https://github.com/facebook/rocksdb",
-    "pushed_at": "2026-09-08T11:00:00Z"
   },
   {
     "id": 2001,
@@ -398,6 +382,23 @@
       "level": "tier-2",
       "desc": "High ecosystem stability, active community, and proven production deployments."
     },
+    "beginner_intel": {
+      "what_it_does": "A high-speed server engine that runs open-source Large Language Models (like Llama, Mistral, Qwen) with maximum GPU utilization.",
+      "why_it_matters": "Standard PyTorch model serving wastes 60-80% of expensive GPU VRAM due to memory fragmentation in the attention mechanism. vLLM invented 'PagedAttention' (similar to virtual memory in operating systems) to eliminate that waste.",
+      "when_to_use": "When you want to deploy your own self-hosted AI chatbot or API server that handles hundreds of concurrent users without crashing GPU memory.",
+      "alternatives": [
+        "TGI (HuggingFace)",
+        "Ollama",
+        "Triton Inference Server",
+        "TensorRT-LLM"
+      ],
+      "key_superpowers": [
+        "Increases LLM serving throughput by 2x to 4x over vanilla transformers",
+        "Continuous batching: dynamically inserts incoming requests into the GPU queue",
+        "Drop-in OpenAI API compatible HTTP server"
+      ]
+    },
+    "quickstart_code": "pip install vllm\nvllm serve meta-llama/Llama-3.1-8B-Instruct",
     "keywords": [
       "LLM Inference & Serving",
       "System Service / Engine",
@@ -450,6 +451,23 @@
       "level": "tier-1",
       "desc": "Massively adopted across global technology industry."
     },
+    "beginner_intel": {
+      "what_it_does": "Allows you to run state-of-the-art AI language models locally on consumer MacBooks, laptops, and everyday desktop CPUs without requiring an expensive NVIDIA GPU.",
+      "why_it_matters": "AI used to require massive multi-thousand-dollar cloud servers. llama.cpp invented the GGUF file format and quantized 4-bit weights so a standard laptop can run AI offline privately.",
+      "when_to_use": "When you need to run offline AI, private local desktop applications, or embed language models on edge devices like Raspberry Pis.",
+      "alternatives": [
+        "Ollama",
+        "vLLM",
+        "ExLlamaV2",
+        "MLC-LLM"
+      ],
+      "key_superpowers": [
+        "Zero external dependencies (written in pure C/C++)",
+        "Supports Apple Silicon Metal acceleration, AVX-512 CPU instructions, and CUDA",
+        "Runs 4-bit and 8-bit quantized models requiring as little as 4GB of RAM"
+      ]
+    },
+    "quickstart_code": "git clone https://github.com/ggerganov/llama.cpp\ncd llama.cpp && make\n./llama-cli -m model.gguf -p 'Explain quantum computing simply:'",
     "keywords": [
       "LLM Inference & Serving",
       "Application / Service",
@@ -497,6 +515,23 @@
       "level": "tier-1",
       "desc": "Massively adopted across global technology industry."
     },
+    "beginner_intel": {
+      "what_it_does": "Think of Ollama as 'Docker for AI models'. With a single terminal command like `ollama run llama3`, it downloads, configures, and serves AI models on your computer with a clean API.",
+      "why_it_matters": "Configuring Python environments, CUDA drivers, and quantization settings is painful. Ollama bundles everything into a frictionless one-click CLI tool.",
+      "when_to_use": "When you are a developer building an app and want a local AI API to test against without paying OpenAI API bills.",
+      "alternatives": [
+        "llama.cpp",
+        "LM Studio",
+        "LocalAI",
+        "Jan"
+      ],
+      "key_superpowers": [
+        "Instant model downloads and updates via a Docker-like model registry",
+        "Exposes an OpenAI-compatible `/v1/chat/completions` REST API endpoint",
+        "Integrates out-of-the-box with tools like Open WebUI, VSCode Continue, and Cursor"
+      ]
+    },
+    "quickstart_code": "curl -fsSL https://ollama.com/install.sh | sh\nollama run llama3",
     "keywords": [
       "LLM Inference & Serving",
       "System Service / Engine",
@@ -545,6 +580,23 @@
       "level": "tier-1",
       "desc": "Massively adopted across global technology industry."
     },
+    "beginner_intel": {
+      "what_it_does": "A comprehensive framework that lets developers connect AI models to external data sources (PDFs, databases, web search) and give models tools to take real-world actions.",
+      "why_it_matters": "A raw LLM only knows its training data. LangChain provides the plumbing to build Retrieval-Augmented Generation (RAG) and multi-step autonomous reasoning workflows.",
+      "when_to_use": "When building AI customer support bots, automated research assistants, or apps that query proprietary company documentation.",
+      "alternatives": [
+        "LlamaIndex",
+        "CrewAI",
+        "DSPy",
+        "Semantic Kernel"
+      ],
+      "key_superpowers": [
+        "Huge library of 700+ pre-built integrations with databases, APIs, and model providers",
+        "LangChain Expression Language (LCEL) for declarative streaming and async pipelining",
+        "Structured output parsing (forces LLMs to return strict typed JSON)"
+      ]
+    },
+    "quickstart_code": "pip install langchain langchain-openai",
     "keywords": [
       "Autonomous Agents & Workflows",
       "Application / Service",
@@ -565,98 +617,6 @@
     ],
     "url": "https://github.com/langchain-ai/langchain",
     "pushed_at": "2026-09-15T19:30:00Z"
-  },
-  {
-    "id": 2005,
-    "name": "whisper",
-    "owner": "openai",
-    "full_name": "openai/whisper",
-    "description": "Robust Speech Recognition via Large-Scale Weak Supervision",
-    "stars": 71800,
-    "forks": 8400,
-    "language": "Python",
-    "license": "MIT",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Application / Service",
-    "domain": "AI & Machine Learning",
-    "subsystem": "NLP & Speech Recognition",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Hyper-Scale / Industry Standard",
-      "level": "tier-1",
-      "desc": "Massively adopted across global technology industry."
-    },
-    "keywords": [
-      "NLP & Speech Recognition",
-      "Application / Service",
-      "AI & Machine Learning",
-      "speech-to-text",
-      "whisper",
-      "nlp",
-      "audio-processing",
-      "transformer"
-    ],
-    "topics": [
-      "speech-to-text",
-      "whisper",
-      "nlp",
-      "audio-processing",
-      "transformer"
-    ],
-    "url": "https://github.com/openai/whisper",
-    "pushed_at": "2026-08-30T12:00:00Z"
-  },
-  {
-    "id": 2006,
-    "name": "deepspeed",
-    "owner": "microsoft",
-    "full_name": "microsoft/deepspeed",
-    "description": "DeepSpeed is a deep learning optimization library that makes distributed training and inference easy, efficient, and effective.",
-    "stars": 36100,
-    "forks": 4200,
-    "language": "Python",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Library / SDK",
-    "domain": "AI & Machine Learning",
-    "subsystem": "Model Training & Fine-Tuning",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Production Battle-Tested",
-      "level": "tier-2",
-      "desc": "High ecosystem stability, active community, and proven production deployments."
-    },
-    "keywords": [
-      "Model Training & Fine-Tuning",
-      "Library / SDK",
-      "AI & Machine Learning",
-      "distributed-training",
-      "fine-tuning",
-      "deep-learning",
-      "pytorch",
-      "megatron"
-    ],
-    "topics": [
-      "distributed-training",
-      "fine-tuning",
-      "deep-learning",
-      "pytorch",
-      "megatron"
-    ],
-    "url": "https://github.com/microsoft/deepspeed",
-    "pushed_at": "2026-09-14T15:20:00Z"
   },
   {
     "id": 3001,
@@ -689,6 +649,23 @@
       "level": "tier-1",
       "desc": "Massively adopted across global technology industry."
     },
+    "beginner_intel": {
+      "what_it_does": "The global industry standard operating system for cloud servers. It automatically places, scales, and heals Docker containers across fleets of physical or virtual machines.",
+      "why_it_matters": "Instead of manually logging into 50 servers to deploy code and restart crashed programs, Kubernetes manages the entire infrastructure cluster declaratively.",
+      "when_to_use": "When running multi-service microservices architectures at enterprise scale with high availability requirements.",
+      "alternatives": [
+        "Docker Swarm",
+        "Nomad (HashiCorp)",
+        "Amazon ECS",
+        "Fly.io / Render"
+      ],
+      "key_superpowers": [
+        "Self-healing: restarts containers that fail, replaces nodes that die",
+        "Automated rollouts and zero-downtime canary updates",
+        "Massive ecosystem of cloud native tooling and Kubernetes Operators"
+      ]
+    },
+    "quickstart_code": "minikube start\nkubectl create deployment hello-node --image=k8s.gcr.io/echoserver:1.4",
     "keywords": [
       "Container Orchestration & Runtime",
       "Application / Service",
@@ -738,6 +715,23 @@
       "level": "tier-2",
       "desc": "High ecosystem stability, active community, and proven production deployments."
     },
+    "beginner_intel": {
+      "what_it_does": "The community-driven, truly open-source fork of Terraform that lets you define cloud infrastructure (AWS EC2, S3, DNS, networks) in declarative configuration code files.",
+      "why_it_matters": "Clicking around the AWS or Azure web console to create servers is error-prone and unrepeatable. OpenTofu lets you version-control your entire infrastructure in Git.",
+      "when_to_use": "When provisioning cloud infrastructure for production environments across AWS, GCP, Azure, or Cloudflare.",
+      "alternatives": [
+        "Terraform",
+        "Pulumi",
+        "AWS CDK",
+        "Ansible"
+      ],
+      "key_superpowers": [
+        "100% open-source under the Linux Foundation (no restrictive BSL licensing)",
+        "Full compatibility with existing Terraform configurations and provider registries",
+        "State management tracking what exists in your cloud vs. what is declared in code"
+      ]
+    },
+    "quickstart_code": "tofu init\ntofu plan\ntofu apply",
     "keywords": [
       "Infrastructure as Code (IaC)",
       "Application / Service",
@@ -760,106 +754,6 @@
   },
   {
     "id": 3003,
-    "name": "envoy",
-    "owner": "envoyproxy",
-    "full_name": "envoyproxy/envoy",
-    "description": "Cloud-native high-performance edge/middle/service proxy",
-    "stars": 30200,
-    "forks": 4700,
-    "language": "C++",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "System Service / Engine",
-    "domain": "Cloud & Infrastructure",
-    "subsystem": "Service Mesh & API Gateway",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [
-      "Edge & Offline Computing",
-      "Cloud Native Infrastructure"
-    ],
-    "maturity": {
-      "rating": "Production Battle-Tested",
-      "level": "tier-2",
-      "desc": "High ecosystem stability, active community, and proven production deployments."
-    },
-    "keywords": [
-      "Service Mesh & API Gateway",
-      "System Service / Engine",
-      "Cloud & Infrastructure",
-      "Edge & Offline Computing",
-      "Cloud Native Infrastructure",
-      "service-mesh",
-      "api-gateway",
-      "reverse-proxy",
-      "envoy",
-      "load-balancer"
-    ],
-    "topics": [
-      "service-mesh",
-      "api-gateway",
-      "reverse-proxy",
-      "envoy",
-      "load-balancer"
-    ],
-    "url": "https://github.com/envoyproxy/envoy",
-    "pushed_at": "2026-09-16T04:20:00Z"
-  },
-  {
-    "id": 3004,
-    "name": "prometheus",
-    "owner": "prometheus",
-    "full_name": "prometheus/prometheus",
-    "description": "The Prometheus monitoring system and time series database.",
-    "stars": 56900,
-    "forks": 9100,
-    "language": "Go",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Application / Service",
-    "domain": "Databases & Storage",
-    "subsystem": "Time-Series Database",
-    "primitives": [],
-    "compatibility": [
-      "Prometheus Native"
-    ],
-    "usecases": [],
-    "maturity": {
-      "rating": "Hyper-Scale / Industry Standard",
-      "level": "tier-1",
-      "desc": "Massively adopted across global technology industry."
-    },
-    "keywords": [
-      "Time-Series Database",
-      "Application / Service",
-      "Databases & Storage",
-      "Prometheus Native",
-      "prometheus",
-      "metrics",
-      "observability",
-      "timeseries",
-      "monitoring"
-    ],
-    "topics": [
-      "prometheus",
-      "metrics",
-      "observability",
-      "timeseries",
-      "monitoring"
-    ],
-    "url": "https://github.com/prometheus/prometheus",
-    "pushed_at": "2026-09-15T14:10:00Z"
-  },
-  {
-    "id": 3005,
     "name": "traefik",
     "owner": "traefik",
     "full_name": "traefik/traefik",
@@ -888,6 +782,23 @@
       "level": "tier-1",
       "desc": "Massively adopted across global technology industry."
     },
+    "beginner_intel": {
+      "what_it_does": "A modern HTTP reverse proxy and load balancer that automatically configures SSL certificates and discovers new Docker containers without you needing to reload configuration files.",
+      "why_it_matters": "Traditional reverse proxies (like old NGINX configs) require manual file edits and server reloads every time you start a new web service. Traefik listens to Docker events and updates routes in real time.",
+      "when_to_use": "When hosting web applications in Docker or Kubernetes and wanting automatic Let's Encrypt HTTPS certificates and routing.",
+      "alternatives": [
+        "NGINX",
+        "Caddy",
+        "Envoy",
+        "HAProxy"
+      ],
+      "key_superpowers": [
+        "Zero-configuration dynamic route discovery via Docker container labels",
+        "Automatic Free HTTPS / SSL certificate generation via Let's Encrypt",
+        "Rich real-time web dashboard showing active routes and health metrics"
+      ]
+    },
+    "quickstart_code": "docker run -d -p 8080:8080 -p 80:80 -v /var/run/docker.sock:/var/run/docker.sock traefik:v3.1",
     "keywords": [
       "General Components",
       "Application / Service",
@@ -909,201 +820,6 @@
     ],
     "url": "https://github.com/traefik/traefik",
     "pushed_at": "2026-09-15T13:00:00Z"
-  },
-  {
-    "id": 4001,
-    "name": "vault",
-    "owner": "hashicorp",
-    "full_name": "hashicorp/vault",
-    "description": "A tool for secrets management, encryption as a service, and privileged access management",
-    "stars": 31200,
-    "forks": 4200,
-    "language": "Go",
-    "license": "BSL-1.1",
-    "license_intel": {
-      "tier": "Fair-Core / Source-Available",
-      "commercial": "Cloud Restriction",
-      "desc": "Source-available license restricting competitive hosted cloud-service offerings."
-    },
-    "artifact": "System Service / Engine",
-    "domain": "Security & Cryptography",
-    "subsystem": "Secrets & Key Management",
-    "primitives": [],
-    "compatibility": [
-      "OpenAPI / REST"
-    ],
-    "usecases": [],
-    "maturity": {
-      "rating": "Production Battle-Tested",
-      "level": "tier-2",
-      "desc": "High ecosystem stability, active community, and proven production deployments."
-    },
-    "keywords": [
-      "Secrets & Key Management",
-      "System Service / Engine",
-      "Security & Cryptography",
-      "OpenAPI / REST",
-      "vault",
-      "secrets-management",
-      "security",
-      "encryption-at-rest",
-      "pki"
-    ],
-    "topics": [
-      "vault",
-      "secrets-management",
-      "security",
-      "encryption-at-rest",
-      "pki"
-    ],
-    "url": "https://github.com/hashicorp/vault",
-    "pushed_at": "2026-09-14T17:00:00Z"
-  },
-  {
-    "id": 4002,
-    "name": "keycloak",
-    "owner": "keycloak",
-    "full_name": "keycloak/keycloak",
-    "description": "Open Source Identity and Access Management for Modern Applications and Services",
-    "stars": 24900,
-    "forks": 6800,
-    "language": "Java",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "System Service / Engine",
-    "domain": "Security & Cryptography",
-    "subsystem": "Zero Trust & Identity/Auth",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Production Battle-Tested",
-      "level": "tier-2",
-      "desc": "High ecosystem stability, active community, and proven production deployments."
-    },
-    "keywords": [
-      "Zero Trust & Identity/Auth",
-      "System Service / Engine",
-      "Security & Cryptography",
-      "auth",
-      "authentication",
-      "oidc",
-      "oauth2",
-      "sso",
-      "identity-provider"
-    ],
-    "topics": [
-      "auth",
-      "authentication",
-      "oidc",
-      "oauth2",
-      "sso",
-      "identity-provider"
-    ],
-    "url": "https://github.com/keycloak/keycloak",
-    "pushed_at": "2026-09-15T21:00:00Z"
-  },
-  {
-    "id": 4003,
-    "name": "trivy",
-    "owner": "aquasecurity",
-    "full_name": "aquasecurity/trivy",
-    "description": "Find vulnerabilities, misconfigurations, secrets, SBOM in containers, Kubernetes, code repositories, clouds and more",
-    "stars": 24300,
-    "forks": 2400,
-    "language": "Go",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Application / Service",
-    "domain": "Cloud & Infrastructure",
-    "subsystem": "Container Orchestration & Runtime",
-    "primitives": [],
-    "compatibility": [
-      "Kubernetes Native"
-    ],
-    "usecases": [
-      "Zero Trust & Compliance"
-    ],
-    "maturity": {
-      "rating": "Production Battle-Tested",
-      "level": "tier-2",
-      "desc": "High ecosystem stability, active community, and proven production deployments."
-    },
-    "keywords": [
-      "Container Orchestration & Runtime",
-      "Application / Service",
-      "Cloud & Infrastructure",
-      "Kubernetes Native",
-      "Zero Trust & Compliance",
-      "security-scanner",
-      "vulnerability-scanner",
-      "cve",
-      "static-analysis",
-      "sbom"
-    ],
-    "topics": [
-      "security-scanner",
-      "vulnerability-scanner",
-      "cve",
-      "static-analysis",
-      "sbom"
-    ],
-    "url": "https://github.com/aquasecurity/trivy",
-    "pushed_at": "2026-09-15T16:30:00Z"
-  },
-  {
-    "id": 4004,
-    "name": "wireguard-go",
-    "owner": "WireGuard",
-    "full_name": "WireGuard/wireguard-go",
-    "description": "Go Implementation of WireGuard secure network tunnel",
-    "stars": 5400,
-    "forks": 1200,
-    "language": "Go",
-    "license": "MIT",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Application / Service",
-    "domain": "Security & Cryptography",
-    "subsystem": "Cryptography & ZK Proofs",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Rapid Growth / Emerging Core",
-      "level": "tier-3",
-      "desc": "Significant traction with expanding developer adoption."
-    },
-    "keywords": [
-      "Cryptography & ZK Proofs",
-      "Application / Service",
-      "Security & Cryptography",
-      "cryptography",
-      "wireguard",
-      "vpn",
-      "tunnel",
-      "security"
-    ],
-    "topics": [
-      "cryptography",
-      "wireguard",
-      "vpn",
-      "tunnel",
-      "security"
-    ],
-    "url": "https://github.com/WireGuard/wireguard-go",
-    "pushed_at": "2026-09-02T10:00:00Z"
   },
   {
     "id": 5001,
@@ -1131,6 +847,23 @@
       "level": "tier-2",
       "desc": "High ecosystem stability, active community, and proven production deployments."
     },
+    "beginner_intel": {
+      "what_it_does": "A drop-in replacement for Flake8, Black, isort, and Pylint that checks and automatically formats your Python code 10x-100x faster than legacy Python tools.",
+      "why_it_matters": "Waiting 30 seconds for linters on every Git commit or CI build slows down developers. Ruff runs in 0.05 seconds across huge codebases by leveraging compiled Rust.",
+      "when_to_use": "On virtually any Python project to enforce clean code conventions and catch bugs before shipping.",
+      "alternatives": [
+        "Black",
+        "Flake8",
+        "Pylint",
+        "Autopep8"
+      ],
+      "key_superpowers": [
+        "10x\u2013100x faster than traditional Python linters",
+        "Replaces over a dozen fragmented tools with a single unified binary",
+        "Can automatically autofix hundreds of common code bugs on save"
+      ]
+    },
+    "quickstart_code": "pip install ruff\nruff check .\nruff format .",
     "keywords": [
       "Linters & Code Quality",
       "Application / Service",
@@ -1177,6 +910,23 @@
       "level": "tier-1",
       "desc": "Massively adopted across global technology industry."
     },
+    "beginner_intel": {
+      "what_it_does": "The gold-standard frontend build tool that starts local development servers instantly and bundles modern JavaScript/TypeScript applications.",
+      "why_it_matters": "Older bundlers like Webpack crawled through every file before starting a dev server. Vite uses native browser ES modules to launch instantly in 150ms regardless of project size.",
+      "when_to_use": "Whenever you are building a modern web UI using React, Vue, Svelte, or vanilla TypeScript.",
+      "alternatives": [
+        "Webpack",
+        "Turbopack",
+        "Parcel",
+        "esbuild"
+      ],
+      "key_superpowers": [
+        "Instant server cold start leveraging native ES modules",
+        "Lightning fast Hot Module Replacement (HMR) keeping your state when editing code",
+        "Rich plugin ecosystem supporting all major frontend frameworks"
+      ]
+    },
+    "quickstart_code": "npm create vite@latest my-app -- --template react\ncd my-app && npm install && npm run dev",
     "keywords": [
       "Bundlers & Build Systems",
       "Application / Service",
@@ -1196,149 +946,6 @@
     ],
     "url": "https://github.com/vitejs/vite",
     "pushed_at": "2026-09-15T18:00:00Z"
-  },
-  {
-    "id": 5003,
-    "name": "playwright",
-    "owner": "microsoft",
-    "full_name": "microsoft/playwright",
-    "description": "Playwright is a framework for Web Testing and Automation. It allows testing Chromium, Firefox and WebKit with a single API.",
-    "stars": 69400,
-    "forks": 4100,
-    "language": "TypeScript",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Framework",
-    "domain": "Other / General",
-    "subsystem": "General Components",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Hyper-Scale / Industry Standard",
-      "level": "tier-1",
-      "desc": "Massively adopted across global technology industry."
-    },
-    "keywords": [
-      "General Components",
-      "Framework",
-      "Other / General",
-      "testing",
-      "e2e-testing",
-      "automation",
-      "browser",
-      "headless"
-    ],
-    "topics": [
-      "testing",
-      "e2e-testing",
-      "automation",
-      "browser",
-      "headless"
-    ],
-    "url": "https://github.com/microsoft/playwright",
-    "pushed_at": "2026-09-16T03:00:00Z"
-  },
-  {
-    "id": 5004,
-    "name": "wasmtime",
-    "owner": "bytecodealliance",
-    "full_name": "bytecodealliance/wasmtime",
-    "description": "A fast and secure runtime for WebAssembly and WASI",
-    "stars": 15800,
-    "forks": 1400,
-    "language": "Rust",
-    "license": "Apache-2.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Application / Service",
-    "domain": "Developer Tooling & Compilers",
-    "subsystem": "Compilers & Runtimes",
-    "primitives": [
-      "WASM / WASI"
-    ],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Rapid Growth / Emerging Core",
-      "level": "tier-3",
-      "desc": "Significant traction with expanding developer adoption."
-    },
-    "keywords": [
-      "Compilers & Runtimes",
-      "Application / Service",
-      "Developer Tooling & Compilers",
-      "WASM / WASI",
-      "webassembly",
-      "runtime",
-      "virtual-machine",
-      "wasi",
-      "jit",
-      "compiler"
-    ],
-    "topics": [
-      "webassembly",
-      "runtime",
-      "virtual-machine",
-      "wasi",
-      "jit",
-      "compiler"
-    ],
-    "url": "https://github.com/bytecodealliance/wasmtime",
-    "pushed_at": "2026-09-15T15:00:00Z"
-  },
-  {
-    "id": 6001,
-    "name": "next.js",
-    "owner": "vercel",
-    "full_name": "vercel/next.js",
-    "description": "The React Framework for the Web",
-    "stars": 128500,
-    "forks": 27100,
-    "language": "JavaScript",
-    "license": "MIT",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Framework",
-    "domain": "Web Platforms & Frameworks",
-    "subsystem": "Full-Stack & SSR Frameworks",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Hyper-Scale / Industry Standard",
-      "level": "tier-1",
-      "desc": "Massively adopted across global technology industry."
-    },
-    "keywords": [
-      "Full-Stack & SSR Frameworks",
-      "Framework",
-      "Web Platforms & Frameworks",
-      "react",
-      "ssr",
-      "fullstack",
-      "nextjs",
-      "web-framework"
-    ],
-    "topics": [
-      "react",
-      "ssr",
-      "fullstack",
-      "nextjs",
-      "web-framework"
-    ],
-    "url": "https://github.com/vercel/next.js",
-    "pushed_at": "2026-09-16T06:40:00Z"
   },
   {
     "id": 6002,
@@ -1368,6 +975,23 @@
       "level": "tier-1",
       "desc": "Massively adopted across global technology industry."
     },
+    "beginner_intel": {
+      "what_it_does": "A modern, high-speed Python web framework for building REST APIs with automatic data validation and interactive API documentation.",
+      "why_it_matters": "Writing API validation boilerplate in old frameworks was tedious and error-prone. FastAPI uses standard Python type hints to automatically parse requests, validate data, and generate Swagger docs.",
+      "when_to_use": "For backend microservices, machine learning model APIs, and modern Python web services.",
+      "alternatives": [
+        "Flask",
+        "Django REST Framework",
+        "Express.js",
+        "Go Fiber"
+      ],
+      "key_superpowers": [
+        "One of the fastest Python frameworks available, on par with NodeJS and Go",
+        "Generates interactive Swagger UI documentation out-of-the-box at `/docs`",
+        "Full native support for async/await concurrency"
+      ]
+    },
+    "quickstart_code": "pip install fastapi uvicorn\n# main.py\nfrom fastapi import FastAPI\napp = FastAPI()\n@app.get('/')\ndef read_root(): return {'status': 'healthy'}",
     "keywords": [
       "Full-Stack & SSR Frameworks",
       "Framework",
@@ -1415,6 +1039,23 @@
       "level": "tier-1",
       "desc": "Massively adopted across global technology industry."
     },
+    "beginner_intel": {
+      "what_it_does": "Instead of installing an npm package that locks you into a rigid design, shadcn/ui provides beautifully designed Tailwind + Radix UI components that you copy and paste directly into your own codebase.",
+      "why_it_matters": "Traditional UI libraries (like Material UI or Ant Design) are hard to customize and bloat your bundle. With shadcn/ui, you own the component code completely and can modify it however you want.",
+      "when_to_use": "When designing high-polish, accessible React or Next.js web applications with Tailwind CSS.",
+      "alternatives": [
+        "Tailwind UI",
+        "Chakra UI",
+        "MUI",
+        "Mantine"
+      ],
+      "key_superpowers": [
+        "You own 100% of the component code inside your `components/ui/` folder",
+        "Built on Radix UI primitives ensuring complete WAI-ARIA screen-reader accessibility",
+        "Flawless dark mode styling and theme token customization"
+      ]
+    },
+    "quickstart_code": "npx shadcn@latest init\nnpx shadcn@latest add button dialog dropdown-menu",
     "keywords": [
       "General AI",
       "Library / SDK",
@@ -1434,93 +1075,5 @@
     ],
     "url": "https://github.com/shadcn-ui/shadcn-ui",
     "pushed_at": "2026-09-15T22:30:00Z"
-  },
-  {
-    "id": 7001,
-    "name": "awesome-python",
-    "owner": "vinta",
-    "full_name": "vinta/awesome-python",
-    "description": "An opinionated list of awesome Python frameworks, libraries, software and resources.",
-    "stars": 224000,
-    "forks": 25200,
-    "language": "Python",
-    "license": "CC0-1.0",
-    "license_intel": {
-      "tier": "Permissive",
-      "commercial": "Commercially Friendly",
-      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
-    },
-    "artifact": "Curated List / Docs",
-    "domain": "Other / General",
-    "subsystem": "General Components",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Hyper-Scale / Industry Standard",
-      "level": "tier-1",
-      "desc": "Massively adopted across global technology industry."
-    },
-    "keywords": [
-      "General Components",
-      "Curated List / Docs",
-      "Other / General",
-      "awesome",
-      "awesome-list",
-      "python",
-      "curated-list"
-    ],
-    "topics": [
-      "awesome",
-      "awesome-list",
-      "python",
-      "curated-list"
-    ],
-    "url": "https://github.com/vinta/awesome-python",
-    "pushed_at": "2026-09-10T12:00:00Z"
-  },
-  {
-    "id": 7002,
-    "name": "developer-roadmap",
-    "owner": "kamranahmedse",
-    "full_name": "kamranahmedse/developer-roadmap",
-    "description": "Interactive roadmaps, guides and other educational content to help developers grow in their careers.",
-    "stars": 305000,
-    "forks": 39500,
-    "language": "TypeScript",
-    "license": "CC-BY-NC-SA-4.0",
-    "license_intel": {
-      "tier": "Unknown / Unspecified",
-      "commercial": "Custom Terms",
-      "desc": "Custom or unspecified license. Review the repository LICENSE file for explicit commercial terms."
-    },
-    "artifact": "Curated List / Docs",
-    "domain": "Other / General",
-    "subsystem": "General Components",
-    "primitives": [],
-    "compatibility": [],
-    "usecases": [],
-    "maturity": {
-      "rating": "Hyper-Scale / Industry Standard",
-      "level": "tier-1",
-      "desc": "Massively adopted across global technology industry."
-    },
-    "keywords": [
-      "General Components",
-      "Curated List / Docs",
-      "Other / General",
-      "roadmap",
-      "education",
-      "developer-guide",
-      "cheatsheet"
-    ],
-    "topics": [
-      "roadmap",
-      "education",
-      "developer-guide",
-      "cheatsheet"
-    ],
-    "url": "https://github.com/kamranahmedse/developer-roadmap",
-    "pushed_at": "2026-09-15T11:00:00Z"
   }
 ]

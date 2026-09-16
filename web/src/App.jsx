@@ -3,7 +3,8 @@ import {
   Search, Star, GitFork, ExternalLink, Filter, Terminal, 
   Layers, Code2, ShieldAlert, Cpu, Sparkles, Database, Globe,
   CheckCircle2, AlertTriangle, Info, X, Copy, Check, ArrowRight,
-  Boxes, Server, Lock, Flame, Compass, Network
+  Boxes, Server, Lock, Flame, Compass, Network, HelpCircle,
+  Zap, GitCompare, Play, BookOpen, Lightbulb
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
 
@@ -24,6 +25,7 @@ export default function App() {
 
   // Inspector Modal / Drawer
   const [activeRepoModal, setActiveRepoModal] = useState(null);
+  const [modalTab, setModalTab] = useState('overview'); // 'overview' | 'superpowers' | 'quickstart'
   const [copiedText, setCopiedText] = useState(null);
 
   // SQL Console state
@@ -104,7 +106,7 @@ export default function App() {
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const textToSearch = `${repo.name} ${repo.owner} ${repo.description} ${(repo.keywords || []).join(' ')} ${(repo.topics || []).join(' ')}`.toLowerCase();
+        const textToSearch = `${repo.name} ${repo.owner} ${repo.description} ${(repo.keywords || []).join(' ')} ${(repo.topics || []).join(' ')} ${repo.beginner_intel?.what_it_does || ''}`.toLowerCase();
         if (!textToSearch.includes(q)) return false;
       }
 
@@ -200,7 +202,7 @@ export default function App() {
                   &gt;500★ DB
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Deep Architectural Taxonomy & 3D Knowledge Graph of GitHub</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Intuitive Repository Intelligence, Deep Architectural Insights & 3D Knowledge Galaxy</p>
             </div>
           </div>
 
@@ -259,7 +261,7 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-400 text-xs font-mono">Indexing repository taxonomy...</p>
+            <p className="text-slate-400 text-xs font-mono">Indexing repository taxonomy & beginner context...</p>
           </div>
         ) : activeTab === 'graph3d' ? (
           /* 3D GRAPH EXPLORER VIEW */
@@ -271,7 +273,7 @@ export default function App() {
                   3D Topological Knowledge Graph
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Orbit, zoom, and inspect architectural relationships (subsystems, shared primitives, and protocols).
+                  Orbit, zoom, and inspect architectural relationships (subsystems, shared primitives, and protocols). Click any node to read why it was built.
                 </p>
               </div>
 
@@ -294,7 +296,10 @@ export default function App() {
             <Graph3DExplorer
               repos={repos}
               selectedDomain={selectedDomain}
-              onSelectRepo={(repo) => setActiveRepoModal(repo)}
+              onSelectRepo={(repo) => {
+                setActiveRepoModal(repo);
+                setModalTab('overview');
+              }}
             />
           </div>
         ) : activeTab === 'explorer' ? (
@@ -305,7 +310,7 @@ export default function App() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search repository, description, primitives (e.g. SIMD, Zero-Copy), or keywords..."
+                  placeholder="Search repository, plain-English purpose (e.g. 'local AI', 'in-memory cache'), or primitives..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-[#0d1117] border border-slate-700/80 rounded-lg pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -431,7 +436,7 @@ export default function App() {
                 <strong className="text-white">{repos.length}</strong> repositories
               </span>
               <span className="text-slate-500 hidden sm:inline">
-                Click any repository card to open deep architectural inspection
+                Click any repository card to see plain-English explanations, superpowers, and alternatives
               </span>
             </div>
 
@@ -440,7 +445,10 @@ export default function App() {
               {filteredRepos.map((repo) => (
                 <div
                   key={repo.id}
-                  onClick={() => setActiveRepoModal(repo)}
+                  onClick={() => {
+                    setActiveRepoModal(repo);
+                    setModalTab('overview');
+                  }}
                   className="bg-[#161b22] border border-slate-800/90 rounded-xl p-5 hover:border-indigo-500/50 hover:bg-[#1a212d] transition-all cursor-pointer flex flex-col justify-between group shadow-sm relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-indigo-500/5 to-transparent rounded-bl-full pointer-events-none" />
@@ -468,10 +476,16 @@ export default function App() {
                       </span>
                     </div>
 
-                    {/* Description */}
-                    <p className="text-xs text-slate-300 leading-relaxed mb-3.5 line-clamp-2">
-                      {repo.description || 'No description provided.'}
-                    </p>
+                    {/* Plain-English Hook: What It Does */}
+                    <div className="bg-[#0d1117] p-2.5 rounded-lg border border-slate-800/90 mb-3">
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-indigo-400 uppercase tracking-wide mb-1">
+                        <Lightbulb className="w-3 h-3 text-indigo-400" />
+                        <span>The Simple Explanation</span>
+                      </div>
+                      <p className="text-xs text-slate-200 leading-relaxed line-clamp-2">
+                        {repo.beginner_intel?.what_it_does || repo.description}
+                      </p>
+                    </div>
 
                     {/* Deep Enriched Badges: Primitives & Compatibility */}
                     <div className="space-y-1.5 mb-4">
@@ -662,15 +676,15 @@ export default function App() {
         )}
       </main>
 
-      {/* Deep Repository Architecture Inspector Modal */}
+      {/* Deep Repository Architecture & Inspiration Modal */}
       {activeRepoModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#161b22] border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-800 flex items-start justify-between bg-[#1b212b]">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#161b22] border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Top Header */}
+            <div className="p-6 border-b border-slate-800 bg-[#1b212b] flex items-start justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
                     {activeRepoModal.domain}
                   </span>
                   <span className="text-xs text-slate-400">&bull;</span>
@@ -678,7 +692,7 @@ export default function App() {
                     {activeRepoModal.subsystem}
                   </span>
                 </div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <span>{activeRepoModal.owner} / {activeRepoModal.name}</span>
                 </h2>
               </div>
@@ -690,139 +704,269 @@ export default function App() {
               </button>
             </div>
 
+            {/* Modal Navigation Tabs */}
+            <div className="flex items-center border-b border-slate-800 bg-[#141922] px-6 gap-6 text-xs font-semibold">
+              <button
+                onClick={() => setModalTab('overview')}
+                className={`py-3 border-b-2 transition-colors flex items-center gap-2 ${
+                  modalTab === 'overview'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>The Story & Purpose</span>
+              </button>
+              <button
+                onClick={() => setModalTab('superpowers')}
+                className={`py-3 border-b-2 transition-colors flex items-center gap-2 ${
+                  modalTab === 'superpowers'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                <span>Superpowers & Tradeoffs</span>
+              </button>
+              <button
+                onClick={() => setModalTab('quickstart')}
+                className={`py-3 border-b-2 transition-colors flex items-center gap-2 ${
+                  modalTab === 'quickstart'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Play className="w-4 h-4" />
+                <span>Quickstart & Architecture</span>
+              </button>
+            </div>
+
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 text-xs">
-              {/* Description */}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-                  Repository Overview
-                </label>
-                <p className="text-slate-200 text-sm leading-relaxed">
-                  {activeRepoModal.description}
-                </p>
-              </div>
-
-              {/* Metrics & Maturity Tier */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#0d1117] p-3 rounded-xl border border-slate-800">
-                <div>
-                  <span className="text-slate-500 block text-[10px]">Stars</span>
-                  <span className="text-sm font-semibold text-amber-400 flex items-center gap-1 mt-0.5">
-                    <Star className="w-3.5 h-3.5 fill-amber-400" />
-                    {activeRepoModal.stars.toLocaleString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">Forks</span>
-                  <span className="text-sm font-semibold text-slate-200 flex items-center gap-1 mt-0.5">
-                    <GitFork className="w-3.5 h-3.5" />
-                    {activeRepoModal.forks.toLocaleString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">Primary Language</span>
-                  <span className="text-sm font-semibold text-indigo-300 mt-0.5 block">
-                    {activeRepoModal.language}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">Maturity Level</span>
-                  <span className="text-xs font-semibold text-emerald-400 mt-0.5 block truncate" title={activeRepoModal.maturity?.rating}>
-                    {activeRepoModal.maturity?.rating}
-                  </span>
-                </div>
-              </div>
-
-              {/* License Usability Analysis */}
-              <div className="bg-[#0d1117] p-4 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-indigo-400" />
-                    <span className="font-semibold text-slate-200">License Freedom & Commercial Terms</span>
+            <div className="p-6 overflow-y-auto space-y-6 text-xs flex-1">
+              {modalTab === 'overview' && (
+                <div className="space-y-6">
+                  {/* The "Explain Like I Have Zero Knowledge" Section */}
+                  <div className="bg-gradient-to-br from-indigo-950/40 via-slate-900 to-[#161b22] p-4 rounded-xl border border-indigo-500/30 space-y-3">
+                    <div className="flex items-center gap-2 text-indigo-300 font-bold uppercase tracking-wider text-[11px]">
+                      <Lightbulb className="w-4 h-4 text-indigo-400" />
+                      <span>What does this project actually do?</span>
+                    </div>
+                    <p className="text-slate-100 text-sm leading-relaxed font-medium">
+                      {activeRepoModal.beginner_intel?.what_it_does || activeRepoModal.description}
+                    </p>
                   </div>
-                  <span className="font-mono text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                    {activeRepoModal.license}
-                  </span>
-                </div>
-                <div className="text-slate-400 leading-relaxed text-[11px]">
-                  <strong>Status:</strong> {activeRepoModal.license_intel?.commercial} &mdash; {activeRepoModal.license_intel?.desc}
-                </div>
-              </div>
 
-              {/* Architectural Primitives */}
-              {activeRepoModal.primitives && activeRepoModal.primitives.length > 0 && (
-                <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2 flex items-center gap-1.5">
-                    <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-                    Detected Architectural Primitives
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {activeRepoModal.primitives.map((prim) => (
-                      <span key={prim} className="px-2.5 py-1 rounded-lg bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 font-medium">
-                        {prim}
+                  {/* Why it matters & when to choose it */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-[#0d1117] p-4 rounded-xl border border-slate-800 space-y-2">
+                      <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-xs">
+                        <Flame className="w-3.5 h-3.5" />
+                        <span>Why does this project exist?</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                        {activeRepoModal.beginner_intel?.why_it_matters || "Created to solve critical scalability, performance, and developer ergonomics problems in its domain."}
+                      </p>
+                    </div>
+
+                    <div className="bg-[#0d1117] p-4 rounded-xl border border-slate-800 space-y-2">
+                      <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-xs">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>When should you use this?</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                        {activeRepoModal.beginner_intel?.when_to_use || "Best suited for modern applications requiring production-grade performance and active maintenance."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Vital Stats & Maturity */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#0d1117] p-3 rounded-xl border border-slate-800">
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Community Stars</span>
+                      <span className="text-sm font-semibold text-amber-400 flex items-center gap-1 mt-0.5">
+                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                        {activeRepoModal.stars.toLocaleString()}
                       </span>
-                    ))}
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Fork Count</span>
+                      <span className="text-sm font-semibold text-slate-200 flex items-center gap-1 mt-0.5">
+                        <GitFork className="w-3.5 h-3.5" />
+                        {activeRepoModal.forks.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Primary Language</span>
+                      <span className="text-sm font-semibold text-indigo-300 mt-0.5 block">
+                        {activeRepoModal.language}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Maturity Rating</span>
+                      <span className="text-xs font-semibold text-emerald-400 mt-0.5 block truncate" title={activeRepoModal.maturity?.rating}>
+                        {activeRepoModal.maturity?.rating}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Commercial License Clear Assessment */}
+                  <div className="bg-[#0d1117] p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-indigo-400" />
+                        <span className="font-semibold text-slate-200">Commercial Usability & License Risk</span>
+                      </div>
+                      <span className="font-mono text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                        {activeRepoModal.license}
+                      </span>
+                    </div>
+                    <div className="text-slate-400 leading-relaxed text-[11px]">
+                      <strong>Commercial Status:</strong> {activeRepoModal.license_intel?.commercial} &mdash; {activeRepoModal.license_intel?.desc}
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Ecosystem & Interoperability Compatibility */}
-              {activeRepoModal.compatibility && activeRepoModal.compatibility.length > 0 && (
-                <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2 flex items-center gap-1.5">
-                    <Boxes className="w-3.5 h-3.5 text-cyan-400" />
-                    Target Protocols & Ecosystem Compatibility
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {activeRepoModal.compatibility.map((c) => (
-                      <span key={c} className="px-2.5 py-1 rounded-lg bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 font-medium">
-                        {c}
-                      </span>
-                    ))}
+              {modalTab === 'superpowers' && (
+                <div className="space-y-6">
+                  {/* Superpowers */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-3 flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      Key Superpowers & Breakthrough Features
+                    </label>
+                    <div className="space-y-2">
+                      {(activeRepoModal.beginner_intel?.key_superpowers || [
+                        "High throughput and zero unnecessary allocations",
+                        "Active open-source community support and extensive documentation",
+                        "Seamless integration into modern production ecosystems"
+                      ]).map((power, idx) => (
+                        <div key={idx} className="flex items-start gap-2.5 bg-[#0d1117] p-3 rounded-xl border border-slate-800/90 text-slate-200 text-xs leading-relaxed">
+                          <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                          <span>{power}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Alternatives & Competitors */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-3 flex items-center gap-1.5">
+                      <GitCompare className="w-4 h-4 text-cyan-400" />
+                      Notable Alternatives & How It Compares
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {(activeRepoModal.beginner_intel?.alternatives || ["Standard libraries", "Managed Cloud APIs"]).map((alt, idx) => (
+                        <span key={idx} className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 font-medium text-xs">
+                          {alt}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Semantic Keywords Cloud */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
+                      <Flame className="w-4 h-4 text-amber-400" />
+                      Indexed Semantic Keywords ({activeRepoModal.keywords?.length || 0})
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(activeRepoModal.keywords || []).map((kw) => (
+                        <span key={kw} className="px-2 py-0.5 rounded bg-slate-800/80 text-slate-300 border border-slate-700/60 font-mono text-[10px]">
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Semantic Keywords Cloud */}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2 flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-amber-400" />
-                  Indexed Semantic Keywords ({activeRepoModal.keywords?.length || 0})
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {(activeRepoModal.keywords || []).map((kw) => (
-                    <span key={kw} className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60 font-mono text-[10px]">
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              {modalTab === 'quickstart' && (
+                <div className="space-y-6">
+                  {/* Quickstart Command */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
+                      <Play className="w-4 h-4 text-emerald-400" />
+                      Immediate Run / Installation Snippet
+                    </label>
+                    <div className="relative bg-[#0d1117] border border-slate-800 rounded-xl p-3 font-mono text-emerald-400 text-xs">
+                      <pre className="overflow-x-auto whitespace-pre-wrap">{activeRepoModal.quickstart_code}</pre>
+                      <button
+                        onClick={() => copyToClipboard(activeRepoModal.quickstart_code, 'quickstart')}
+                        className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-white rounded bg-slate-800 border border-slate-700 transition-colors"
+                        title="Copy command"
+                      >
+                        {copiedText === 'quickstart' ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Quick CLI Actions */}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">
-                  Quick Clone Command
-                </label>
-                <div className="flex items-center justify-between bg-[#0d1117] border border-slate-800 rounded-lg p-2.5 font-mono text-slate-300">
-                  <span className="truncate mr-2">git clone {activeRepoModal.url}.git</span>
-                  <button
-                    onClick={() => copyToClipboard(`git clone ${activeRepoModal.url}.git`, 'clone')}
-                    className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors shrink-0"
-                    title="Copy command"
-                  >
-                    {copiedText === 'clone' ? (
-                      <Check className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </button>
+                  {/* Architectural Primitives */}
+                  {activeRepoModal.primitives && activeRepoModal.primitives.length > 0 && (
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
+                        <Cpu className="w-4 h-4 text-emerald-400" />
+                        Under-the-Hood Architectural Primitives
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {activeRepoModal.primitives.map((prim) => (
+                          <span key={prim} className="px-3 py-1 rounded-lg bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 font-medium">
+                            {prim}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Target Protocols & Interoperability */}
+                  {activeRepoModal.compatibility && activeRepoModal.compatibility.length > 0 && (
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
+                        <Boxes className="w-4 h-4 text-cyan-400" />
+                        Compatible Protocols & APIs
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {activeRepoModal.compatibility.map((c) => (
+                          <span key={c} className="px-3 py-1 rounded-lg bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 font-medium">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Standard Git Clone */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2">
+                      Git Clone Command
+                    </label>
+                    <div className="flex items-center justify-between bg-[#0d1117] border border-slate-800 rounded-lg p-2.5 font-mono text-slate-300">
+                      <span className="truncate mr-2">git clone {activeRepoModal.url}.git</span>
+                      <button
+                        onClick={() => copyToClipboard(`git clone ${activeRepoModal.url}.git`, 'clone')}
+                        className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors shrink-0"
+                        title="Copy command"
+                      >
+                        {copiedText === 'clone' ? (
+                          <Check className="w-4 h-4 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-slate-800 bg-[#1b212b] flex items-center justify-between">
               <span className="text-[11px] text-slate-400">
-                Pushed: {new Date(activeRepoModal.pushed_at).toLocaleDateString()}
+                Last Pushed: {new Date(activeRepoModal.pushed_at).toLocaleDateString()}
               </span>
               <a
                 href={activeRepoModal.url}

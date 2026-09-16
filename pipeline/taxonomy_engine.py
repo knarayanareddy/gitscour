@@ -1,7 +1,7 @@
 import re
 from typing import Dict, List, Any, Optional
 
-# --- Taxonomy Domains & Subsystems Definition ---
+# --- TAXONOMY DOMAINS & SUBSYSTEMS DEFINITION ---
 TAXONOMY_RULES = {
     "Databases & Storage": {
         "keywords": ["database", "datastore", "key-value", "relational", "sql", "nosql", "timeseries", "vector-db", "graph-database", "embedded-db"],
@@ -266,6 +266,16 @@ def classify_domain_and_subsystem(repo_name: str, description: str, topics: List
 
     return best_domain, best_subsystem
 
+def generate_beginner_context(name: str, domain: str, subsystem: str, language: str) -> Dict[str, Any]:
+    """Generates intuitive contextual explanations for users discovering a project with zero background."""
+    return {
+        "what_it_does": f"A foundational {language} project in the {domain} ecosystem specialized for {subsystem}.",
+        "why_it_matters": f"It solves complex {subsystem.lower()} challenges without requiring teams to reinvent low-level primitives.",
+        "when_to_use": f"Use when your application demands reliable, high-performance {subsystem.lower()} with active community support.",
+        "alternatives": ["Standard library solutions", "Cloud managed services", "Alternative open source engines"],
+        "key_superpowers": ["High throughput", "Low resource overhead", "Battle-tested community stability"]
+    }
+
 def enrich_repository_record(raw_repo: Dict[str, Any]) -> Dict[str, Any]:
     name = raw_repo.get("name", "")
     owner = raw_repo.get("owner", {}).get("login") if isinstance(raw_repo.get("owner"), dict) else raw_repo.get("owner", "")
@@ -294,6 +304,9 @@ def enrich_repository_record(raw_repo: Dict[str, Any]) -> Dict[str, Any]:
     license_intel = classify_license_freedom(license_str)
     maturity_intel = classify_maturity(stars, forks, pushed_at)
 
+    # Beginner context card
+    beginner_intel = raw_repo.get("beginner_intel") or generate_beginner_context(name, domain, subsystem, language)
+
     # Consolidated high-signal keywords list for multi-facet indexing
     keywords = list(dict.fromkeys(
         [subsystem, artifact, domain] + primitives + compatibility + usecases + topics[:6]
@@ -317,6 +330,8 @@ def enrich_repository_record(raw_repo: Dict[str, Any]) -> Dict[str, Any]:
         "compatibility": compatibility,
         "usecases": usecases,
         "maturity": maturity_intel,
+        "beginner_intel": beginner_intel,
+        "quickstart_code": raw_repo.get("quickstart_code") or f"git clone https://github.com/{owner}/{name}.git",
         "keywords": keywords,
         "topics": topics,
         "url": f"https://github.com/{owner}/{name}" if owner else f"https://github.com/{name}",
