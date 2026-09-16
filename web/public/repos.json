@@ -1,0 +1,1526 @@
+[
+  {
+    "id": 1001,
+    "name": "cockroach",
+    "owner": "cockroachdb",
+    "full_name": "cockroachdb/cockroach",
+    "description": "CockroachDB - the open source, cloud-native distributed SQL database.",
+    "stars": 30500,
+    "forks": 3800,
+    "language": "Go",
+    "license": "BSL-1.1",
+    "license_intel": {
+      "tier": "Fair-Core / Source-Available",
+      "commercial": "Cloud Restriction",
+      "desc": "Source-available license restricting competitive hosted cloud-service offerings."
+    },
+    "artifact": "Application / Service",
+    "domain": "Databases & Storage",
+    "subsystem": "Distributed SQL Engine",
+    "primitives": [
+      "Raft Consensus"
+    ],
+    "compatibility": [],
+    "usecases": [
+      "Cloud Native Infrastructure"
+    ],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Distributed SQL Engine",
+      "Application / Service",
+      "Databases & Storage",
+      "Raft Consensus",
+      "Cloud Native Infrastructure",
+      "sql",
+      "distributed-database",
+      "acid",
+      "raft",
+      "database",
+      "spanner"
+    ],
+    "topics": [
+      "sql",
+      "distributed-database",
+      "acid",
+      "raft",
+      "database",
+      "spanner"
+    ],
+    "url": "https://github.com/cockroachdb/cockroach",
+    "pushed_at": "2026-09-12T10:00:00Z"
+  },
+  {
+    "id": 1002,
+    "name": "duckdb",
+    "owner": "duckdb",
+    "full_name": "duckdb/duckdb",
+    "description": "DuckDB is an in-process SQL OLAP database management system",
+    "stars": 26400,
+    "forks": 2100,
+    "language": "C++",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Databases & Storage",
+    "subsystem": "Analytical & Columnar (OLAP)",
+    "primitives": [
+      "Memory-Mapped / In-Memory",
+      "Columnar Storage"
+    ],
+    "compatibility": [],
+    "usecases": [
+      "High-Throughput Analytics"
+    ],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Analytical & Columnar (OLAP)",
+      "Application / Service",
+      "Databases & Storage",
+      "Memory-Mapped / In-Memory",
+      "Columnar Storage",
+      "High-Throughput Analytics",
+      "olap",
+      "sql",
+      "columnar",
+      "parquet",
+      "database",
+      "in-memory"
+    ],
+    "topics": [
+      "olap",
+      "sql",
+      "columnar",
+      "parquet",
+      "database",
+      "in-memory"
+    ],
+    "url": "https://github.com/duckdb/duckdb",
+    "pushed_at": "2026-09-14T14:30:00Z"
+  },
+  {
+    "id": 1003,
+    "name": "qdrant",
+    "owner": "qdrant",
+    "full_name": "qdrant/qdrant",
+    "description": "Qdrant - High-performance, massive-scale Vector Database and Vector Search Engine written in Rust",
+    "stars": 22300,
+    "forks": 1600,
+    "language": "Rust",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "System Service / Engine",
+    "domain": "Databases & Storage",
+    "subsystem": "Vector Database",
+    "primitives": [
+      "HNSW / Vector Index"
+    ],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Vector Database",
+      "System Service / Engine",
+      "Databases & Storage",
+      "HNSW / Vector Index",
+      "vector-search",
+      "vector-database",
+      "embeddings",
+      "hnsw",
+      "approximate-nearest-neighbor",
+      "rust"
+    ],
+    "topics": [
+      "vector-search",
+      "vector-database",
+      "embeddings",
+      "hnsw",
+      "approximate-nearest-neighbor",
+      "rust"
+    ],
+    "url": "https://github.com/qdrant/qdrant",
+    "pushed_at": "2026-09-15T09:12:00Z"
+  },
+  {
+    "id": 1004,
+    "name": "milvus",
+    "owner": "milvus-io",
+    "full_name": "milvus-io/milvus",
+    "description": "A cloud-native vector database, storage for next-generation AI applications",
+    "stars": 32100,
+    "forks": 3100,
+    "language": "Go",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "AI & Machine Learning",
+    "subsystem": "NLP & Speech Recognition",
+    "primitives": [
+      "HNSW / Vector Index"
+    ],
+    "compatibility": [],
+    "usecases": [
+      "Cloud Native Infrastructure"
+    ],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "NLP & Speech Recognition",
+      "Application / Service",
+      "AI & Machine Learning",
+      "HNSW / Vector Index",
+      "Cloud Native Infrastructure",
+      "vector-database",
+      "vector-search",
+      "ai",
+      "embeddings",
+      "faiss"
+    ],
+    "topics": [
+      "vector-database",
+      "vector-search",
+      "ai",
+      "embeddings",
+      "faiss"
+    ],
+    "url": "https://github.com/milvus-io/milvus",
+    "pushed_at": "2026-09-11T18:40:00Z"
+  },
+  {
+    "id": 1005,
+    "name": "dragonfly",
+    "owner": "dragonflydb",
+    "full_name": "dragonflydb/dragonfly",
+    "description": "A modern replacement for Redis and Memcached, modern multi-threaded in-memory key-value store",
+    "stars": 25800,
+    "forks": 1200,
+    "language": "C++",
+    "license": "BSL-1.1",
+    "license_intel": {
+      "tier": "Fair-Core / Source-Available",
+      "commercial": "Cloud Restriction",
+      "desc": "Source-available license restricting competitive hosted cloud-service offerings."
+    },
+    "artifact": "Application / Service",
+    "domain": "Databases & Storage",
+    "subsystem": "Key-Value & In-Memory Store",
+    "primitives": [
+      "Memory-Mapped / In-Memory"
+    ],
+    "compatibility": [
+      "Redis Compatible"
+    ],
+    "usecases": [],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Key-Value & In-Memory Store",
+      "Application / Service",
+      "Databases & Storage",
+      "Memory-Mapped / In-Memory",
+      "Redis Compatible",
+      "redis",
+      "memcached",
+      "key-value",
+      "in-memory",
+      "cache"
+    ],
+    "topics": [
+      "redis",
+      "memcached",
+      "key-value",
+      "in-memory",
+      "cache"
+    ],
+    "url": "https://github.com/dragonflydb/dragonfly",
+    "pushed_at": "2026-09-13T16:00:00Z"
+  },
+  {
+    "id": 1006,
+    "name": "clickhouse",
+    "owner": "ClickHouse",
+    "full_name": "ClickHouse/clickhouse",
+    "description": "ClickHouse is a fast open-source column-oriented database management system",
+    "stars": 41200,
+    "forks": 6900,
+    "language": "C++",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Developer Tool / CLI",
+    "domain": "Databases & Storage",
+    "subsystem": "Analytical & Columnar (OLAP)",
+    "primitives": [
+      "Columnar Storage"
+    ],
+    "compatibility": [],
+    "usecases": [
+      "High-Throughput Analytics"
+    ],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Analytical & Columnar (OLAP)",
+      "Developer Tool / CLI",
+      "Databases & Storage",
+      "Columnar Storage",
+      "High-Throughput Analytics",
+      "clickhouse",
+      "olap",
+      "columnar",
+      "big-data",
+      "analytics-database",
+      "sql"
+    ],
+    "topics": [
+      "clickhouse",
+      "olap",
+      "columnar",
+      "big-data",
+      "analytics-database",
+      "sql"
+    ],
+    "url": "https://github.com/ClickHouse/clickhouse",
+    "pushed_at": "2026-09-15T22:00:00Z"
+  },
+  {
+    "id": 1007,
+    "name": "rocksdb",
+    "owner": "facebook",
+    "full_name": "facebook/rocksdb",
+    "description": "A persistent key-value store for fast storage environments",
+    "stars": 29400,
+    "forks": 6200,
+    "language": "C++",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "System Service / Engine",
+    "domain": "Databases & Storage",
+    "subsystem": "Key-Value & In-Memory Store",
+    "primitives": [
+      "LSM-Tree / B-Tree"
+    ],
+    "compatibility": [],
+    "usecases": [
+      "Edge & Offline Computing"
+    ],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Key-Value & In-Memory Store",
+      "System Service / Engine",
+      "Databases & Storage",
+      "LSM-Tree / B-Tree",
+      "Edge & Offline Computing",
+      "storage-engine",
+      "lsm-tree",
+      "key-value",
+      "embedded-db"
+    ],
+    "topics": [
+      "storage-engine",
+      "lsm-tree",
+      "key-value",
+      "embedded-db"
+    ],
+    "url": "https://github.com/facebook/rocksdb",
+    "pushed_at": "2026-09-08T11:00:00Z"
+  },
+  {
+    "id": 2001,
+    "name": "vllm",
+    "owner": "vllm-project",
+    "full_name": "vllm-project/vllm",
+    "description": "A high-throughput and memory-efficient inference and serving engine for LLMs",
+    "stars": 34800,
+    "forks": 5100,
+    "language": "Python",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "System Service / Engine",
+    "domain": "AI & Machine Learning",
+    "subsystem": "LLM Inference & Serving",
+    "primitives": [
+      "CUDA / GPU Accelerated"
+    ],
+    "compatibility": [],
+    "usecases": [
+      "High-Throughput Analytics"
+    ],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "LLM Inference & Serving",
+      "System Service / Engine",
+      "AI & Machine Learning",
+      "CUDA / GPU Accelerated",
+      "High-Throughput Analytics",
+      "llm",
+      "llm-inference",
+      "serving",
+      "pagedattention",
+      "cuda",
+      "model-serving"
+    ],
+    "topics": [
+      "llm",
+      "llm-inference",
+      "serving",
+      "pagedattention",
+      "cuda",
+      "model-serving"
+    ],
+    "url": "https://github.com/vllm-project/vllm",
+    "pushed_at": "2026-09-15T20:10:00Z"
+  },
+  {
+    "id": 2002,
+    "name": "llama.cpp",
+    "owner": "ggerganov",
+    "full_name": "ggerganov/llama.cpp",
+    "description": "LLM inference in C/C++ with zero dependencies",
+    "stars": 72500,
+    "forks": 10400,
+    "language": "C++",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "AI & Machine Learning",
+    "subsystem": "LLM Inference & Serving",
+    "primitives": [
+      "Quantization (GGUF/GPTQ)"
+    ],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "LLM Inference & Serving",
+      "Application / Service",
+      "AI & Machine Learning",
+      "Quantization (GGUF/GPTQ)",
+      "llm",
+      "llm-inference",
+      "gguf",
+      "transformer",
+      "c-plus-plus"
+    ],
+    "topics": [
+      "llm",
+      "llm-inference",
+      "gguf",
+      "transformer",
+      "c-plus-plus"
+    ],
+    "url": "https://github.com/ggerganov/llama.cpp",
+    "pushed_at": "2026-09-16T08:00:00Z"
+  },
+  {
+    "id": 2003,
+    "name": "ollama",
+    "owner": "ollama",
+    "full_name": "ollama/ollama",
+    "description": "Get up and running with Llama 3.3, Mistral, Gemma 2, and other large language models.",
+    "stars": 108000,
+    "forks": 9200,
+    "language": "Go",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "System Service / Engine",
+    "domain": "AI & Machine Learning",
+    "subsystem": "LLM Inference & Serving",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "LLM Inference & Serving",
+      "System Service / Engine",
+      "AI & Machine Learning",
+      "llm",
+      "model-serving",
+      "inference-engine",
+      "llama",
+      "local-ai"
+    ],
+    "topics": [
+      "llm",
+      "model-serving",
+      "inference-engine",
+      "llama",
+      "local-ai"
+    ],
+    "url": "https://github.com/ollama/ollama",
+    "pushed_at": "2026-09-16T01:15:00Z"
+  },
+  {
+    "id": 2004,
+    "name": "langchain",
+    "owner": "langchain-ai",
+    "full_name": "langchain-ai/langchain",
+    "description": "Build context-aware reasoning applications with LLMs and agents",
+    "stars": 98500,
+    "forks": 16200,
+    "language": "Python",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "AI & Machine Learning",
+    "subsystem": "Autonomous Agents & Workflows",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [
+      "Autonomous Agent Systems"
+    ],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "Autonomous Agents & Workflows",
+      "Application / Service",
+      "AI & Machine Learning",
+      "Autonomous Agent Systems",
+      "langchain",
+      "agents",
+      "llm",
+      "agentic",
+      "rag"
+    ],
+    "topics": [
+      "langchain",
+      "agents",
+      "llm",
+      "agentic",
+      "rag"
+    ],
+    "url": "https://github.com/langchain-ai/langchain",
+    "pushed_at": "2026-09-15T19:30:00Z"
+  },
+  {
+    "id": 2005,
+    "name": "whisper",
+    "owner": "openai",
+    "full_name": "openai/whisper",
+    "description": "Robust Speech Recognition via Large-Scale Weak Supervision",
+    "stars": 71800,
+    "forks": 8400,
+    "language": "Python",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "AI & Machine Learning",
+    "subsystem": "NLP & Speech Recognition",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "NLP & Speech Recognition",
+      "Application / Service",
+      "AI & Machine Learning",
+      "speech-to-text",
+      "whisper",
+      "nlp",
+      "audio-processing",
+      "transformer"
+    ],
+    "topics": [
+      "speech-to-text",
+      "whisper",
+      "nlp",
+      "audio-processing",
+      "transformer"
+    ],
+    "url": "https://github.com/openai/whisper",
+    "pushed_at": "2026-08-30T12:00:00Z"
+  },
+  {
+    "id": 2006,
+    "name": "deepspeed",
+    "owner": "microsoft",
+    "full_name": "microsoft/deepspeed",
+    "description": "DeepSpeed is a deep learning optimization library that makes distributed training and inference easy, efficient, and effective.",
+    "stars": 36100,
+    "forks": 4200,
+    "language": "Python",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Library / SDK",
+    "domain": "AI & Machine Learning",
+    "subsystem": "Model Training & Fine-Tuning",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Model Training & Fine-Tuning",
+      "Library / SDK",
+      "AI & Machine Learning",
+      "distributed-training",
+      "fine-tuning",
+      "deep-learning",
+      "pytorch",
+      "megatron"
+    ],
+    "topics": [
+      "distributed-training",
+      "fine-tuning",
+      "deep-learning",
+      "pytorch",
+      "megatron"
+    ],
+    "url": "https://github.com/microsoft/deepspeed",
+    "pushed_at": "2026-09-14T15:20:00Z"
+  },
+  {
+    "id": 3001,
+    "name": "kubernetes",
+    "owner": "kubernetes",
+    "full_name": "kubernetes/kubernetes",
+    "description": "Production-Grade Container Scheduling and Management",
+    "stars": 113000,
+    "forks": 39500,
+    "language": "Go",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Cloud & Infrastructure",
+    "subsystem": "Container Orchestration & Runtime",
+    "primitives": [],
+    "compatibility": [
+      "Kubernetes Native",
+      "Docker / OCI Compliant"
+    ],
+    "usecases": [
+      "Cloud Native Infrastructure"
+    ],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "Container Orchestration & Runtime",
+      "Application / Service",
+      "Cloud & Infrastructure",
+      "Kubernetes Native",
+      "Docker / OCI Compliant",
+      "Cloud Native Infrastructure",
+      "kubernetes",
+      "k8s",
+      "containerd",
+      "orchestration",
+      "cloud-native"
+    ],
+    "topics": [
+      "kubernetes",
+      "k8s",
+      "containerd",
+      "orchestration",
+      "cloud-native"
+    ],
+    "url": "https://github.com/kubernetes/kubernetes",
+    "pushed_at": "2026-09-16T06:00:00Z"
+  },
+  {
+    "id": 3002,
+    "name": "opentofu",
+    "owner": "opentofu",
+    "full_name": "opentofu/opentofu",
+    "description": "OpenTofu lets you declaratively manage your cloud infrastructure using Infrastructure as Code (IaC).",
+    "stars": 24100,
+    "forks": 1100,
+    "language": "Go",
+    "license": "MPL-2.0",
+    "license_intel": {
+      "tier": "Copyleft",
+      "commercial": "Source-Reciprocal (Caution)",
+      "desc": "Copyleft license requiring derivative works or hosted modifications to make source available."
+    },
+    "artifact": "Application / Service",
+    "domain": "Cloud & Infrastructure",
+    "subsystem": "Infrastructure as Code (IaC)",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Infrastructure as Code (IaC)",
+      "Application / Service",
+      "Cloud & Infrastructure",
+      "opentofu",
+      "terraform",
+      "iac",
+      "infrastructure",
+      "cloud"
+    ],
+    "topics": [
+      "opentofu",
+      "terraform",
+      "iac",
+      "infrastructure",
+      "cloud"
+    ],
+    "url": "https://github.com/opentofu/opentofu",
+    "pushed_at": "2026-09-15T11:45:00Z"
+  },
+  {
+    "id": 3003,
+    "name": "envoy",
+    "owner": "envoyproxy",
+    "full_name": "envoyproxy/envoy",
+    "description": "Cloud-native high-performance edge/middle/service proxy",
+    "stars": 30200,
+    "forks": 4700,
+    "language": "C++",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "System Service / Engine",
+    "domain": "Cloud & Infrastructure",
+    "subsystem": "Service Mesh & API Gateway",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [
+      "Edge & Offline Computing",
+      "Cloud Native Infrastructure"
+    ],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Service Mesh & API Gateway",
+      "System Service / Engine",
+      "Cloud & Infrastructure",
+      "Edge & Offline Computing",
+      "Cloud Native Infrastructure",
+      "service-mesh",
+      "api-gateway",
+      "reverse-proxy",
+      "envoy",
+      "load-balancer"
+    ],
+    "topics": [
+      "service-mesh",
+      "api-gateway",
+      "reverse-proxy",
+      "envoy",
+      "load-balancer"
+    ],
+    "url": "https://github.com/envoyproxy/envoy",
+    "pushed_at": "2026-09-16T04:20:00Z"
+  },
+  {
+    "id": 3004,
+    "name": "prometheus",
+    "owner": "prometheus",
+    "full_name": "prometheus/prometheus",
+    "description": "The Prometheus monitoring system and time series database.",
+    "stars": 56900,
+    "forks": 9100,
+    "language": "Go",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Databases & Storage",
+    "subsystem": "Time-Series Database",
+    "primitives": [],
+    "compatibility": [
+      "Prometheus Native"
+    ],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "Time-Series Database",
+      "Application / Service",
+      "Databases & Storage",
+      "Prometheus Native",
+      "prometheus",
+      "metrics",
+      "observability",
+      "timeseries",
+      "monitoring"
+    ],
+    "topics": [
+      "prometheus",
+      "metrics",
+      "observability",
+      "timeseries",
+      "monitoring"
+    ],
+    "url": "https://github.com/prometheus/prometheus",
+    "pushed_at": "2026-09-15T14:10:00Z"
+  },
+  {
+    "id": 3005,
+    "name": "traefik",
+    "owner": "traefik",
+    "full_name": "traefik/traefik",
+    "description": "The Cloud Native Application Proxy",
+    "stars": 52100,
+    "forks": 5100,
+    "language": "Go",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Other / General",
+    "subsystem": "General Components",
+    "primitives": [],
+    "compatibility": [
+      "Docker / OCI Compliant"
+    ],
+    "usecases": [
+      "Cloud Native Infrastructure"
+    ],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "General Components",
+      "Application / Service",
+      "Other / General",
+      "Docker / OCI Compliant",
+      "Cloud Native Infrastructure",
+      "traefik",
+      "reverse-proxy",
+      "api-gateway",
+      "docker",
+      "load-balancer"
+    ],
+    "topics": [
+      "traefik",
+      "reverse-proxy",
+      "api-gateway",
+      "docker",
+      "load-balancer"
+    ],
+    "url": "https://github.com/traefik/traefik",
+    "pushed_at": "2026-09-15T13:00:00Z"
+  },
+  {
+    "id": 4001,
+    "name": "vault",
+    "owner": "hashicorp",
+    "full_name": "hashicorp/vault",
+    "description": "A tool for secrets management, encryption as a service, and privileged access management",
+    "stars": 31200,
+    "forks": 4200,
+    "language": "Go",
+    "license": "BSL-1.1",
+    "license_intel": {
+      "tier": "Fair-Core / Source-Available",
+      "commercial": "Cloud Restriction",
+      "desc": "Source-available license restricting competitive hosted cloud-service offerings."
+    },
+    "artifact": "System Service / Engine",
+    "domain": "Security & Cryptography",
+    "subsystem": "Secrets & Key Management",
+    "primitives": [],
+    "compatibility": [
+      "OpenAPI / REST"
+    ],
+    "usecases": [],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Secrets & Key Management",
+      "System Service / Engine",
+      "Security & Cryptography",
+      "OpenAPI / REST",
+      "vault",
+      "secrets-management",
+      "security",
+      "encryption-at-rest",
+      "pki"
+    ],
+    "topics": [
+      "vault",
+      "secrets-management",
+      "security",
+      "encryption-at-rest",
+      "pki"
+    ],
+    "url": "https://github.com/hashicorp/vault",
+    "pushed_at": "2026-09-14T17:00:00Z"
+  },
+  {
+    "id": 4002,
+    "name": "keycloak",
+    "owner": "keycloak",
+    "full_name": "keycloak/keycloak",
+    "description": "Open Source Identity and Access Management for Modern Applications and Services",
+    "stars": 24900,
+    "forks": 6800,
+    "language": "Java",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "System Service / Engine",
+    "domain": "Security & Cryptography",
+    "subsystem": "Zero Trust & Identity/Auth",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Zero Trust & Identity/Auth",
+      "System Service / Engine",
+      "Security & Cryptography",
+      "auth",
+      "authentication",
+      "oidc",
+      "oauth2",
+      "sso",
+      "identity-provider"
+    ],
+    "topics": [
+      "auth",
+      "authentication",
+      "oidc",
+      "oauth2",
+      "sso",
+      "identity-provider"
+    ],
+    "url": "https://github.com/keycloak/keycloak",
+    "pushed_at": "2026-09-15T21:00:00Z"
+  },
+  {
+    "id": 4003,
+    "name": "trivy",
+    "owner": "aquasecurity",
+    "full_name": "aquasecurity/trivy",
+    "description": "Find vulnerabilities, misconfigurations, secrets, SBOM in containers, Kubernetes, code repositories, clouds and more",
+    "stars": 24300,
+    "forks": 2400,
+    "language": "Go",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Cloud & Infrastructure",
+    "subsystem": "Container Orchestration & Runtime",
+    "primitives": [],
+    "compatibility": [
+      "Kubernetes Native"
+    ],
+    "usecases": [
+      "Zero Trust & Compliance"
+    ],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Container Orchestration & Runtime",
+      "Application / Service",
+      "Cloud & Infrastructure",
+      "Kubernetes Native",
+      "Zero Trust & Compliance",
+      "security-scanner",
+      "vulnerability-scanner",
+      "cve",
+      "static-analysis",
+      "sbom"
+    ],
+    "topics": [
+      "security-scanner",
+      "vulnerability-scanner",
+      "cve",
+      "static-analysis",
+      "sbom"
+    ],
+    "url": "https://github.com/aquasecurity/trivy",
+    "pushed_at": "2026-09-15T16:30:00Z"
+  },
+  {
+    "id": 4004,
+    "name": "wireguard-go",
+    "owner": "WireGuard",
+    "full_name": "WireGuard/wireguard-go",
+    "description": "Go Implementation of WireGuard secure network tunnel",
+    "stars": 5400,
+    "forks": 1200,
+    "language": "Go",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Security & Cryptography",
+    "subsystem": "Cryptography & ZK Proofs",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Rapid Growth / Emerging Core",
+      "level": "tier-3",
+      "desc": "Significant traction with expanding developer adoption."
+    },
+    "keywords": [
+      "Cryptography & ZK Proofs",
+      "Application / Service",
+      "Security & Cryptography",
+      "cryptography",
+      "wireguard",
+      "vpn",
+      "tunnel",
+      "security"
+    ],
+    "topics": [
+      "cryptography",
+      "wireguard",
+      "vpn",
+      "tunnel",
+      "security"
+    ],
+    "url": "https://github.com/WireGuard/wireguard-go",
+    "pushed_at": "2026-09-02T10:00:00Z"
+  },
+  {
+    "id": 5001,
+    "name": "ruff",
+    "owner": "astral-sh",
+    "full_name": "astral-sh/ruff",
+    "description": "An extremely fast Python linter and code formatter, written in Rust.",
+    "stars": 36700,
+    "forks": 1400,
+    "language": "Rust",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Developer Tooling & Compilers",
+    "subsystem": "Linters & Code Quality",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Production Battle-Tested",
+      "level": "tier-2",
+      "desc": "High ecosystem stability, active community, and proven production deployments."
+    },
+    "keywords": [
+      "Linters & Code Quality",
+      "Application / Service",
+      "Developer Tooling & Compilers",
+      "linter",
+      "code-formatter",
+      "rust",
+      "python",
+      "static-analysis"
+    ],
+    "topics": [
+      "linter",
+      "code-formatter",
+      "rust",
+      "python",
+      "static-analysis"
+    ],
+    "url": "https://github.com/astral-sh/ruff",
+    "pushed_at": "2026-09-16T07:15:00Z"
+  },
+  {
+    "id": 5002,
+    "name": "vite",
+    "owner": "vitejs",
+    "full_name": "vitejs/vite",
+    "description": "Next generation frontend tooling. It's fast!",
+    "stars": 71900,
+    "forks": 6300,
+    "language": "TypeScript",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Developer Tooling & Compilers",
+    "subsystem": "Bundlers & Build Systems",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "Bundlers & Build Systems",
+      "Application / Service",
+      "Developer Tooling & Compilers",
+      "bundler",
+      "build-system",
+      "vite",
+      "esbuild",
+      "frontend"
+    ],
+    "topics": [
+      "bundler",
+      "build-system",
+      "vite",
+      "esbuild",
+      "frontend"
+    ],
+    "url": "https://github.com/vitejs/vite",
+    "pushed_at": "2026-09-15T18:00:00Z"
+  },
+  {
+    "id": 5003,
+    "name": "playwright",
+    "owner": "microsoft",
+    "full_name": "microsoft/playwright",
+    "description": "Playwright is a framework for Web Testing and Automation. It allows testing Chromium, Firefox and WebKit with a single API.",
+    "stars": 69400,
+    "forks": 4100,
+    "language": "TypeScript",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Framework",
+    "domain": "Other / General",
+    "subsystem": "General Components",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "General Components",
+      "Framework",
+      "Other / General",
+      "testing",
+      "e2e-testing",
+      "automation",
+      "browser",
+      "headless"
+    ],
+    "topics": [
+      "testing",
+      "e2e-testing",
+      "automation",
+      "browser",
+      "headless"
+    ],
+    "url": "https://github.com/microsoft/playwright",
+    "pushed_at": "2026-09-16T03:00:00Z"
+  },
+  {
+    "id": 5004,
+    "name": "wasmtime",
+    "owner": "bytecodealliance",
+    "full_name": "bytecodealliance/wasmtime",
+    "description": "A fast and secure runtime for WebAssembly and WASI",
+    "stars": 15800,
+    "forks": 1400,
+    "language": "Rust",
+    "license": "Apache-2.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Application / Service",
+    "domain": "Developer Tooling & Compilers",
+    "subsystem": "Compilers & Runtimes",
+    "primitives": [
+      "WASM / WASI"
+    ],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Rapid Growth / Emerging Core",
+      "level": "tier-3",
+      "desc": "Significant traction with expanding developer adoption."
+    },
+    "keywords": [
+      "Compilers & Runtimes",
+      "Application / Service",
+      "Developer Tooling & Compilers",
+      "WASM / WASI",
+      "webassembly",
+      "runtime",
+      "virtual-machine",
+      "wasi",
+      "jit",
+      "compiler"
+    ],
+    "topics": [
+      "webassembly",
+      "runtime",
+      "virtual-machine",
+      "wasi",
+      "jit",
+      "compiler"
+    ],
+    "url": "https://github.com/bytecodealliance/wasmtime",
+    "pushed_at": "2026-09-15T15:00:00Z"
+  },
+  {
+    "id": 6001,
+    "name": "next.js",
+    "owner": "vercel",
+    "full_name": "vercel/next.js",
+    "description": "The React Framework for the Web",
+    "stars": 128500,
+    "forks": 27100,
+    "language": "JavaScript",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Framework",
+    "domain": "Web Platforms & Frameworks",
+    "subsystem": "Full-Stack & SSR Frameworks",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "Full-Stack & SSR Frameworks",
+      "Framework",
+      "Web Platforms & Frameworks",
+      "react",
+      "ssr",
+      "fullstack",
+      "nextjs",
+      "web-framework"
+    ],
+    "topics": [
+      "react",
+      "ssr",
+      "fullstack",
+      "nextjs",
+      "web-framework"
+    ],
+    "url": "https://github.com/vercel/next.js",
+    "pushed_at": "2026-09-16T06:40:00Z"
+  },
+  {
+    "id": 6002,
+    "name": "fastapi",
+    "owner": "fastapi",
+    "full_name": "fastapi/fastapi",
+    "description": "FastAPI framework, high performance, easy to learn, fast to code, ready for production",
+    "stars": 79400,
+    "forks": 7200,
+    "language": "Python",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Framework",
+    "domain": "Web Platforms & Frameworks",
+    "subsystem": "Full-Stack & SSR Frameworks",
+    "primitives": [],
+    "compatibility": [
+      "OpenAPI / REST"
+    ],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "Full-Stack & SSR Frameworks",
+      "Framework",
+      "Web Platforms & Frameworks",
+      "OpenAPI / REST",
+      "fastapi",
+      "rest-api",
+      "asyncio",
+      "pydantic",
+      "web-framework"
+    ],
+    "topics": [
+      "fastapi",
+      "rest-api",
+      "asyncio",
+      "pydantic",
+      "web-framework"
+    ],
+    "url": "https://github.com/fastapi/fastapi",
+    "pushed_at": "2026-09-14T20:00:00Z"
+  },
+  {
+    "id": 6003,
+    "name": "shadcn-ui",
+    "owner": "shadcn-ui",
+    "full_name": "shadcn-ui/shadcn-ui",
+    "description": "Beautifully designed components that you can copy and paste into your apps. Accessible. Customizable. Open Source.",
+    "stars": 76800,
+    "forks": 6500,
+    "language": "TypeScript",
+    "license": "MIT",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Library / SDK",
+    "domain": "AI & Machine Learning",
+    "subsystem": "General AI",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "General AI",
+      "Library / SDK",
+      "AI & Machine Learning",
+      "ui-library",
+      "component-library",
+      "tailwind",
+      "radix-ui",
+      "design-system"
+    ],
+    "topics": [
+      "ui-library",
+      "component-library",
+      "tailwind",
+      "radix-ui",
+      "design-system"
+    ],
+    "url": "https://github.com/shadcn-ui/shadcn-ui",
+    "pushed_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": 7001,
+    "name": "awesome-python",
+    "owner": "vinta",
+    "full_name": "vinta/awesome-python",
+    "description": "An opinionated list of awesome Python frameworks, libraries, software and resources.",
+    "stars": 224000,
+    "forks": 25200,
+    "language": "Python",
+    "license": "CC0-1.0",
+    "license_intel": {
+      "tier": "Permissive",
+      "commercial": "Commercially Friendly",
+      "desc": "Permissive license allowing proprietary commercial usage and modification without source redistribution."
+    },
+    "artifact": "Curated List / Docs",
+    "domain": "Other / General",
+    "subsystem": "General Components",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "General Components",
+      "Curated List / Docs",
+      "Other / General",
+      "awesome",
+      "awesome-list",
+      "python",
+      "curated-list"
+    ],
+    "topics": [
+      "awesome",
+      "awesome-list",
+      "python",
+      "curated-list"
+    ],
+    "url": "https://github.com/vinta/awesome-python",
+    "pushed_at": "2026-09-10T12:00:00Z"
+  },
+  {
+    "id": 7002,
+    "name": "developer-roadmap",
+    "owner": "kamranahmedse",
+    "full_name": "kamranahmedse/developer-roadmap",
+    "description": "Interactive roadmaps, guides and other educational content to help developers grow in their careers.",
+    "stars": 305000,
+    "forks": 39500,
+    "language": "TypeScript",
+    "license": "CC-BY-NC-SA-4.0",
+    "license_intel": {
+      "tier": "Unknown / Unspecified",
+      "commercial": "Custom Terms",
+      "desc": "Custom or unspecified license. Review the repository LICENSE file for explicit commercial terms."
+    },
+    "artifact": "Curated List / Docs",
+    "domain": "Other / General",
+    "subsystem": "General Components",
+    "primitives": [],
+    "compatibility": [],
+    "usecases": [],
+    "maturity": {
+      "rating": "Hyper-Scale / Industry Standard",
+      "level": "tier-1",
+      "desc": "Massively adopted across global technology industry."
+    },
+    "keywords": [
+      "General Components",
+      "Curated List / Docs",
+      "Other / General",
+      "roadmap",
+      "education",
+      "developer-guide",
+      "cheatsheet"
+    ],
+    "topics": [
+      "roadmap",
+      "education",
+      "developer-guide",
+      "cheatsheet"
+    ],
+    "url": "https://github.com/kamranahmedse/developer-roadmap",
+    "pushed_at": "2026-09-15T11:00:00Z"
+  }
+]

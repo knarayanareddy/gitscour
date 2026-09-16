@@ -1,0 +1,10 @@
+# Node / Frontend dependencies
+node_modules/
+dist/
+.vite/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+sample_scraped.json
