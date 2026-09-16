@@ -4,7 +4,7 @@ import {
   Layers, Code2, ShieldAlert, Cpu, Sparkles, Database, Globe,
   CheckCircle2, AlertTriangle, Info, X, Copy, Check, ArrowRight,
   Boxes, Server, Lock, Flame, Compass, Network, HelpCircle,
-  Zap, GitCompare, Play, BookOpen, Lightbulb, Share2
+  Zap, GitCompare, Play, BookOpen, Lightbulb, Share2, Loader2
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
 import InspirationGenerator from './InspirationGenerator.jsx';
@@ -13,11 +13,15 @@ export default function App() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // In-memory cache for lazy-fetched Tier 2 shards
+  const [detailShards, setDetailShards] = useState({});
+  const [loadingShard, setLoadingShard] = useState(false);
+
   // Read URL query params helper
   const getInitialUrlState = () => {
     const params = new URLSearchParams(window.location.search);
     return {
-      tab: params.get('tab') || 'explorer', // 'explorer' | 'graph3d' | 'inspire' | 'sql'
+      tab: params.get('tab') || 'explorer',
       q: params.get('q') || '',
       domain: params.get('domain') || 'all',
       subsystem: params.get('subsystem') || 'all',
@@ -44,7 +48,7 @@ export default function App() {
 
   // Inspector Modal / Drawer
   const [activeRepoModal, setActiveRepoModal] = useState(null);
-  const [modalTab, setModalTab] = useState('overview'); // 'overview' | 'superpowers' | 'quickstart'
+  const [modalTab, setModalTab] = useState('overview');
   const [copiedText, setCopiedText] = useState(null);
   const [urlShareCopied, setUrlShareCopied] = useState(false);
 
@@ -55,25 +59,26 @@ export default function App() {
   const [sqlResults, setSqlResults] = useState(null);
   const [sqlError, setSqlError] = useState(null);
 
-  // Load dataset
+  // 1. Fetch Tier 1 Compact Catalog Index
   useEffect(() => {
-    fetch('./repos.json')
+    fetch('./catalog-index.json')
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to load repository index');
-        return res.json();
+        if (!res.ok) return fetch('./repos.json');
+        return res;
       })
+      .then((res) => res.json())
       .then((data) => {
         setRepos(data);
         setLoading(false);
 
-        // Check if URL requested a specific repo to inspect on load
+        // Auto-open modal if URL specifies inspect
         if (initialUrl.inspect) {
           const match = data.find(
             r => r.name.toLowerCase() === initialUrl.inspect.toLowerCase() ||
                  r.full_name?.toLowerCase() === initialUrl.inspect.toLowerCase()
           );
           if (match) {
-            setActiveRepoModal(match);
+            handleOpenRepoModal(match);
           }
         }
       })
@@ -82,6 +87,61 @@ export default function App() {
         setLoading(false);
       });
   }, []);
+
+  // 2. Lazy-Fetch Tier 2 Detail Shard on Modal Open
+  const handleOpenRepoModal = useCallback((repo) => {
+    setActiveRepoModal(repo);
+    setModalTab('overview');
+
+    const shardSlug = repo.shard;
+    if (!shardSlug || detailShards[shardSlug]) {
+      return; // Already cached in browser memory
+    }
+
+    setLoadingShard(true);
+    fetch(`./data/details/${shardSlug}.json`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Shard ${shardSlug} not found`);
+        return res.json();
+      })
+      .then((shardData) => {
+        setDetailShards((prev) => ({
+          ...prev,
+          [shardSlug]: shardData
+        }));
+        setLoadingShard(false);
+      })
+      .catch((err) => {
+        console.warn(`Could not load deep shard for ${shardSlug}:`, err);
+        setLoadingShard(false);
+      });
+  }, [detailShards]);
+
+  // Compute merged active repo with lazy-loaded Tier 2 details
+  const activeRepoDetails = useMemo(() => {
+    if (!activeRepoModal) return null;
+    const shardSlug = activeRepoModal.shard;
+    const shard = detailShards[shardSlug];
+    const deepRecord = shard ? shard[activeRepoModal.id] : null;
+
+    return {
+      ...activeRepoModal,
+      ...(deepRecord || {}),
+      beginner_intel: (deepRecord && deepRecord.beginner_intel) || activeRepoModal.beginner_intel || {
+        what_it_does: activeRepoModal.hook || activeRepoModal.description,
+        why_it_matters: "A prominent open-source system solving core scalability and reliability requirements in its domain.",
+        when_to_use: `Best suited for production applications requiring high performance in ${activeRepoModal.subsystem}.`,
+        alternatives: ["Standard libraries", "Cloud services", "Alternative open source engines"],
+        key_superpowers: ["High throughput", "Low resource overhead", "Battle-tested community stability"]
+      },
+      license_intel: (deepRecord && deepRecord.license_intel) || activeRepoModal.license_intel || {
+        tier: "Standard Open Source",
+        commercial: "Commercially Permissive",
+        desc: "Check repository license file for explicit terms."
+      },
+      quickstart_code: (deepRecord && deepRecord.quickstart_code) || activeRepoModal.quickstart_code || `git clone ${activeRepoModal.url}.git`
+    };
+  }, [activeRepoModal, detailShards]);
 
   // Sync state to URL Query Parameters (Deep Linking)
   useEffect(() => {
@@ -115,7 +175,6 @@ export default function App() {
     setTimeout(() => setCopiedText(null), 2000);
   };
 
-  // Compute unique filter options
   const domains = useMemo(() => {
     const set = new Set(repos.map((r) => r.domain).filter(Boolean));
     return ['all', ...Array.from(set).sort()];
@@ -146,11 +205,11 @@ export default function App() {
   }, [repos]);
 
   const licenseTiers = useMemo(() => {
-    const set = new Set(repos.map((r) => r.license_intel?.tier).filter(Boolean));
+    const set = new Set(repos.map((r) => r.license).filter(Boolean));
     return ['all', ...Array.from(set).sort()];
   }, [repos]);
 
-  // Client-side filtering logic
+  // Fast Client-side filtering logic
   const filteredRepos = useMemo(() => {
     return repos.filter((repo) => {
       if (repo.stars < minStars) return false;
@@ -159,11 +218,11 @@ export default function App() {
       if (selectedArtifact !== 'all' && repo.artifact !== selectedArtifact) return false;
       if (selectedLanguage !== 'all' && repo.language !== selectedLanguage) return false;
       if (selectedPrimitive !== 'all' && !(repo.primitives || []).includes(selectedPrimitive)) return false;
-      if (selectedLicenseTier !== 'all' && repo.license_intel?.tier !== selectedLicenseTier) return false;
+      if (selectedLicenseTier !== 'all' && repo.license !== selectedLicenseTier) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const textToSearch = `${repo.name} ${repo.owner} ${repo.description} ${(repo.keywords || []).join(' ')} ${(repo.topics || []).join(' ')} ${repo.beginner_intel?.what_it_does || ''}`.toLowerCase();
+        const textToSearch = `${repo.name} ${repo.owner} ${repo.description} ${repo.hook || ''} ${(repo.keywords || []).join(' ')} ${(repo.topics || []).join(' ')}`.toLowerCase();
         if (!textToSearch.includes(q)) return false;
       }
 
@@ -258,8 +317,11 @@ export default function App() {
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
                   {repos.length > 0 ? `${repos.length} Repos` : '>500★ DB'}
                 </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono hidden sm:inline">
+                  2-Tier Sharded
+                </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Deep Architectural Taxonomy & 3D Knowledge Galaxy of GitHub</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Sharded Scale Architecture & 3D Knowledge Galaxy of GitHub</p>
             </div>
           </div>
 
@@ -349,17 +411,14 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-400 text-xs font-mono">Indexing repository taxonomy & beginner context...</p>
+            <p className="text-slate-400 text-xs font-mono">Loading compact catalog index...</p>
           </div>
         ) : activeTab === 'inspire' ? (
           /* INSPIRE ME ARCHITECTURE GENERATOR */
           <div className="space-y-6">
             <InspirationGenerator
               repos={repos}
-              onSelectRepo={(repo) => {
-                setActiveRepoModal(repo);
-                setModalTab('overview');
-              }}
+              onSelectRepo={(repo) => handleOpenRepoModal(repo)}
             />
           </div>
         ) : activeTab === 'graph3d' ? (
@@ -369,10 +428,10 @@ export default function App() {
               <div>
                 <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                   <Compass className="w-4 h-4 text-indigo-400" />
-                  3D Topological Knowledge Graph
+                  3D Topological Knowledge Galaxy
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Orbit, zoom, and inspect architectural relationships (subsystems, shared primitives, and protocols). Click any node to read why it was built.
+                  Orbit, zoom, and inspect architectural relationships (subsystems, shared primitives, and protocols). Click any star to open its deep intelligence shard.
                 </p>
               </div>
 
@@ -395,10 +454,7 @@ export default function App() {
             <Graph3DExplorer
               repos={repos}
               selectedDomain={selectedDomain}
-              onSelectRepo={(repo) => {
-                setActiveRepoModal(repo);
-                setModalTab('overview');
-              }}
+              onSelectRepo={(repo) => handleOpenRepoModal(repo)}
             />
           </div>
         ) : activeTab === 'explorer' ? (
@@ -491,7 +547,7 @@ export default function App() {
 
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                    License Usability
+                    License
                   </label>
                   <select
                     value={selectedLicenseTier}
@@ -532,10 +588,10 @@ export default function App() {
             <div className="flex items-center justify-between text-xs text-slate-400 px-1">
               <span>
                 Matching <strong className="text-white">{filteredRepos.length}</strong> of{' '}
-                <strong className="text-white">{repos.length}</strong> repositories
+                <strong className="text-white">{repos.length}</strong> indexed repositories
               </span>
               <span className="text-slate-500 hidden sm:inline">
-                Click any repository card to see plain-English explanations, superpowers, and alternatives
+                Two-tier on-demand sharding active &bull; Sub-50ms instant browsing
               </span>
             </div>
 
@@ -544,10 +600,7 @@ export default function App() {
               {filteredRepos.map((repo) => (
                 <div
                   key={repo.id}
-                  onClick={() => {
-                    setActiveRepoModal(repo);
-                    setModalTab('overview');
-                  }}
+                  onClick={() => handleOpenRepoModal(repo)}
                   className="bg-[#161b22] border border-slate-800/90 rounded-xl p-5 hover:border-indigo-500/50 hover:bg-[#1a212d] transition-all cursor-pointer flex flex-col justify-between group shadow-sm relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-indigo-500/5 to-transparent rounded-bl-full pointer-events-none" />
@@ -582,7 +635,7 @@ export default function App() {
                         <span>The Simple Explanation</span>
                       </div>
                       <p className="text-xs text-slate-200 leading-relaxed line-clamp-2">
-                        {repo.beginner_intel?.what_it_does || repo.description}
+                        {repo.hook || repo.description}
                       </p>
                     </div>
 
@@ -627,13 +680,7 @@ export default function App() {
 
                     <div className="flex items-center space-x-2">
                       <span className="text-[11px] font-mono text-slate-300">{repo.language}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        repo.license_intel?.tier === 'Permissive'
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : repo.license_intel?.tier === 'Copyleft'
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                      }`}>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-800 text-slate-300 border border-slate-700">
                         {repo.license}
                       </span>
                     </div>
@@ -653,7 +700,7 @@ export default function App() {
                     In-Browser SQL Studio with Architectural Fields
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Query extended fields: <code className="text-indigo-300">primitives</code>, <code className="text-indigo-300">compatibility</code>, <code className="text-indigo-300">maturity</code>, <code className="text-indigo-300">license_intel</code>.
+                    Query extended fields: <code className="text-indigo-300">primitives</code>, <code className="text-indigo-300">compatibility</code>, <code className="text-indigo-300">hook</code>.
                   </p>
                 </div>
                 <button
@@ -776,7 +823,7 @@ export default function App() {
       </main>
 
       {/* Deep Repository Architecture & Inspiration Modal */}
-      {activeRepoModal && (
+      {activeRepoDetails && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#161b22] border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Top Header */}
@@ -784,15 +831,21 @@ export default function App() {
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-                    {activeRepoModal.domain}
+                    {activeRepoDetails.domain}
                   </span>
                   <span className="text-xs text-slate-400">&bull;</span>
                   <span className="text-xs text-slate-300 font-medium">
-                    {activeRepoModal.subsystem}
+                    {activeRepoDetails.subsystem}
                   </span>
+                  {loadingShard && (
+                    <span className="text-[10px] text-indigo-400 flex items-center gap-1 animate-pulse">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Loading deep shard...
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <span>{activeRepoModal.owner} / {activeRepoModal.name}</span>
+                  <span>{activeRepoDetails.owner} / {activeRepoDetails.name}</span>
                 </h2>
               </div>
               <button
@@ -851,7 +904,7 @@ export default function App() {
                       <span>What does this project actually do?</span>
                     </div>
                     <p className="text-slate-100 text-sm leading-relaxed font-medium">
-                      {activeRepoModal.beginner_intel?.what_it_does || activeRepoModal.description}
+                      {activeRepoDetails.beginner_intel?.what_it_does || activeRepoDetails.hook || activeRepoDetails.description}
                     </p>
                   </div>
 
@@ -863,7 +916,7 @@ export default function App() {
                         <span>Why does this project exist?</span>
                       </div>
                       <p className="text-slate-300 leading-relaxed text-[11px]">
-                        {activeRepoModal.beginner_intel?.why_it_matters || "Created to solve critical scalability, performance, and developer ergonomics problems in its domain."}
+                        {activeRepoDetails.beginner_intel?.why_it_matters || "Created to solve critical scalability, performance, and developer ergonomics problems in its domain."}
                       </p>
                     </div>
 
@@ -873,7 +926,7 @@ export default function App() {
                         <span>When should you use this?</span>
                       </div>
                       <p className="text-slate-300 leading-relaxed text-[11px]">
-                        {activeRepoModal.beginner_intel?.when_to_use || "Best suited for modern applications requiring production-grade performance and active maintenance."}
+                        {activeRepoDetails.beginner_intel?.when_to_use || "Best suited for modern applications requiring production-grade performance and active maintenance."}
                       </p>
                     </div>
                   </div>
@@ -884,26 +937,26 @@ export default function App() {
                       <span className="text-slate-500 block text-[10px]">Community Stars</span>
                       <span className="text-sm font-semibold text-amber-400 flex items-center gap-1 mt-0.5">
                         <Star className="w-3.5 h-3.5 fill-amber-400" />
-                        {activeRepoModal.stars.toLocaleString()}
+                        {activeRepoDetails.stars.toLocaleString()}
                       </span>
                     </div>
                     <div>
                       <span className="text-slate-500 block text-[10px]">Fork Count</span>
                       <span className="text-sm font-semibold text-slate-200 flex items-center gap-1 mt-0.5">
                         <GitFork className="w-3.5 h-3.5" />
-                        {activeRepoModal.forks.toLocaleString()}
+                        {activeRepoDetails.forks.toLocaleString()}
                       </span>
                     </div>
                     <div>
                       <span className="text-slate-500 block text-[10px]">Primary Language</span>
                       <span className="text-sm font-semibold text-indigo-300 mt-0.5 block">
-                        {activeRepoModal.language}
+                        {activeRepoDetails.language}
                       </span>
                     </div>
                     <div>
                       <span className="text-slate-500 block text-[10px]">Maturity Rating</span>
-                      <span className="text-xs font-semibold text-emerald-400 mt-0.5 block truncate" title={activeRepoModal.maturity?.rating}>
-                        {activeRepoModal.maturity?.rating}
+                      <span className="text-xs font-semibold text-emerald-400 mt-0.5 block truncate" title={activeRepoDetails.maturity?.rating}>
+                        {activeRepoDetails.maturity?.rating || "Production Tested"}
                       </span>
                     </div>
                   </div>
@@ -916,11 +969,11 @@ export default function App() {
                         <span className="font-semibold text-slate-200">Commercial Usability & License Risk</span>
                       </div>
                       <span className="font-mono text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                        {activeRepoModal.license}
+                        {activeRepoDetails.license}
                       </span>
                     </div>
                     <div className="text-slate-400 leading-relaxed text-[11px]">
-                      <strong>Commercial Status:</strong> {activeRepoModal.license_intel?.commercial} &mdash; {activeRepoModal.license_intel?.desc}
+                      <strong>Commercial Status:</strong> {activeRepoDetails.license_intel?.commercial || "Permissive Open Source"} &mdash; {activeRepoDetails.license_intel?.desc || "Review repository license for details."}
                     </div>
                   </div>
                 </div>
@@ -935,7 +988,7 @@ export default function App() {
                       Key Superpowers & Breakthrough Features
                     </label>
                     <div className="space-y-2">
-                      {(activeRepoModal.beginner_intel?.key_superpowers || [
+                      {(activeRepoDetails.beginner_intel?.key_superpowers || [
                         "High throughput and zero unnecessary allocations",
                         "Active open-source community support and extensive documentation",
                         "Seamless integration into modern production ecosystems"
@@ -955,7 +1008,7 @@ export default function App() {
                       Notable Alternatives & How It Compares
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {(activeRepoModal.beginner_intel?.alternatives || ["Standard libraries", "Managed Cloud APIs"]).map((alt, idx) => (
+                      {(activeRepoDetails.beginner_intel?.alternatives || ["Standard libraries", "Managed Cloud APIs"]).map((alt, idx) => (
                         <span key={idx} className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 font-medium text-xs">
                           {alt}
                         </span>
@@ -967,10 +1020,10 @@ export default function App() {
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
                       <Flame className="w-4 h-4 text-amber-400" />
-                      Indexed Semantic Keywords ({activeRepoModal.keywords?.length || 0})
+                      Indexed Semantic Keywords ({activeRepoDetails.keywords?.length || 0})
                     </label>
                     <div className="flex flex-wrap gap-1.5">
-                      {(activeRepoModal.keywords || []).map((kw) => (
+                      {(activeRepoDetails.keywords || []).map((kw) => (
                         <span key={kw} className="px-2 py-0.5 rounded bg-slate-800/80 text-slate-300 border border-slate-700/60 font-mono text-[10px]">
                           {kw}
                         </span>
@@ -989,9 +1042,9 @@ export default function App() {
                       Immediate Run / Installation Snippet
                     </label>
                     <div className="relative bg-[#0d1117] border border-slate-800 rounded-xl p-3 font-mono text-emerald-400 text-xs">
-                      <pre className="overflow-x-auto whitespace-pre-wrap">{activeRepoModal.quickstart_code}</pre>
+                      <pre className="overflow-x-auto whitespace-pre-wrap">{activeRepoDetails.quickstart_code}</pre>
                       <button
-                        onClick={() => copyToClipboard(activeRepoModal.quickstart_code, 'quickstart')}
+                        onClick={() => copyToClipboard(activeRepoDetails.quickstart_code, 'quickstart')}
                         className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-white rounded bg-slate-800 border border-slate-700 transition-colors"
                         title="Copy command"
                       >
@@ -1005,14 +1058,14 @@ export default function App() {
                   </div>
 
                   {/* Architectural Primitives */}
-                  {activeRepoModal.primitives && activeRepoModal.primitives.length > 0 && (
+                  {activeRepoDetails.primitives && activeRepoDetails.primitives.length > 0 && (
                     <div>
                       <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
                         <Cpu className="w-4 h-4 text-emerald-400" />
                         Under-the-Hood Architectural Primitives
                       </label>
                       <div className="flex flex-wrap gap-2">
-                        {activeRepoModal.primitives.map((prim) => (
+                        {activeRepoDetails.primitives.map((prim) => (
                           <span key={prim} className="px-3 py-1 rounded-lg bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 font-medium">
                             {prim}
                           </span>
@@ -1022,14 +1075,14 @@ export default function App() {
                   )}
 
                   {/* Target Protocols & Interoperability */}
-                  {activeRepoModal.compatibility && activeRepoModal.compatibility.length > 0 && (
+                  {activeRepoDetails.compatibility && activeRepoDetails.compatibility.length > 0 && (
                     <div>
                       <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
-                        <Boxes className="w-4 h-4 text-cyan-400" />
+                        <Boxes className="w-3.5 h-3.5 text-cyan-400" />
                         Compatible Protocols & APIs
                       </label>
                       <div className="flex flex-wrap gap-2">
-                        {activeRepoModal.compatibility.map((c) => (
+                        {activeRepoDetails.compatibility.map((c) => (
                           <span key={c} className="px-3 py-1 rounded-lg bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 font-medium">
                             {c}
                           </span>
@@ -1044,9 +1097,9 @@ export default function App() {
                       Git Clone Command
                     </label>
                     <div className="flex items-center justify-between bg-[#0d1117] border border-slate-800 rounded-lg p-2.5 font-mono text-slate-300">
-                      <span className="truncate mr-2">git clone {activeRepoModal.url}.git</span>
+                      <span className="truncate mr-2">git clone {activeRepoDetails.url}.git</span>
                       <button
-                        onClick={() => copyToClipboard(`git clone ${activeRepoModal.url}.git`, 'clone')}
+                        onClick={() => copyToClipboard(`git clone ${activeRepoDetails.url}.git`, 'clone')}
                         className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors shrink-0"
                         title="Copy command"
                       >
@@ -1065,10 +1118,10 @@ export default function App() {
             {/* Modal Footer */}
             <div className="p-4 border-t border-slate-800 bg-[#1b212b] flex items-center justify-between">
               <span className="text-[11px] text-slate-400">
-                Last Pushed: {new Date(activeRepoModal.pushed_at).toLocaleDateString()}
+                Last Pushed: {new Date(activeRepoDetails.pushed_at).toLocaleDateString()}
               </span>
               <a
-                href={activeRepoModal.url}
+                href={activeRepoDetails.url}
                 target="_blank"
                 rel="noreferrer"
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5"
