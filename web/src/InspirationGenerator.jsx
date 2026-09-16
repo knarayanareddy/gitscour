@@ -2,13 +2,29 @@ import React, { useState, useMemo } from 'react';
 import { 
   Sparkles, Shuffle, ArrowRight, Layers, ExternalLink, 
   Database, Cpu, Globe, CheckCircle2, Shield, Rocket, Copy, Check,
-  Workflow, GitFork, Star, Terminal, Code2, SlidersHorizontal, BookOpen
+  Workflow, GitFork, Star, Terminal, Code2, SlidersHorizontal, BookOpen,
+  Plus, Trash2, ArrowUpDown, Compass, CheckCircle, RefreshCw
 } from 'lucide-react';
 
-export default function InspirationGenerator({ repos, onSelectRepo }) {
+export default function InspirationGenerator({ repos, onSelectRepo, onFlyToInGraph }) {
   const [activeStack, setActiveStack] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [selectedGoal, setSelectedGoal] = useState('all');
+
+  // Custom Interactive Stack Builder State ("Pool Your Own Stack")
+  const [customPool, setCustomPool] = useState([
+    { role: "Vector / State Store", repoId: null, domainFilter: "Databases & Storage" },
+    { role: "Inference / Core Runtime", repoId: null, domainFilter: "AI & Machine Learning" },
+    { role: "High-Throughput API Gateway", repoId: null, domainFilter: "Web Platforms & Frameworks" },
+    { role: "Frontend / Canvas Layer", repoId: null, domainFilter: "Web Platforms & Frameworks" }
+  ]);
+
+  // Fast Repo Lookup
+  const repoMap = useMemo(() => {
+    const map = new Map();
+    repos.forEach(r => map.set(r.id, r));
+    return map;
+  }, [repos]);
 
   // Categorize repositories into architectural roles
   const categorized = useMemo(() => {
@@ -123,6 +139,40 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     setTimeout(() => setCopiedIndex(false), 2000);
   };
 
+  // Live Compatibility & Synergy Matrix Analysis for the Active Stack
+  const stackSynergies = useMemo(() => {
+    if (!activeStack) return [];
+    const synergies = [];
+    const comps = activeStack.components;
+
+    for (let i = 0; i < comps.length; i++) {
+      for (let j = i + 1; j < comps.length; j++) {
+        const a = comps[i].repo;
+        const b = comps[j].repo;
+
+        // Check shared language
+        if (a.language && b.language && a.language === b.language && a.language !== 'Other') {
+          synergies.push({
+            pair: `${a.name} ↔ ${b.name}`,
+            badge: `Unified Runtime (${a.language})`,
+            desc: `Zero foreign-function-interface (FFI) boundary penalties; shared ecosystem dependencies.`
+          });
+        }
+
+        // Check shared architectural primitive
+        const commonPrim = (a.primitives || []).find(p => (b.primitives || []).includes(p));
+        if (commonPrim) {
+          synergies.push({
+            pair: `${a.name} ↔ ${b.name}`,
+            badge: `Shared Primitive: ${commonPrim}`,
+            desc: `Both systems employ ${commonPrim} for maximal performance and hardware throughput.`
+          });
+        }
+      }
+    }
+    return synergies;
+  }, [activeStack]);
+
   if (!activeStack && repos.length > 0) {
     generateRandomStack();
   }
@@ -130,124 +180,243 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
   if (!activeStack) return null;
 
   return (
-    <div className="bg-gradient-to-b from-[#141924] via-[#0d1117] to-[#0a0d14] border border-indigo-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="space-y-6">
+      {/* Main Inspiration Stack Generator */}
+      <div className="bg-gradient-to-b from-[#141924] via-[#0d1117] to-[#0a0d14] border border-indigo-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              Synergetic Tech Stack Architect
-            </span>
-            <span className="text-xs text-slate-500">&bull;</span>
-            <span className="text-xs text-slate-400">Pairing complementary tools across 51,000+ repositories</span>
-          </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">
-            {activeStack.template.title}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
-            {activeStack.template.tagline}
-          </p>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <div className="bg-[#161b22] border border-slate-800 rounded-xl p-1 flex items-center text-xs">
-            {['all', 'ai', 'systems', 'security'].map(g => (
-              <button
-                key={g}
-                onClick={() => {
-                  setSelectedGoal(g);
-                  const matching = ARCHITECTURE_TEMPLATES.find(t => g === 'all' || t.goal === g);
-                  if (matching) generateRandomStack(matching);
-                }}
-                className={`px-2.5 py-1 rounded-lg capitalize font-medium transition-colors ${
-                  selectedGoal === g ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={copyBlueprint}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-colors shadow-sm"
-          >
-            {copiedIndex ? (
-              <>
-                <Check className="w-4 h-4 text-emerald-400" />
-                <span>Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4 text-slate-400" />
-                <span>Copy Blueprint</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={() => generateRandomStack()}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Shuffle className="w-4 h-4" />
-            <span>Generate New Stack</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 5-Layer Complementary Pipeline Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
-        {activeStack.components.map((comp, idx) => (
-          <div
-            key={idx}
-            onClick={() => onSelectRepo(comp.repo)}
-            className="bg-[#161b22] hover:bg-[#1a212d] border border-slate-800 hover:border-indigo-500/50 rounded-xl p-4 transition-all cursor-pointer flex flex-col justify-between group relative shadow-md"
-          >
-            <div className="absolute top-2 right-2 text-[10px] font-mono text-slate-600 group-hover:text-indigo-400 font-bold">
-              0{idx + 1}
-            </div>
-
-            <div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-400 block mb-1">
-                {comp.role}
+        {/* Header Bar */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                Synergetic Tech Stack Architect
               </span>
-              <h3 className="text-sm font-bold text-slate-100 group-hover:text-indigo-300 transition-colors flex items-center justify-between gap-1 mb-1.5">
-                <span className="truncate">{comp.repo.name}</span>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-white shrink-0" />
-              </h3>
-              <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed mb-3">
-                {comp.repo.beginner_intel?.what_it_does || comp.repo.description}
-              </p>
+              <span className="text-xs text-slate-500">&bull;</span>
+              <span className="text-xs text-slate-400">Pairing complementary tools across 51,000+ repositories</span>
             </div>
-
-            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-              <span className="font-mono text-amber-400 font-medium">{comp.repo.stars.toLocaleString()}★</span>
-              <span className="text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded text-[10px]">{comp.repo.language}</span>
-            </div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              {activeStack.template.title}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              {activeStack.template.tagline}
+            </p>
           </div>
-        ))}
-      </div>
 
-      {/* Architectural Synergies & Tradeoff Intelligence */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#0b0f17] border border-slate-800/90 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <Rocket className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-          <div className="text-xs">
-            <span className="font-semibold text-white block mb-0.5">Why This Stack Works Together:</span>
-            <span className="text-slate-300 leading-relaxed text-[11px]">{activeStack.template.whyItWorks}</span>
+          {/* Action Controls */}
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <div className="bg-[#161b22] border border-slate-800 rounded-xl p-1 flex items-center text-xs">
+              {['all', 'ai', 'systems', 'security'].map(g => (
+                <button
+                  key={g}
+                  onClick={() => {
+                    setSelectedGoal(g);
+                    const matching = ARCHITECTURE_TEMPLATES.find(t => g === 'all' || t.goal === g);
+                    if (matching) generateRandomStack(matching);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg capitalize font-medium transition-colors ${
+                    selectedGoal === g ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={copyBlueprint}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-colors shadow-sm"
+            >
+              {copiedIndex ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 text-slate-400" />
+                  <span>Copy Blueprint</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => generateRandomStack()}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Shuffle className="w-4 h-4" />
+              <span>Generate New Stack</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-start gap-3 border-t md:border-t-0 md:border-l border-slate-800/80 pt-3 md:pt-0 md:pl-4">
-          <SlidersHorizontal className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div className="text-xs">
-            <span className="font-semibold text-white block mb-0.5">Engineering Tradeoffs & Latency:</span>
-            <span className="text-slate-300 leading-relaxed text-[11px]">{activeStack.template.tradeoffs}</span>
+        {/* 5-Layer Complementary Pipeline Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
+          {activeStack.components.map((comp, idx) => (
+            <div
+              key={idx}
+              className="bg-[#161b22] hover:bg-[#1a212d] border border-slate-800 hover:border-indigo-500/50 rounded-xl p-4 transition-all flex flex-col justify-between group relative shadow-md"
+            >
+              <div className="absolute top-2 right-2 text-[10px] font-mono text-slate-600 group-hover:text-indigo-400 font-bold">
+                0{idx + 1}
+              </div>
+
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-400 block mb-1">
+                  {comp.role}
+                </span>
+                <h3 
+                  onClick={() => onSelectRepo(comp.repo)}
+                  className="text-sm font-bold text-slate-100 hover:text-indigo-300 transition-colors flex items-center justify-between gap-1 mb-1.5 cursor-pointer"
+                >
+                  <span className="truncate">{comp.repo.name}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-white shrink-0" />
+                </h3>
+                <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed mb-3">
+                  {comp.repo.beginner_intel?.what_it_does || comp.repo.description}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                <span className="font-mono text-amber-400 font-medium">{comp.repo.stars.toLocaleString()}★</span>
+                <span className="text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded text-[10px]">{comp.repo.language}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Synergetic Matrix & Rationale Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#0b0f17] border border-slate-800/90 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Rocket className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <span className="font-semibold text-white block mb-0.5">Why This Stack Works Together:</span>
+              <span className="text-slate-300 leading-relaxed text-[11px]">{activeStack.template.whyItWorks}</span>
+            </div>
           </div>
+
+          <div className="flex items-start gap-3 border-t md:border-t-0 md:border-l border-slate-800/80 pt-3 md:pt-0 md:pl-4">
+            <SlidersHorizontal className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <span className="font-semibold text-white block mb-0.5">Engineering Tradeoffs & Latency:</span>
+              <span className="text-slate-300 leading-relaxed text-[11px]">{activeStack.template.tradeoffs}</span>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 border-t md:border-t-0 md:border-l border-slate-800/80 pt-3 md:pt-0 md:pl-4">
+            <Workflow className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <span className="font-semibold text-white block mb-0.5">Synergy Highlights ({stackSynergies.length}):</span>
+              <div className="space-y-1 mt-1 max-h-20 overflow-y-auto">
+                {stackSynergies.length === 0 ? (
+                  <span className="text-slate-500 text-[11px] italic">Cross-language polyglot stack</span>
+                ) : (
+                  stackSynergies.map((s, idx) => (
+                    <div key={idx} className="text-[10px] text-slate-300">
+                      <strong className="text-emerald-400 font-medium">{s.badge}</strong>: {s.pair}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Tech Stack Pooling Sandbox ("Pool Your Own Stack") */}
+      <div className="bg-[#161b22] border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
+          <div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Layers className="w-4 h-4 text-indigo-400" />
+              <span>Interactive Architecture Pooling Sandbox</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Assemble your own custom stack across 51,000+ repositories. Select components to test architectural compatibility.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              setCustomPool(prev => [
+                ...prev,
+                { role: `Custom Layer ${prev.length + 1}`, repoId: null, domainFilter: "all" }
+              ]);
+            }}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors self-start sm:self-auto"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Layer</span>
+          </button>
+        </div>
+
+        {/* Custom Pool Slots */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {customPool.map((slot, idx) => {
+            const selectedItem = slot.repoId ? repoMap.get(slot.repoId) : null;
+            const candidates = repos.filter(r => slot.domainFilter === 'all' || r.domain === slot.domainFilter).slice(0, 40);
+
+            return (
+              <div key={idx} className="bg-[#0d1117] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold uppercase mb-1">
+                    <span>{slot.role}</span>
+                    {customPool.length > 2 && (
+                      <button
+                        onClick={() => setCustomPool(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-slate-500 hover:text-red-400"
+                        title="Remove slot"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  <select
+                    value={slot.repoId || ''}
+                    onChange={(e) => {
+                      const id = Number(e.target.value);
+                      setCustomPool(prev => prev.map((s, i) => i === idx ? { ...s, repoId: id || null } : s));
+                    }}
+                    className="w-full bg-[#161b22] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 truncate"
+                  >
+                    <option value="">Select a repository...</option>
+                    {candidates.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.owner}/{c.name} ({c.stars.toLocaleString()}★)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedItem ? (
+                  <div className="bg-[#161b22] p-2.5 rounded-lg border border-slate-700/60 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between font-bold text-white">
+                      <span className="truncate">{selectedItem.name}</span>
+                      <span className="text-[10px] font-mono text-amber-400">{selectedItem.stars.toLocaleString()}★</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">
+                      {selectedItem.description}
+                    </p>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[10px]">
+                      <span className="text-indigo-300 font-mono">{selectedItem.language}</span>
+                      <button
+                        onClick={() => onSelectRepo(selectedItem)}
+                        className="text-emerald-400 hover:underline"
+                      >
+                        Inspect
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 border border-dashed border-slate-800 rounded-lg text-center text-slate-500 text-[11px]">
+                    Slot empty &mdash; choose a tool above
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

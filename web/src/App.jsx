@@ -5,7 +5,7 @@ import {
   CheckCircle2, AlertTriangle, Info, X, Copy, Check, ArrowRight,
   Boxes, Server, Lock, Flame, Compass, Network, HelpCircle,
   Zap, GitCompare, Play, BookOpen, Lightbulb, Share2, Loader2,
-  ChevronDown, SlidersHorizontal
+  ChevronDown, SlidersHorizontal, Sliders
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
 import InspirationGenerator from './InspirationGenerator.jsx';
@@ -81,12 +81,11 @@ export default function App() {
     setVisibleCount(36);
   };
 
-  // Helper to slugify domain
   const slugify = (text) => {
     return (text || "other-general").toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   };
 
-  // 1. Fetch & Unpack Packed Index (22,341 repositories in <850KB gzip)
+  // 1. Fetch & Unpack Packed Index (51,192 repositories in <3.3MB gzip)
   useEffect(() => {
     fetch('./catalog-packed.json')
       .then((res) => {
@@ -95,7 +94,6 @@ export default function App() {
       })
       .then((packed) => {
         const { domains, subsystems, languages, artifacts, rows } = packed;
-        // Fast unpack
         const unpacked = rows.map((r) => {
           const domName = domains[r[6]] || "Other / General";
           return {
@@ -130,8 +128,8 @@ export default function App() {
           }
         }
       })
-      .catch(() => {
-        // Fallback to standard index
+      .catch((err) => {
+        console.warn('Fallback loading catalog-index:', err);
         fetch('./catalog-index.json')
           .then((res) => res.json())
           .then((data) => {
@@ -257,12 +255,7 @@ export default function App() {
     return ['all', ...Array.from(set).sort()];
   }, [repos]);
 
-  const licenseTiers = useMemo(() => {
-    const set = new Set(repos.map((r) => r.license).filter(Boolean));
-    return ['all', ...Array.from(set).sort()];
-  }, [repos]);
-
-  // Tokenized Search Engine (Sub-5ms across 22,000+ records)
+  // Tokenized Search Engine (Sub-5ms across 51,000+ records)
   const filteredRepos = useMemo(() => {
     const queryTokens = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
@@ -286,85 +279,14 @@ export default function App() {
     });
   }, [repos, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars]);
 
-  // Windowed visible records to avoid DOM thrashing
   const visibleRepos = useMemo(() => {
     return filteredRepos.slice(0, visibleCount);
   }, [filteredRepos, visibleCount]);
 
-  // In-browser SQL simulation engine
-  const executeSQL = () => {
-    setSqlError(null);
-    try {
-      const q = sqlQuery.trim();
-      const match = q.match(/SELECT\s+(.*?)\s+FROM\s+repos(?:\s+WHERE\s+(.*?))?(?:\s+ORDER\s+BY\s+(.*?))?(?:\s+LIMIT\s+(\d+))?;?$/is);
-      
-      if (!match) {
-        throw new Error("Syntax Error: GitScour In-Browser SQL engine supports:\nSELECT <fields|*> FROM repos [WHERE <condition>] [ORDER BY <field> [ASC|DESC]] [LIMIT <n>]");
-      }
-
-      const [, rawFields, rawWhere, rawOrderBy, rawLimit] = match;
-      const fields = rawFields.split(',').map((f) => f.trim());
-
-      let rows = [...repos];
-      if (rawWhere) {
-        rows = rows.filter((r) => {
-          try {
-            const sanitized = rawWhere
-              .replace(/(\b[a-zA-Z_][a-zA-Z0-9_]*\b)/g, (m) => {
-                if (['AND', 'OR', 'NOT', 'and', 'or', 'not', 'true', 'false', 'null'].includes(m)) return m;
-                return `r['${m}']`;
-              })
-              .replace(/=/g, '===')
-              .replace(/====/g, '===');
-            // eslint-disable-next-line no-new-func
-            return Function('r', `"use strict"; return Boolean(${sanitized})`)(r);
-          } catch {
-            return true;
-          }
-        });
-      }
-
-      if (rawOrderBy) {
-        const parts = rawOrderBy.trim().split(/\s+/);
-        const col = parts[0];
-        const isDesc = parts[1] && parts[1].toUpperCase() === 'DESC';
-        rows.sort((a, b) => {
-          const valA = a[col];
-          const valB = b[col];
-          if (valA === valB) return 0;
-          if (valA === undefined) return 1;
-          if (valB === undefined) return -1;
-          if (typeof valA === 'number') {
-            return isDesc ? valB - valA : valA - valB;
-          }
-          return isDesc ? String(valB).localeCompare(String(valA)) : String(valA).localeCompare(String(valB));
-        });
-      }
-
-      if (rawLimit) {
-        rows = rows.slice(0, parseInt(rawLimit, 10));
-      }
-
-      const projected = rows.map((r) => {
-        if (rawFields.trim() === '*') return r;
-        const out = {};
-        for (const f of fields) {
-          out[f] = r[f];
-        }
-        return out;
-      });
-
-      setSqlResults(projected);
-    } catch (err) {
-      setSqlError(err.message);
-      setSqlResults(null);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#0d1117] text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-[#060911] text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30">
       {/* Top Header */}
-      <header className="border-b border-slate-800 bg-[#161b22]/90 sticky top-0 z-30 backdrop-blur-md">
+      <header className="border-b border-slate-800 bg-[#0d1117]/95 sticky top-0 z-30 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white p-2 rounded-xl shadow-md shadow-indigo-500/20">
@@ -376,13 +298,13 @@ export default function App() {
                   GitScour
                 </span>
                 <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
-                  {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : '20k+ DB'}
+                  {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : '50k+ DB'}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono hidden sm:inline">
-                  Packed &bull; 870KB Gzip
+                  Packed &bull; 3.2MB Gzip
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Deep Architectural Taxonomy & 3D Knowledge Galaxy across 22,000+ Repositories</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Deep Architectural Taxonomy &amp; 3D Knowledge Galaxy across 51,000+ Repositories</p>
             </div>
           </div>
 
@@ -407,7 +329,7 @@ export default function App() {
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Inspire Me</span>
+              <span>Stack Architect</span>
             </button>
             <button
               onClick={() => setActiveTab('graph3d')}
@@ -419,20 +341,6 @@ export default function App() {
             >
               <Compass className="w-3.5 h-3.5" />
               <span>3D Galaxy</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('sql');
-                if (!sqlResults) executeSQL();
-              }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                activeTab === 'sql'
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              <span>SQL Studio</span>
             </button>
 
             {/* Share Link Button */}
@@ -472,16 +380,14 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-400 text-xs font-mono">Unpacking 22,000+ repository index into WebAssembly memory...</p>
+            <p className="text-slate-400 text-xs font-mono">Unpacking 51,000+ repository index into WebAssembly memory...</p>
           </div>
         ) : activeTab === 'inspire' ? (
-          /* INSPIRE ME ARCHITECTURE GENERATOR */
-          <div className="space-y-6">
-            <InspirationGenerator
-              repos={repos}
-              onSelectRepo={(repo) => handleOpenRepoModal(repo)}
-            />
-          </div>
+          /* SYNERGETIC TECH STACK ARCHITECT & POOLING SANDBOX */
+          <InspirationGenerator
+            repos={repos}
+            onSelectRepo={(repo) => handleOpenRepoModal(repo)}
+          />
         ) : activeTab === 'graph3d' ? (
           /* 3D GRAPH EXPLORER VIEW */
           <div className="space-y-4">
@@ -492,12 +398,12 @@ export default function App() {
                   3D Topological Knowledge Galaxy ({repos.length.toLocaleString()} Nodes)
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Orbit, zoom, and inspect architectural relationships with real-time Level-of-Detail (LOD) culling.
+                  Explore force-directed topologies, directional beam particles, and multi-hop neighborhood bridges.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-400 whitespace-nowrap">Cluster Domain:</label>
+                <label className="text-xs text-slate-400 whitespace-nowrap">Filter Cluster:</label>
                 <select
                   value={selectedDomain}
                   onChange={(e) => setSelectedDomain(e.target.value)}
@@ -518,7 +424,8 @@ export default function App() {
               onSelectRepo={(repo) => handleOpenRepoModal(repo)}
             />
           </div>
-        ) : activeTab === 'explorer' ? (
+        ) : (
+          /* CATALOG EXPLORER */
           <div className="space-y-6">
             {/* Filter Hub */}
             <div className="bg-[#161b22] border border-slate-800 rounded-xl p-4 shadow-sm space-y-4">
@@ -527,7 +434,7 @@ export default function App() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Tokenized search across 22,000+ repos: try 'sql vector', 'local llm', 'simd', or 'caching'..."
+                  placeholder="Tokenized search across 51,000+ repos: try 'sql vector', 'local llm', 'simd', or 'caching'..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -688,7 +595,7 @@ export default function App() {
                 Matching <strong className="text-white">{filteredRepos.length.toLocaleString()}</strong> repositories (showing top {Math.min(visibleRepos.length, filteredRepos.length)})
               </span>
               <span className="text-slate-500 hidden sm:inline">
-                22k+ Index &bull; Sub-5ms Token Search &bull; Progressive Windowing Active
+                51k+ Index &bull; Sub-5ms Token Search &bull; Progressive Windowing Active
               </span>
             </div>
 
@@ -736,7 +643,7 @@ export default function App() {
                       </p>
                     </div>
 
-                    {/* Deep Enriched Badges: Primitives & Compatibility */}
+                    {/* Deep Enriched Badges */}
                     <div className="space-y-1.5 mb-4">
                       {repo.primitives && repo.primitives.length > 0 && (
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -788,136 +695,6 @@ export default function App() {
               </div>
             )}
           </div>
-        ) : (
-          /* SQL Studio Mode */
-          <div className="space-y-6">
-            <div className="bg-[#161b22] border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-indigo-400" />
-                    In-Browser SQL Studio with Architectural Fields ({repos.length.toLocaleString()} Records)
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Query extended fields: <code className="text-indigo-300">primitives</code>, <code className="text-indigo-300">domain</code>, <code className="text-indigo-300">subsystem</code>, <code className="text-indigo-300">hook</code>.
-                  </p>
-                </div>
-                <button
-                  onClick={executeSQL}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5"
-                >
-                  <span>Execute Query</span>
-                  <span className="text-[10px] opacity-75">(Ctrl+Enter)</span>
-                </button>
-              </div>
-
-              {/* SQL Textarea */}
-              <div className="relative font-mono text-xs">
-                <textarea
-                  rows={5}
-                  value={sqlQuery}
-                  onChange={(e) => setSqlQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                      executeSQL();
-                    }
-                  }}
-                  className="w-full bg-[#0d1117] border border-slate-700 rounded-lg p-3 text-emerald-400 focus:outline-none focus:border-indigo-500 resize-none font-mono leading-relaxed"
-                />
-              </div>
-
-              {/* Quick Query Templates */}
-              <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400">
-                <span className="text-slate-500 font-medium">Quick Queries:</span>
-                <button
-                  onClick={() => {
-                    setSqlQuery("SELECT name, stars, subsystem, language\nFROM repos\nWHERE domain = 'Databases & Storage'\nORDER BY stars DESC;");
-                  }}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700/60 transition-colors"
-                >
-                  Database Primitives
-                </button>
-                <button
-                  onClick={() => {
-                    setSqlQuery("SELECT name, stars, language, subsystem\nFROM repos\nWHERE language = 'Rust'\nORDER BY stars DESC;");
-                  }}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700/60 transition-colors"
-                >
-                  Rust Systems
-                </button>
-                <button
-                  onClick={() => {
-                    setSqlQuery("SELECT name, stars, subsystem, language\nFROM repos\nWHERE domain = 'AI & Machine Learning'\nORDER BY stars DESC;");
-                  }}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700/60 transition-colors"
-                >
-                  AI Models
-                </button>
-              </div>
-            </div>
-
-            {/* Error Message */}
-            {sqlError && (
-              <div className="p-4 rounded-lg bg-red-950/40 border border-red-500/30 text-red-300 text-xs font-mono whitespace-pre-wrap">
-                {sqlError}
-              </div>
-            )}
-
-            {/* Results Table */}
-            {sqlResults && (
-              <div className="bg-[#161b22] border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 bg-slate-900/40">
-                  <span>Results: <strong>{sqlResults.length}</strong> rows returned</span>
-                  <button
-                    onClick={() => {
-                      const csv = [
-                        Object.keys(sqlResults[0] || {}).join(','),
-                        ...sqlResults.map((row) =>
-                          Object.values(row)
-                            .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-                            .join(',')
-                        )
-                      ].join('\n');
-                      const blob = new Blob([csv], { type: 'text/csv' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = 'gitscour-query-results.csv';
-                      a.click();
-                    }}
-                    className="hover:text-white transition-colors underline"
-                  >
-                    Export to CSV
-                  </button>
-                </div>
-                <div className="overflow-x-auto max-h-[500px]">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#0d1117] text-slate-400 sticky top-0 border-b border-slate-800 uppercase tracking-wider font-semibold">
-                      <tr>
-                        {sqlResults.length > 0 &&
-                          Object.keys(sqlResults[0]).map((col) => (
-                            <th key={col} className="px-4 py-3">
-                              {col}
-                            </th>
-                          ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-mono">
-                      {sqlResults.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
-                          {Object.values(row).map((val, cidx) => (
-                            <td key={cidx} className="px-4 py-2.5 text-slate-300 max-w-xs truncate">
-                              {Array.isArray(val) ? val.join(', ') : typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val ?? '')}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
         )}
       </main>
 
@@ -966,7 +743,7 @@ export default function App() {
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
-                <span>The Story & Purpose</span>
+                <span>The Story &amp; Purpose</span>
               </button>
               <button
                 onClick={() => setModalTab('superpowers')}
@@ -977,7 +754,7 @@ export default function App() {
                 }`}
               >
                 <Zap className="w-4 h-4" />
-                <span>Superpowers & Tradeoffs</span>
+                <span>Superpowers &amp; Tradeoffs</span>
               </button>
               <button
                 onClick={() => setModalTab('quickstart')}
@@ -988,7 +765,7 @@ export default function App() {
                 }`}
               >
                 <Play className="w-4 h-4" />
-                <span>Quickstart & Architecture</span>
+                <span>Quickstart &amp; Architecture</span>
               </button>
             </div>
 
@@ -1065,7 +842,7 @@ export default function App() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <ShieldAlert className="w-4 h-4 text-indigo-400" />
-                        <span className="font-semibold text-slate-200">Commercial Usability & License Risk</span>
+                        <span className="font-semibold text-slate-200">Commercial Usability &amp; License Risk</span>
                       </div>
                       <span className="font-mono text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
                         {activeRepoDetails.license}
@@ -1080,11 +857,10 @@ export default function App() {
 
               {modalTab === 'superpowers' && (
                 <div className="space-y-6">
-                  {/* Superpowers */}
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-3 flex items-center gap-1.5">
                       <Zap className="w-4 h-4 text-amber-400" />
-                      Key Superpowers & Breakthrough Features
+                      Key Superpowers &amp; Breakthrough Features
                     </label>
                     <div className="space-y-2">
                       {(activeRepoDetails.beginner_intel?.key_superpowers || [
@@ -1100,11 +876,10 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Alternatives & Competitors */}
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-3 flex items-center gap-1.5">
                       <GitCompare className="w-4 h-4 text-cyan-400" />
-                      Notable Alternatives & How It Compares
+                      Notable Alternatives &amp; How It Compares
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {(activeRepoDetails.beginner_intel?.alternatives || ["Standard libraries", "Managed Cloud APIs"]).map((alt, idx) => (
@@ -1119,7 +894,6 @@ export default function App() {
 
               {modalTab === 'quickstart' && (
                 <div className="space-y-6">
-                  {/* Quickstart Command */}
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2 flex items-center gap-1.5">
                       <Play className="w-4 h-4 text-emerald-400" />
@@ -1141,7 +915,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Standard Git Clone */}
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2">
                       Git Clone Command
@@ -1185,7 +958,7 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-[#161b22] py-4 mt-8 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-800/80 bg-[#0d1117] py-4 mt-8 text-center text-xs text-slate-500">
         <p>GitScour &bull; Open-Source Queriable GitHub Knowledge Base &bull; Hosted 100% Free on GitHub Pages</p>
       </footer>
     </div>
