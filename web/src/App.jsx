@@ -3,13 +3,14 @@ import {
   Search, Star, GitFork, ExternalLink, Filter, Terminal, 
   Layers, Code2, ShieldAlert, Cpu, Sparkles, Database, Globe,
   CheckCircle2, AlertTriangle, Info, X, Copy, Check, ArrowRight,
-  Boxes, Server, Lock, Flame
+  Boxes, Server, Lock, Flame, Compass, Network
 } from 'lucide-react';
+import Graph3DExplorer from './Graph3DExplorer.jsx';
 
 export default function App() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('explorer'); // 'explorer' | 'sql'
+  const [activeTab, setActiveTab] = useState('explorer'); // 'explorer' | 'graph3d' | 'sql'
 
   // Explorer filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -199,28 +200,39 @@ export default function App() {
                   &gt;500★ DB
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Deep Architectural Taxonomy & Free Queriable Catalog of GitHub</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Deep Architectural Taxonomy & 3D Knowledge Graph of GitHub</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setActiveTab('explorer')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 activeTab === 'explorer'
                   ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
-              <span>Explorer</span>
+              <span>Catalog</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('graph3d')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                activeTab === 'graph3d'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>3D Galaxy</span>
             </button>
             <button
               onClick={() => {
                 setActiveTab('sql');
                 if (!sqlResults) executeSQL();
               }}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 activeTab === 'sql'
                   ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
@@ -248,6 +260,42 @@ export default function App() {
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-slate-400 text-xs font-mono">Indexing repository taxonomy...</p>
+          </div>
+        ) : activeTab === 'graph3d' ? (
+          /* 3D GRAPH EXPLORER VIEW */
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#161b22] border border-slate-800 rounded-xl p-4 shadow-sm">
+              <div>
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Compass className="w-4 h-4 text-indigo-400" />
+                  3D Topological Knowledge Graph
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Orbit, zoom, and inspect architectural relationships (subsystems, shared primitives, and protocols).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-400 whitespace-nowrap">Cluster Domain:</label>
+                <select
+                  value={selectedDomain}
+                  onChange={(e) => setSelectedDomain(e.target.value)}
+                  className="bg-[#0d1117] border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                >
+                  {domains.map((d) => (
+                    <option key={d} value={d}>
+                      {d === 'all' ? 'All Domains' : d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <Graph3DExplorer
+              repos={repos}
+              selectedDomain={selectedDomain}
+              onSelectRepo={(repo) => setActiveRepoModal(repo)}
+            />
           </div>
         ) : activeTab === 'explorer' ? (
           <div className="space-y-6">
