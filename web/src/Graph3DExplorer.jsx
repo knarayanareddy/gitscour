@@ -14,7 +14,6 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   const [autoRotate, setAutoRotate] = useState(true);
   const [hoveredNode, setHoveredNode] = useState(null);
   const [filterDomain, setFilterDomain] = useState(selectedDomain || 'all');
-  const [selectedCluster, setSelectedCluster] = useState('all'); // 'all' | domain name
 
   // Drag interaction refs
   const isDragging = useRef(false);
@@ -22,6 +21,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   const animationFrameId = useRef(null);
   const rotRef = useRef({ x: 0.35, y: -0.45 });
   const autoRotateRef = useRef(true);
+  const zoomRef = useRef(1.0);
 
   useEffect(() => {
     rotRef.current = rotation;
@@ -31,6 +31,10 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     autoRotateRef.current = autoRotate;
   }, [autoRotate]);
 
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
   // Distinct cluster colors by Domain
   const DOMAIN_COLORS = {
     "Databases & Storage": { hex: "#3b82f6", glow: "rgba(59, 130, 246, 0.4)", name: "Databases" },
@@ -39,29 +43,29 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     "Security & Cryptography": { hex: "#ef4444", glow: "rgba(239, 68, 68, 0.4)", name: "Security" },
     "Developer Tooling & Compilers": { hex: "#10b981", glow: "rgba(16, 185, 129, 0.4)", name: "Dev Tools" },
     "Web Platforms & Frameworks": { hex: "#f59e0b", glow: "rgba(245, 158, 11, 0.4)", name: "Web Platforms" },
+    "Operating Systems & Low-Level": { hex: "#8b5cf6", glow: "rgba(139, 92, 246, 0.4)", name: "Systems / OS" },
+    "Education & Curated Learning": { hex: "#14b8a6", glow: "rgba(20, 184, 166, 0.4)", name: "Education" },
     "Networking & Distributed Systems": { hex: "#ec4899", glow: "rgba(236, 72, 153, 0.4)", name: "Networking" },
     "Other / General": { hex: "#94a3b8", glow: "rgba(148, 163, 184, 0.4)", name: "General" }
   };
 
-  // 1. Build Graph Topology (Cluster Nodes & Relationship Edges)
+  // 1. Build Graph Topology with Level-of-Detail (LOD) & Cluster Geometry
   const { nodes, links, domainClusters } = useMemo(() => {
     const validRepos = repos.filter((r) => {
       if (filterDomain !== 'all' && r.domain !== filterDomain) return false;
       return true;
     });
 
-    // Group repos by domain to establish 3D gravitational cluster centers
     const domainNames = Array.from(new Set(validRepos.map((r) => r.domain).filter(Boolean)));
     const clusterCenters = {};
 
     domainNames.forEach((d, idx) => {
-      // Distribute cluster centers around a 3D sphere ring
       const angle = (idx / domainNames.length) * Math.PI * 2;
-      const elevation = ((idx % 2 === 0 ? 1 : -1) * 0.4);
-      const clusterRadius = 260;
+      const elevation = ((idx % 2 === 0 ? 1 : -1) * 0.35);
+      const clusterRadius = 280;
       clusterCenters[d] = {
         x: Math.cos(angle) * clusterRadius,
-        y: elevation * 120,
+        y: elevation * 130,
         z: Math.sin(angle) * clusterRadius
       };
     });
@@ -69,17 +73,15 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     // Create 3D Nodes
     const graphNodes = validRepos.map((repo, idx) => {
       const center = clusterCenters[repo.domain] || { x: 0, y: 0, z: 0 };
-      // Local orbital dispersal around cluster center
-      const phi = Math.acos(-1 + (2 * (idx % 12)) / 12);
-      const theta = Math.sqrt(12 * Math.PI) * phi;
-      const orbitDist = 55 + (idx % 5) * 18;
+      const phi = Math.acos(-1 + (2 * (idx % 24)) / 24);
+      const theta = Math.sqrt(24 * Math.PI) * phi;
+      const orbitDist = 45 + (idx % 8) * 16;
 
       const x = center.x + Math.sin(phi) * Math.cos(theta) * orbitDist;
       const y = center.y + Math.sin(phi) * Math.sin(theta) * orbitDist;
       const z = center.z + Math.cos(phi) * orbitDist;
 
-      // Node size scaled logarithmically by Stars
-      const size = Math.max(3.5, Math.min(10, Math.log10(repo.stars) * 1.8));
+      const size = Math.max(3.2, Math.min(9.5, Math.log10(repo.stars) * 1.7));
 
       return {
         id: repo.id,
@@ -104,41 +106,35 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       };
     });
 
-    // 2. Synthesize High-Value Semantic Edges (Shared Subsystem, Primitives, or Compatibility)
+    // 2. Optimized Semantic Link Synthesis (High-Signal Relations Only)
+    // To maintain 60 FPS at scale, synthesize links selectively for top anchor repositories
     const graphLinks = [];
-    for (let i = 0; i < graphNodes.length; i++) {
-      for (let j = i + 1; j < graphNodes.length; j++) {
+    const maxLinkNodes = Math.min(graphNodes.length, 300);
+    for (let i = 0; i < maxLinkNodes; i++) {
+      for (let j = i + 1; j < maxLinkNodes; j++) {
         const a = graphNodes[i];
         const b = graphNodes[j];
         
         let strength = 0;
         let reason = "";
 
-        // Same Subsystem -> Strong primary edge
         if (a.subsystem && b.subsystem && a.subsystem === b.subsystem) {
           strength += 3;
           reason = `Shared Subsystem (${a.subsystem})`;
         }
-        // Shared Architectural Primitive (e.g. Zero-Copy or SIMD)
         const commonPrim = a.primitives.find((p) => b.primitives.includes(p));
         if (commonPrim) {
           strength += 2;
           reason = `Shared Primitive (${commonPrim})`;
         }
-        // Shared Compatibility (e.g. PostgreSQL or Redis compatible)
         const commonComp = a.compatibility.find((c) => b.compatibility.includes(c));
         if (commonComp) {
           strength += 2;
           reason = `Shared Interop (${commonComp})`;
         }
 
-        if (strength >= 2) {
-          graphLinks.push({
-            source: a,
-            target: b,
-            strength,
-            reason
-          });
+        if (strength >= 3) {
+          graphLinks.push({ source: a, target: b, strength, reason });
         }
       }
     }
@@ -146,7 +142,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     return { nodes: graphNodes, links: graphLinks, domainClusters: domainNames };
   }, [repos, filterDomain]);
 
-  // 3. Render Canvas & 3D Perspective Projection Engine (60 FPS)
+  // 3. Render Canvas & 3D Perspective Projection Engine with Level-of-Detail (60 FPS)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -166,13 +162,14 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     const render = () => {
       const width = canvas.width / window.devicePixelRatio;
       const height = canvas.height / window.devicePixelRatio;
-      const fov = 420;
+      const fov = 440;
       const cx = width / 2;
       const cy = height / 2;
+      const curZoom = zoomRef.current;
 
       // Auto rotation
       if (autoRotateRef.current) {
-        rotRef.current.y += 0.0035;
+        rotRef.current.y += 0.003;
       }
 
       const cosX = Math.cos(rotRef.current.x);
@@ -184,36 +181,30 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       ctx.fillStyle = '#090d16';
       ctx.fillRect(0, 0, width, height);
 
-      // Subtle Background Grid Starlight
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-      for (let i = 0; i < 40; i++) {
-        const starX = (i * 97) % width;
-        const starY = (i * 131) % height;
-        ctx.fillRect(starX, starY, 1, 1);
-      }
+      // Level-of-Detail (LOD) Threshold
+      // If zoomed out, hide minor nodes under 1,500 stars to eliminate visual clutter
+      const lodStarThreshold = curZoom < 0.8 ? 2000 : curZoom < 1.2 ? 1000 : 0;
 
       // 3D Matrix Rotation & Perspective Projection
       nodes.forEach((node) => {
-        // Rotate around Y axis
         const x1 = node.x * cosY - node.z * sinY;
         const z1 = node.z * cosY + node.x * sinY;
 
-        // Rotate around X axis
         const y2 = node.y * cosX - z1 * sinX;
         const z2 = z1 * cosX + node.y * sinX;
 
-        // Apply Zoom & Camera Offset
-        const zAdjusted = (z2 * zoom) + 700;
+        const zAdjusted = (z2 * curZoom) + 720;
         const scale = fov / Math.max(zAdjusted, 100);
 
-        node.screenX = cx + x1 * zoom * scale;
-        node.screenY = cy + y2 * zoom * scale;
-        node.screenSize = Math.max(2.5, node.size * zoom * scale);
+        node.screenX = cx + x1 * curZoom * scale;
+        node.screenY = cy + y2 * curZoom * scale;
+        node.screenSize = Math.max(2.2, node.size * curZoom * scale);
         node.depth = zAdjusted;
       });
 
-      // Sort Nodes & Links for Depth Buffer rendering (Back-to-Front)
-      const sortedNodes = [...nodes].sort((a, b) => b.depth - a.depth);
+      // Filter visible nodes by LOD and depth
+      const visibleNodes = nodes.filter(n => n.depth > 100 && (n.stars >= lodStarThreshold || (hoveredNode && hoveredNode.id === n.id)));
+      visibleNodes.sort((a, b) => b.depth - a.depth);
 
       // Draw Relationship Links (Edges)
       ctx.lineWidth = 0.8;
@@ -222,7 +213,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         const tgt = link.target;
         if (src.depth > 100 && tgt.depth > 100) {
           const isHighlighted = hoveredNode && (hoveredNode.id === src.id || hoveredNode.id === tgt.id);
-          const alpha = isHighlighted ? 0.85 : 0.12;
+          const alpha = isHighlighted ? 0.85 : 0.09;
 
           ctx.strokeStyle = isHighlighted ? '#a5b4fc' : src.color.hex;
           ctx.globalAlpha = alpha;
@@ -235,9 +226,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       ctx.globalAlpha = 1.0;
 
       // Draw Nodes
-      sortedNodes.forEach((node) => {
-        if (node.depth <= 100) return;
-
+      visibleNodes.forEach((node) => {
         const isHovered = hoveredNode && hoveredNode.id === node.id;
         const isNeighbor = hoveredNode && links.some(
           (l) => (l.source.id === hoveredNode.id && l.target.id === node.id) ||
@@ -252,14 +241,14 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
           ctx.fill();
         }
 
-        // Core Node Sphere
+        // Core Sphere
         ctx.beginPath();
         ctx.arc(node.screenX, node.screenY, isHovered ? node.screenSize * 1.5 : node.screenSize, 0, Math.PI * 2);
         ctx.fillStyle = isHovered ? '#ffffff' : node.color.hex;
         ctx.fill();
 
-        // Node Label (Always show for top starred or hovered/neighbor nodes)
-        if (isHovered || isNeighbor || node.stars > 45000 || node.screenSize > 5.5) {
+        // Node Label (Visible for landmark nodes > 30,000 stars or when hovered)
+        if (isHovered || isNeighbor || node.stars > 35000 || (curZoom > 1.3 && node.screenSize > 5.5)) {
           ctx.font = `${isHovered ? 'bold 11px' : '9px'} -apple-system, sans-serif`;
           ctx.fillStyle = isHovered ? '#ffffff' : 'rgba(226, 232, 240, 0.85)';
           ctx.textAlign = 'center';
@@ -276,7 +265,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       cancelAnimationFrame(animationFrameId.current);
       window.removeEventListener('resize', handleResize);
     };
-  }, [nodes, links, zoom, hoveredNode]);
+  }, [nodes, links, hoveredNode]);
 
   // Mouse & Touch Interaction Handlers
   const handleMouseDown = (e) => {
@@ -296,15 +285,14 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       const deltaY = e.clientY - prevMousePos.current.y;
       prevMousePos.current = { x: e.clientX, y: e.clientY };
 
-      rotRef.current.y += deltaX * 0.006;
-      rotRef.current.x += deltaY * 0.006;
+      rotRef.current.y += deltaX * 0.005;
+      rotRef.current.x += deltaY * 0.005;
       setRotation({ ...rotRef.current });
       return;
     }
 
-    // Hover detection (Raycast approximation in screen space)
     let found = null;
-    let closestDist = 18; // px threshold
+    let closestDist = 16;
 
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i];
@@ -334,7 +322,6 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
   return (
     <div className="relative w-full h-[640px] bg-[#090d16] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col select-none">
-      {/* 3D Canvas Viewport */}
       <div 
         ref={containerRef}
         className="relative flex-1 w-full h-full cursor-grab active:cursor-grabbing"
@@ -351,11 +338,11 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
           <div className="bg-[#161b22]/90 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-3 shadow-lg">
             <span className="text-xs font-semibold text-white flex items-center gap-1.5">
               <Compass className="w-4 h-4 text-indigo-400 animate-spin-slow" />
-              <span>3D Graph Galaxy</span>
+              <span>3D Galaxy</span>
             </span>
             <span className="text-slate-700">|</span>
             <span className="text-[11px] text-slate-400 font-mono">
-              {nodes.length} Repos &bull; {links.length} Relations
+              {nodes.length} Star Systems &bull; LOD Culling Active
             </span>
           </div>
 
@@ -402,7 +389,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
           </button>
         </div>
 
-        {/* Hovered Node Inspection Card (Heads-Up Display) */}
+        {/* Hovered Node Inspection Card */}
         {hoveredNode && (
           <div className="absolute bottom-4 left-4 z-20 pointer-events-none max-w-sm bg-[#161b22]/95 border border-indigo-500/40 backdrop-blur-md p-4 rounded-xl shadow-2xl animate-in fade-in duration-100">
             <div className="flex items-center justify-between mb-1">
