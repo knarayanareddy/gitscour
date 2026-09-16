@@ -5,21 +5,25 @@ import {
   Workflow, GitFork, Star, Terminal, Code2, SlidersHorizontal, BookOpen,
   Plus, Trash2, ArrowUpDown, Compass, CheckCircle, RefreshCw, AlertTriangle,
   Zap, Search, X, CheckSquare, Activity, ShieldAlert, ArrowRightLeft, FileCode,
-  Gauge
+  Gauge, Filter, Eye
 } from 'lucide-react';
+import Stack3DVisualizer from './Stack3DVisualizer.jsx';
 
 export default function InspirationGenerator({ repos, onSelectRepo }) {
   const [activeStack, setActiveStack] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [selectedGoal, setSelectedGoal] = useState('all');
 
+  // Intelligent Progressive Cascading Filter Toggle
+  const [enableGuidedCascading, setEnableGuidedCascading] = useState(true);
+
   // Search filter inside custom slots
   const [slotSearches, setSlotSearches] = useState({});
 
   // 1. Dynamic User Stack Pooling Sandbox
   const [customPool, setCustomPool] = useState([
-    { role: "Vector / State Store", repoId: 44211562, domainFilter: "Databases & Storage" }, // duckdb or qdrant fallback
-    { role: "Inference / Core Runtime", repoId: null, domainFilter: "AI & Machine Learning" },
+    { role: "Vector / State Store", repoId: 44211562, domainFilter: "Databases & Storage" }, // duckdb
+    { role: "Inference / LLM Engine", repoId: null, domainFilter: "AI & Machine Learning" },
     { role: "API Gateway / Backend", repoId: null, domainFilter: "Web Platforms & Frameworks" },
     { role: "Reactive UI / Canvas", repoId: null, domainFilter: "Web Platforms & Frameworks" }
   ]);
@@ -153,7 +157,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
   };
 
   // -----------------------------------------------------------------------------------------
-  // 🔬 MULTI-DIMENSIONAL ARCHITECTURAL COMPATIBILITY TEST ENGINE (Works across all selections)
+  // 🔬 MULTI-DIMENSIONAL ARCHITECTURAL COMPATIBILITY TEST ENGINE (Universal Evaluation)
   // -----------------------------------------------------------------------------------------
   const customPoolAnalysis = useMemo(() => {
     const selectedRepos = customPool
@@ -169,7 +173,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
         positiveSignals: [],
         frictions: [],
         runtimeHarmonies: [],
-        protocolBridge: null
+        items: []
       };
     }
 
@@ -180,7 +184,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     const runtimeHarmonies = [];
     const matrix = [];
 
-    // Pairwise Compatibility Test across all combinations
+    // Pairwise Cartesian Evaluation
     for (let i = 0; i < selectedRepos.length; i++) {
       for (let j = i + 1; j < selectedRepos.length; j++) {
         const a = selectedRepos[i].repo;
@@ -188,18 +192,18 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
         const roleA = selectedRepos[i].role;
         const roleB = selectedRepos[j].role;
 
-        let pairScore = 50; // Neutral baseline
+        let pairScore = 50;
         let pairStatus = "Compatible";
         let pairNotes = [];
 
-        // 1. Runtime & Language Harmony
+        // 1. Runtime Harmony
         const langA = (a.language || 'Other').toLowerCase();
         const langB = (b.language || 'Other').toLowerCase();
         
         if (langA === langB && langA !== 'other') {
           pairScore += 25;
           positiveScore += 15;
-          const note = `Native ${a.language} ecosystem: direct in-process binding without foreign function (FFI) overhead.`;
+          const note = `Native ${a.language} ecosystem: direct in-process binding without FFI overhead.`;
           pairNotes.push(note);
           runtimeHarmonies.push({ pair: `${a.name} ↔ ${b.name}`, text: note });
         } else if (
@@ -217,9 +221,8 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
         ) {
           pairScore += 15;
           positiveScore += 10;
-          pairNotes.push(`High-performance C-extension / PyO3 binding synergy: ${b.name} natively accelerates ${a.name}.`);
+          pairNotes.push(`High-performance C-extension / PyO3 binding: ${b.name} natively accelerates ${a.name}.`);
         } else {
-          // Cross-runtime requiring IPC / Network boundary
           pairScore -= 5;
           frictionScore += 5;
           frictions.push({
@@ -231,7 +234,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
           pairNotes.push(`IPC / Network protocol bridge required.`);
         }
 
-        // 2. Architectural Primitive Alignment (Zero-Copy, SIMD, Columnar, Async)
+        // 2. Shared Architectural Primitives
         const primsA = a.primitives || [];
         const primsB = b.primitives || [];
         const sharedPrims = primsA.filter(p => primsB.includes(p));
@@ -266,7 +269,6 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
           pairNotes.push(`GPL reciprocity considerations.`);
         }
 
-        // Clamp pair score
         pairScore = Math.max(10, Math.min(100, pairScore));
         if (pairScore >= 75) pairStatus = "High Synergy";
         else if (pairScore >= 50) pairStatus = "Compatible";
@@ -284,7 +286,6 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
       }
     }
 
-    // Overall Architecture Health Score (0 to 100)
     let totalScore = 50 + (positiveScore * 0.8) - (frictionScore * 0.9);
     totalScore = Math.max(15, Math.min(98, Math.round(totalScore)));
 
@@ -303,9 +304,83 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
       matrix,
       positiveSignals,
       frictions,
-      runtimeHarmonies
+      runtimeHarmonies,
+      items: selectedRepos
     };
   }, [customPool, repoMap]);
+
+  // -----------------------------------------------------------------------------------------
+  // 🎯 PROGRESSIVE CASCADING CANDIDATES GENERATOR (Layer 1 -> Layer 2 -> Layer 3)
+  // -----------------------------------------------------------------------------------------
+  const getCandidatesForSlot = (slotIdx) => {
+    const slot = customPool[slotIdx];
+    const searchVal = (slotSearches[slotIdx] || '').trim().toLowerCase();
+
+    // Base pool matching domain
+    let base = repos.filter(r => slot.domainFilter === 'all' || r.domain === slot.domainFilter);
+
+    // Apply text search if entered
+    if (searchVal) {
+      base = base.filter(r => r.name.toLowerCase().includes(searchVal) || r.owner.toLowerCase().includes(searchVal));
+    }
+
+    // If guided cascading is disabled or this is Layer 1, return standard top-starred candidates
+    if (!enableGuidedCascading || slotIdx === 0) {
+      return base.slice(0, 45);
+    }
+
+    // Previous upstream selections
+    const upstreamSelections = customPool
+      .slice(0, slotIdx)
+      .map(s => s.repoId ? repoMap.get(s.repoId) : null)
+      .filter(Boolean);
+
+    if (upstreamSelections.length === 0) {
+      return base.slice(0, 45);
+    }
+
+    // Score and rank candidates by synergetic compatibility with upstream choices
+    const scoredCandidates = base.map(cand => {
+      let candSynergyScore = 0;
+      let reasons = [];
+
+      upstreamSelections.forEach(up => {
+        // 1. Language harmony
+        const upLang = (up.language || '').toLowerCase();
+        const candLang = (cand.language || '').toLowerCase();
+        if (upLang === candLang && upLang !== 'other') {
+          candSynergyScore += 30;
+          reasons.push(`Shared runtime (${up.language}) with ${up.name}`);
+        } else if (
+          (upLang === 'python' && ['rust', 'c++', 'c'].includes(candLang)) ||
+          (candLang === 'python' && ['rust', 'c++', 'c'].includes(upLang))
+        ) {
+          candSynergyScore += 20;
+          reasons.push(`PyO3 / C-Extension synergy with ${up.name}`);
+        }
+
+        // 2. Shared primitives
+        const shared = (cand.primitives || []).filter(p => (up.primitives || []).includes(p));
+        if (shared.length > 0) {
+          candSynergyScore += 25;
+          reasons.push(`Shared [${shared.join(', ')}] with ${up.name}`);
+        }
+      });
+
+      // Factor in general community popularity slightly
+      candSynergyScore += Math.log10(cand.stars) * 2;
+
+      return {
+        ...cand,
+        synergyScore: candSynergyScore,
+        synergyReason: reasons[0] || "Standard REST/IPC compatible"
+      };
+    });
+
+    // Sort highest synergy first
+    scoredCandidates.sort((a, b) => b.synergyScore - a.synergyScore);
+    return scoredCandidates.slice(0, 45);
+  };
 
   if (!activeStack && repos.length > 0) {
     generateRandomStack();
@@ -334,12 +409,26 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
               Test &amp; Pool Your Custom Tech Stack
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
-              Select or search any project into each architectural slot. The engine continuously tests runtime FFI boundaries, 
-              shared memory protocols (e.g., Arrow / Zero-Copy), and commercial license reciprocity to calculate an objective score.
+              Select or search any project into each architectural slot. The engine tests runtime boundaries, 
+              shared memory protocols (e.g., Arrow / Zero-Copy), and license reciprocity to calculate an objective score.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            {/* Guided Cascading Filter Toggle */}
+            <button
+              onClick={() => setEnableGuidedCascading(!enableGuidedCascading)}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors shadow-sm ${
+                enableGuidedCascading
+                  ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+              }`}
+              title="When enabled, downstream layers automatically prioritize tools compatible with upstream choices"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>{enableGuidedCascading ? 'Guided Compatibility: ON' : 'Guided Compatibility: OFF'}</span>
+            </button>
+
             <button
               onClick={() => {
                 setCustomPool(prev => [
@@ -354,7 +443,6 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
             </button>
             <button
               onClick={() => {
-                // Pre-fill a modern high-synergy Python+Rust stack
                 const py = repos.find(r => r.name.toLowerCase() === 'fastapi') || repos[0];
                 const db = repos.find(r => r.name.toLowerCase() === 'duckdb') || repos[1];
                 const ai = repos.find(r => r.name.toLowerCase() === 'vllm') || repos[2];
@@ -374,17 +462,11 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
           </div>
         </div>
 
-        {/* Dynamic Architectural Slots Grid */}
+        {/* Dynamic Architectural Slots Grid with Guided Cascading */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {customPool.map((slot, idx) => {
             const selectedItem = slot.repoId ? repoMap.get(slot.repoId) : null;
-            const searchVal = (slotSearches[idx] || '').trim().toLowerCase();
-
-            // Candidate suggestions filtered by domain and search keyword
-            const candidates = repos
-              .filter(r => (slot.domainFilter === 'all' || r.domain === slot.domainFilter))
-              .filter(r => !searchVal || r.name.toLowerCase().includes(searchVal) || r.owner.toLowerCase().includes(searchVal))
-              .slice(0, 35);
+            const candidates = getCandidatesForSlot(idx);
 
             return (
               <div 
@@ -431,7 +513,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                       <option value="">{selectedItem ? 'Change repository...' : 'Select a candidate...'}</option>
                       {candidates.map(c => (
                         <option key={c.id} value={c.id}>
-                          {c.name} ({c.language} &bull; {c.stars.toLocaleString()}★)
+                          {c.name} ({c.language} &bull; {c.stars.toLocaleString()}★){c.synergyReason && enableGuidedCascading && idx > 0 ? ` [${c.synergyReason}]` : ''}
                         </option>
                       ))}
                     </select>
@@ -474,6 +556,29 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
             );
           })}
         </div>
+
+        {/* ------------------------------------------------------------------------ */}
+        {/* NEW 3D STACK INTERACTIVE CONSTELLATION VISUALIZER                        */}
+        {/* ------------------------------------------------------------------------ */}
+        {customPoolAnalysis.selectedCount >= 2 && (
+          <div className="mb-6 space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <Compass className="w-4 h-4 text-indigo-400" />
+                <span>Interactive 3D Stack Spatial Constellation</span>
+              </span>
+              <span className="text-[11px] text-slate-400">
+                Drag to rotate &bull; Scroll to zoom &bull; Glowing laser beams represent verified bridges
+              </span>
+            </div>
+
+            <Stack3DVisualizer
+              stackItems={customPoolAnalysis.items}
+              analysis={customPoolAnalysis}
+              onSelectRepo={onSelectRepo}
+            />
+          </div>
+        )}
 
         {/* ------------------------------------------------------------------------ */}
         {/* LIVE ARCHITECTURAL TEST SCORECARD & VERIFICATION MATRIX (NOT BLIND)      */}
