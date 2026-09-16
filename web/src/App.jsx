@@ -1,32 +1,52 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Search, Star, GitFork, ExternalLink, Filter, Terminal, 
   Layers, Code2, ShieldAlert, Cpu, Sparkles, Database, Globe,
   CheckCircle2, AlertTriangle, Info, X, Copy, Check, ArrowRight,
   Boxes, Server, Lock, Flame, Compass, Network, HelpCircle,
-  Zap, GitCompare, Play, BookOpen, Lightbulb
+  Zap, GitCompare, Play, BookOpen, Lightbulb, Share2
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
+import InspirationGenerator from './InspirationGenerator.jsx';
 
 export default function App() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('explorer'); // 'explorer' | 'graph3d' | 'sql'
 
-  // Explorer filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState('all');
-  const [selectedSubsystem, setSelectedSubsystem] = useState('all');
-  const [selectedArtifact, setSelectedArtifact] = useState('all');
-  const [selectedLanguage, setSelectedLanguage] = useState('all');
-  const [selectedPrimitive, setSelectedPrimitive] = useState('all');
-  const [selectedLicenseTier, setSelectedLicenseTier] = useState('all');
-  const [minStars, setMinStars] = useState(500);
+  // Read URL query params helper
+  const getInitialUrlState = () => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      tab: params.get('tab') || 'explorer', // 'explorer' | 'graph3d' | 'inspire' | 'sql'
+      q: params.get('q') || '',
+      domain: params.get('domain') || 'all',
+      subsystem: params.get('subsystem') || 'all',
+      artifact: params.get('artifact') || 'all',
+      language: params.get('language') || 'all',
+      primitive: params.get('primitive') || 'all',
+      license: params.get('license') || 'all',
+      minStars: Number(params.get('minStars')) || 500,
+      inspect: params.get('inspect') || null
+    };
+  };
+
+  const initialUrl = getInitialUrlState();
+
+  const [activeTab, setActiveTab] = useState(initialUrl.tab);
+  const [searchQuery, setSearchQuery] = useState(initialUrl.q);
+  const [selectedDomain, setSelectedDomain] = useState(initialUrl.domain);
+  const [selectedSubsystem, setSelectedSubsystem] = useState(initialUrl.subsystem);
+  const [selectedArtifact, setSelectedArtifact] = useState(initialUrl.artifact);
+  const [selectedLanguage, setSelectedLanguage] = useState(initialUrl.language);
+  const [selectedPrimitive, setSelectedPrimitive] = useState(initialUrl.primitive);
+  const [selectedLicenseTier, setSelectedLicenseTier] = useState(initialUrl.license);
+  const [minStars, setMinStars] = useState(initialUrl.minStars);
 
   // Inspector Modal / Drawer
   const [activeRepoModal, setActiveRepoModal] = useState(null);
   const [modalTab, setModalTab] = useState('overview'); // 'overview' | 'superpowers' | 'quickstart'
   const [copiedText, setCopiedText] = useState(null);
+  const [urlShareCopied, setUrlShareCopied] = useState(false);
 
   // SQL Console state
   const [sqlQuery, setSqlQuery] = useState(
@@ -45,12 +65,49 @@ export default function App() {
       .then((data) => {
         setRepos(data);
         setLoading(false);
+
+        // Check if URL requested a specific repo to inspect on load
+        if (initialUrl.inspect) {
+          const match = data.find(
+            r => r.name.toLowerCase() === initialUrl.inspect.toLowerCase() ||
+                 r.full_name?.toLowerCase() === initialUrl.inspect.toLowerCase()
+          );
+          if (match) {
+            setActiveRepoModal(match);
+          }
+        }
       })
       .catch((err) => {
         console.error(err);
         setLoading(false);
       });
   }, []);
+
+  // Sync state to URL Query Parameters (Deep Linking)
+  useEffect(() => {
+    if (loading) return;
+    const params = new URLSearchParams();
+
+    if (activeTab !== 'explorer') params.set('tab', activeTab);
+    if (searchQuery) params.set('q', searchQuery);
+    if (selectedDomain !== 'all') params.set('domain', selectedDomain);
+    if (selectedSubsystem !== 'all') params.set('subsystem', selectedSubsystem);
+    if (selectedArtifact !== 'all') params.set('artifact', selectedArtifact);
+    if (selectedLanguage !== 'all') params.set('language', selectedLanguage);
+    if (selectedPrimitive !== 'all') params.set('primitive', selectedPrimitive);
+    if (selectedLicenseTier !== 'all') params.set('license', selectedLicenseTier);
+    if (minStars > 500) params.set('minStars', minStars);
+    if (activeRepoModal) params.set('inspect', activeRepoModal.name);
+
+    const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    window.history.replaceState({}, '', newUrl);
+  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars, activeRepoModal, loading]);
+
+  const copyShareableLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setUrlShareCopied(true);
+    setTimeout(() => setUrlShareCopied(false), 2000);
+  };
 
   const copyToClipboard = (text, key) => {
     navigator.clipboard.writeText(text);
@@ -199,10 +256,10 @@ export default function App() {
                   GitScour
                 </span>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
-                  &gt;500★ DB
+                  {repos.length > 0 ? `${repos.length} Repos` : '>500★ DB'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Intuitive Repository Intelligence, Deep Architectural Insights & 3D Knowledge Galaxy</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Deep Architectural Taxonomy & 3D Knowledge Galaxy of GitHub</p>
             </div>
           </div>
 
@@ -217,6 +274,17 @@ export default function App() {
             >
               <Filter className="w-3.5 h-3.5" />
               <span>Catalog</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('inspire')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                activeTab === 'inspire'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm shadow-indigo-600/30'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Inspire Me</span>
             </button>
             <button
               onClick={() => setActiveTab('graph3d')}
@@ -243,11 +311,31 @@ export default function App() {
               <Terminal className="w-3.5 h-3.5" />
               <span>SQL Studio</span>
             </button>
+
+            {/* Share Link Button */}
+            <button
+              onClick={copyShareableLink}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-300 hover:text-white rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium border border-slate-700/80 transition-colors ml-1"
+              title="Share Current URL Query & View"
+            >
+              {urlShareCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Share View</span>
+                </>
+              )}
+            </button>
+
             <a
               href="https://github.com/knarayanareddy/gitscour"
               target="_blank"
               rel="noreferrer"
-              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors ml-2"
+              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
               title="View on GitHub"
             >
               <Globe className="w-4 h-4" />
@@ -262,6 +350,17 @@ export default function App() {
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-slate-400 text-xs font-mono">Indexing repository taxonomy & beginner context...</p>
+          </div>
+        ) : activeTab === 'inspire' ? (
+          /* INSPIRE ME ARCHITECTURE GENERATOR */
+          <div className="space-y-6">
+            <InspirationGenerator
+              repos={repos}
+              onSelectRepo={(repo) => {
+                setActiveRepoModal(repo);
+                setModalTab('overview');
+              }}
+            />
           </div>
         ) : activeTab === 'graph3d' ? (
           /* 3D GRAPH EXPLORER VIEW */

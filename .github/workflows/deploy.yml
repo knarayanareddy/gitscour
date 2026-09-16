@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, arena/* ]
   schedule:
-    # Run once every Monday at 02:00 UTC to sync and classify new >500 star repos
+    # Run automatically every Monday at 02:00 UTC to sync and classify new >500 star repos
     - cron: '0 2 * * 1'
   workflow_dispatch:
 
@@ -29,9 +29,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Run Ingestion & Taxonomy Engine
+      - name: Run Live Scale Harvester & Taxonomy Engine
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 pipeline/generate_seed.py
+          python3 pipeline/harvest_scale.py
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
