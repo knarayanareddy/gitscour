@@ -8,8 +8,8 @@ Checks performed
 ----------------
   1. every Tier-1 row decodes against its dictionary maps, ids are unique,
      and no row falls below the star threshold;
-  2. the readable fallback index (`catalog-index.json`) and its legacy alias
-     (`repos.json`) cover exactly the same ids as the packed index;
+  2. the readable fallback index (`catalog-index.json`) covers exactly the same
+     ids as the packed index;
   3. every Tier-2 shard parses, is keyed by repo id, and its ids are a subset
      of the catalog; the union of all shards covers the whole catalog;
   4. per-domain shard membership matches each row's `shard` slug.
@@ -101,7 +101,7 @@ def main() -> int:
     if oob:
         errors.append(f"{oob} dictionary-encoded references outside their map")
 
-    for fname in ("catalog-index.json", "repos.json"):
+    for fname in ("catalog-index.json",):
         path = os.path.join(base, fname)
         if not os.path.exists(path):
             errors.append(f"missing {path}")

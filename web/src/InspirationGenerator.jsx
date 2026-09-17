@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Sparkles, Shuffle, ArrowRight, Layers, ExternalLink, 
   Database, Cpu, Globe, CheckCircle2, Shield, Rocket, Copy, Check,
@@ -22,7 +22,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
 
   // 1. Dynamic User Stack Pooling Sandbox
   const [customPool, setCustomPool] = useState([
-    { role: "Vector / State Store", repoId: 44211562, domainFilter: "Databases & Storage" }, // duckdb
+    { role: "Vector / State Store", repoId: null, domainFilter: "Databases & Storage" },
     { role: "Inference / LLM Engine", repoId: null, domainFilter: "AI & Machine Learning" },
     { role: "API Gateway / Backend", repoId: null, domainFilter: "Web Platforms & Frameworks" },
     { role: "Reactive UI / Canvas", repoId: null, domainFilter: "Web Platforms & Frameworks" }
@@ -35,11 +35,18 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     return map;
   }, [repos]);
 
-  // Seed initial duckdb/popular if available
-  useMemo(() => {
-    if (repos.length > 0 && !customPool[0].repoId) {
-      const db = repos.find(r => r.name.toLowerCase() === 'duckdb') || repos.find(r => r.domain === 'Databases & Storage');
-      if (db) customPool[0].repoId = db.id;
+  // Seed initial popular store (DuckDB) once repos load if first slot is empty
+  useEffect(() => {
+    if (repos.length > 0) {
+      setCustomPool(prev => {
+        if (prev.length > 0 && prev[0].repoId === null) {
+          const db = repos.find(r => r.name.toLowerCase() === 'duckdb') || repos.find(r => r.domain === 'Databases & Storage');
+          if (db) {
+            return prev.map((s, idx) => idx === 0 ? { ...s, repoId: db.id } : s);
+          }
+        }
+        return prev;
+      });
     }
   }, [repos]);
 
@@ -161,8 +168,8 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
   // -----------------------------------------------------------------------------------------
   const customPoolAnalysis = useMemo(() => {
     const selectedRepos = customPool
-      .map(slot => ({ role: slot.role, repo: slot.repoId ? repoMap.get(slot.repoId) : null }))
-      .filter(item => item.repo !== null);
+      .map(slot => ({ role: slot.role, repo: slot.repoId ? (repoMap.get(slot.repoId) || null) : null }))
+      .filter(item => Boolean(item.repo));
 
     if (selectedRepos.length === 0) {
       return {
@@ -382,9 +389,12 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     return scoredCandidates.slice(0, 45);
   };
 
-  if (!activeStack && repos.length > 0) {
-    generateRandomStack();
-  }
+  // Seed initial architecture blueprint stack once repos load
+  useEffect(() => {
+    if (!activeStack && repos.length > 0) {
+      generateRandomStack();
+    }
+  }, [repos, activeStack]);
 
   return (
     <div className="space-y-8">
@@ -465,7 +475,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
         {/* Dynamic Architectural Slots Grid with Guided Cascading */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {customPool.map((slot, idx) => {
-            const selectedItem = slot.repoId ? repoMap.get(slot.repoId) : null;
+            const selectedItem = slot.repoId ? (repoMap.get(slot.repoId) || null) : null;
             const candidates = getCandidatesForSlot(idx);
 
             return (

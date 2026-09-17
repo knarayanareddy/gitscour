@@ -510,10 +510,21 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     isPanning.current = false;
   };
 
-  const handleWheel = (e) => {
-    e.preventDefault();
-    setZoom((prev) => Math.min(2.8, Math.max(0.4, prev - e.deltaY * 0.0012)));
-  };
+  // Attach non-passive wheel event listener to container to cleanly intercept zoom
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      setZoom((prev) => Math.min(2.8, Math.max(0.4, prev - e.deltaY * 0.0012)));
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, []);
 
   const handleClick = () => {
     if (hoveredNode) {
@@ -529,7 +540,6 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
         onClick={handleClick}
         onContextMenu={(e) => e.preventDefault()}
       >

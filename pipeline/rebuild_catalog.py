@@ -11,7 +11,6 @@ truth, and all four artefacts are written from it in one pass:
 
   * `web/public/catalog-packed.json`        Tier 1, dictionary-encoded rows (primary)
   * `web/public/catalog-index.json`         Tier 1, readable fallback list
-  * `web/public/repos.json`                 legacy alias of the above
   * `web/public/data/details/<domain>.json` Tier 2 deep-intel shards keyed by repo id
 
 Identity rules
@@ -433,11 +432,10 @@ def main() -> int:
             "url": r.get("url") or f"https://github.com/{r['owner']}/{r['name']}",
             "shard": r["shard"],
         })
-    for name in ("catalog-index.json", "repos.json"):
-        path = os.path.join(args.base_dir, name)
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(tier1, fh, separators=(",", ":"))
-        print(f"Tier 1 fallback: {path} ({len(tier1)} repos, {os.path.getsize(path)/1e6:.2f} MB)")
+    tier1_path = os.path.join(args.base_dir, "catalog-index.json")
+    with open(tier1_path, "w", encoding="utf-8") as fh:
+        json.dump(tier1, fh, separators=(",", ":"))
+    print(f"Tier 1 fallback: {tier1_path} ({len(tier1)} repos, {os.path.getsize(tier1_path)/1e6:.2f} MB)")
 
     # ---------------- Tier 1: dictionary-encoded packed index ----------------
     domain_map, subsystem_map, lang_map, artifact_map = {}, {}, {}, {}
@@ -476,7 +474,7 @@ def main() -> int:
         json.dump(payload, fh, separators=(",", ":"))
     print(f"Packed index:  {packed_out} ({len(rows)} repos, {os.path.getsize(packed_out)/1e6:.2f} MB)")
 
-    total = shard_bytes + os.path.getsize(packed_out) + 2 * os.path.getsize(os.path.join(args.base_dir, "repos.json"))
+    total = shard_bytes + os.path.getsize(packed_out) + os.path.getsize(tier1_path)
     print("\n=== SUMMARY ===")
     print(f"repositories       : {len(records):,}  (was {stats['existing']:,})")
     print(f"new / refreshed    : {stats['new']:,} / {stats['refreshed']:,}")

@@ -56,13 +56,6 @@ export default function App() {
   const [copiedText, setCopiedText] = useState(null);
   const [urlShareCopied, setUrlShareCopied] = useState(false);
 
-  // SQL Console state
-  const [sqlQuery, setSqlQuery] = useState(
-    "SELECT name, stars, language, domain, subsystem\nFROM repos\nWHERE domain = 'Databases & Storage' AND stars >= 20000\nORDER BY stars DESC;"
-  );
-  const [sqlResults, setSqlResults] = useState(null);
-  const [sqlError, setSqlError] = useState(null);
-
   // Quick Inspiration Discovery Pills
   const DISCOVERY_PILLS = [
     { label: "Local AI & LLMs", domain: "AI & Machine Learning", q: "llm" },
@@ -380,7 +373,7 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-white/30 border-t-transparent rounded-full animate-spin" />
-            <p className="text-zinc-400 text-xs font-mono">Unpacking 123,000+ repository index into WebAssembly memory...</p>
+            <p className="text-zinc-400 text-xs font-mono">Unpacking 123,000+ repository index into memory...</p>
           </div>
         ) : activeTab === 'inspire' ? (
           /* SYNERGETIC TECH STACK ARCHITECT & POOLING SANDBOX */

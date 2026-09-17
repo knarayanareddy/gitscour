@@ -19,9 +19,10 @@ GitScour eliminates traditional backend database costs by combining static pre-i
      * **Primary Language & Runtime**.
    * Filters out generic "awesome lists" and tutorials so users searching for systems software find actual codebases.
 
-2. **Web Explorer & In-Browser SQL Studio (`web/`):**
-   * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, and languages.
-   * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with one-click CSV export.
+2. **Interactive Web Explorer, 3D Galaxy & Stack Architect (`web/`):**
+   * **Catalog Explorer:** Instant sub-5ms client-side faceted filtering and tokenized search across domains, subsystems, star thresholds, and languages.
+   * **3D Topological Knowledge Galaxy:** Custom WebGL-free 3D Canvas projection rendering force-directed clusters, logarithmic spiral arms, moving particle beams, and neighborhood semantic graphs at 60 FPS.
+   * **Synergetic Tech Stack Architect:** Dynamic architectural pooling sandbox that tests pairwise runtime boundaries, shared memory primitives (e.g. Arrow, Zero-Copy), and copyleft license reciprocity with interactive 3D stack constellation visualization.
 
 3. **Zero-Maintenance Automation (`.github/workflows/`):**
    * `backfill_123k.yml` (monthly) enumerates the full >500★ universe, rebuilds the
@@ -69,18 +70,18 @@ npm run dev
 ```
 Open `http://localhost:5173` to explore the catalog.
 
-### 2. Run the Classification Pipeline
+### 2. Verify Catalog Integrity
 ```bash
-python3 pipeline/generate_seed.py
+python3 pipeline/verify_catalog.py
 ```
 
-### 3. Fetch Repositories via GitHub GraphQL API
+### 3. Run Frontend Smoke Test
 ```bash
-export GITHUB_TOKEN="your_pat_token"
-python3 pipeline/ingest.py
+cd web
+node smoke-test.mjs public
 ```
 
-### 4. Full backfill (enumerate every repo above a star threshold)
+### 4. Full Backfill & Enumeration (Enumerate Every Repo >= 500 Stars)
 
 GitHub truncates *any* search query at 1,000 results, so a harvester that sweeps a
 handful of star windows can never return more than ~1,000 records per window no
@@ -110,11 +111,10 @@ under its old and new `owner/name`.
 
 | Script | Role |
 | --- | --- |
-| `harvest_enumerate.py` | Window-partitioned GraphQL sweep; the only harvester that can exceed 1,000 records per query |
-| `rebuild_catalog.py` | Single consolidation point for all four artefacts (`catalog-packed.json`, `catalog-index.json`, `repos.json`, `data/details/*.json`) |
-| `verify_catalog.py` | Cross-artefact integrity gate (ids, encodings, star floor, shard coverage) |
-| `reconcile_stale_rows.py` | Live re-validation of rows missing from the current universe |
-| `harvest_scale.py`, `backfill_worker.py`, `scale_50k.py` | Earlier samplers, capped at ~1k records per window; retained as reference |
-| `pack_index.py`, `shard_manager.py` | Superseded artefact writers kept for reference -- they each rebuild only *part* of the set, which is how the index and shards drifted apart |
+| `pipeline/harvest_enumerate.py` | Window-partitioned GraphQL sweep; dynamic bisection exceeding 1,000 records per query |
+| `pipeline/rebuild_catalog.py` | Single consolidation point for all artefacts (`catalog-packed.json`, `catalog-index.json`, `data/details/*.json`) |
+| `pipeline/verify_catalog.py` | Cross-artefact integrity gate (ids, encodings, star floor, shard coverage) |
+| `pipeline/reconcile_stale_rows.py` | Live re-validation of rows missing from the current universe |
+| `pipeline/legacy/*` | Archived earlier samplers and partial writers (`harvest_scale.py`, `pack_index.py`, `shard_manager.py`, `scale_50k.py`, etc.) |
 
 > `scale_50k.py` re-derives ids with `abs(hash(url))`. Python salts string hashing per process, so re-running it rewrites every id in the catalog and breaks Tier-2 lookups; `rebuild_catalog.py` assigns stable ids inside JavaScript's exact-integer range instead.

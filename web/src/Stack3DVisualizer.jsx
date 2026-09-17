@@ -41,11 +41,14 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
   const { nodes, bridges } = useMemo(() => {
     if (!stackItems || stackItems.length === 0) return { nodes: [], bridges: [] };
 
-    const activeNodes = stackItems.map((item, idx) => {
-      const angle = (idx / stackItems.length) * Math.PI * 2;
+    const validItems = stackItems.filter(item => Boolean(item && item.repo));
+    if (validItems.length === 0) return { nodes: [], bridges: [] };
+
+    const activeNodes = validItems.map((item, idx) => {
+      const angle = (idx / validItems.length) * Math.PI * 2;
       const radius = 170;
       // Stagger vertical elevation by layer order
-      const y = (idx - (stackItems.length - 1) / 2) * 55;
+      const y = (idx - (validItems.length - 1) / 2) * 55;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
 
@@ -131,7 +134,7 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
       ctx.fillRect(0, 0, width, height);
 
       const grad = ctx.createRadialGradient(cx, cy, 30, cx, cy, width * 0.65);
-      grad.addColorStop(0, 'rgba(20, 26, 45, 0.6)');
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.045)');
       grad.addColorStop(0.7, 'rgba(12, 14, 18, 0.35)');
       grad.addColorStop(1, 'rgba(7, 8, 10, 0.96)');
       ctx.fillStyle = grad;
