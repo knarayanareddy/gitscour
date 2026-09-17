@@ -280,10 +280,21 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
     isDragging.current = false;
   };
 
-  const handleWheel = (e) => {
-    e.preventDefault();
-    setZoom((prev) => Math.min(2.5, Math.max(0.6, prev - e.deltaY * 0.0012)));
-  };
+  // Attach non-passive wheel zoom listener to container element
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      setZoom((prev) => Math.min(2.5, Math.max(0.6, prev - e.deltaY * 0.0012)));
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, []);
 
   return (
     <div className="bg-obs-base border border-white/[0.07] rounded-2xl overflow-hidden shadow-2xl relative select-none">
@@ -294,7 +305,6 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
       >
         <canvas ref={canvasRef} className="w-full h-full block" />
 

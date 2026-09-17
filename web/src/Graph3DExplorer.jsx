@@ -6,7 +6,7 @@ import {
   Share2, Network, Sliders, Activity, Focus, Orbit, Radio
 } from 'lucide-react';
 
-export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain }) {
+export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, minStars = 500 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -22,7 +22,11 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   const [selectedNode, setSelectedNode] = useState(null);
   const [hoveredNode, setHoveredNode] = useState(null);
   const [filterDomain, setFilterDomain] = useState(selectedDomain || 'all');
-  const [filterMinStars, setFilterMinStars] = useState(500);
+  const [filterMinStars, setFilterMinStars] = useState(minStars || 500);
+
+  useEffect(() => {
+    if (minStars) setFilterMinStars(minStars);
+  }, [minStars]);
 
   // Second Brain / Obsidian & 3D Force Graph Interactive Controls
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -737,6 +741,25 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                 step="0.1"
                 value={repulsionForce}
                 onChange={(e) => setRepulsionForce(parseFloat(e.target.value))}
+                className="w-full cursor-pointer"
+              />
+            </div>
+
+            {/* Minimum Stars Threshold Slider */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-[10px] font-semibold uppercase text-zinc-400">
+                  Star Floor Threshold
+                </label>
+                <span className="font-mono text-signal-star font-medium">{filterMinStars.toLocaleString()}★</span>
+              </div>
+              <input
+                type="range"
+                min="500"
+                max="50000"
+                step="500"
+                value={filterMinStars}
+                onChange={(e) => setFilterMinStars(Number(e.target.value))}
                 className="w-full cursor-pointer"
               />
             </div>

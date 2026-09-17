@@ -79,7 +79,36 @@ export default function App() {
     return (text || "other-general").toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   };
 
-  // 1. Fetch & Unpack Packed Index (123,153 repositories in ~7.8MB gzip)
+  // 1. Lazy-Fetch Tier 2 Detail Shard on Modal Open
+  const handleOpenRepoModal = useCallback((repo) => {
+    setActiveRepoModal(repo);
+    setModalTab('overview');
+
+    const shardSlug = repo.shard || slugify(repo.domain);
+    if (!shardSlug || detailShards[shardSlug]) {
+      return;
+    }
+
+    setLoadingShard(true);
+    fetch(`./data/details/${shardSlug}.json`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Shard ${shardSlug} not found`);
+        return res.json();
+      })
+      .then((shardData) => {
+        setDetailShards((prev) => ({
+          ...prev,
+          [shardSlug]: shardData
+        }));
+        setLoadingShard(false);
+      })
+      .catch((err) => {
+        console.warn(`Could not load deep shard for ${shardSlug}:`, err);
+        setLoadingShard(false);
+      });
+  }, [detailShards]);
+
+  // 2. Fetch & Unpack Packed Index (123,153 repositories in ~7.8MB gzip)
   useEffect(() => {
     fetch('./catalog-packed.json')
       .then((res) => {
@@ -131,36 +160,7 @@ export default function App() {
             setLoading(false);
           });
       });
-  }, []);
-
-  // 2. Lazy-Fetch Tier 2 Detail Shard on Modal Open
-  const handleOpenRepoModal = useCallback((repo) => {
-    setActiveRepoModal(repo);
-    setModalTab('overview');
-
-    const shardSlug = repo.shard || slugify(repo.domain);
-    if (!shardSlug || detailShards[shardSlug]) {
-      return;
-    }
-
-    setLoadingShard(true);
-    fetch(`./data/details/${shardSlug}.json`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Shard ${shardSlug} not found`);
-        return res.json();
-      })
-      .then((shardData) => {
-        setDetailShards((prev) => ({
-          ...prev,
-          [shardSlug]: shardData
-        }));
-        setLoadingShard(false);
-      })
-      .catch((err) => {
-        console.warn(`Could not load deep shard for ${shardSlug}:`, err);
-        setLoadingShard(false);
-      });
-  }, [detailShards]);
+  }, [handleOpenRepoModal, initialUrl.inspect]);
 
   // Compute merged active repo with lazy-loaded Tier 2 details
   const activeRepoDetails = useMemo(() => {
@@ -432,6 +432,7 @@ export default function App() {
             <Graph3DExplorer
               repos={repos}
               selectedDomain={selectedDomain}
+              minStars={minStars}
               onSelectRepo={(repo) => handleOpenRepoModal(repo)}
             />
           </div>
