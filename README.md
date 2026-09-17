@@ -19,10 +19,11 @@ GitScour eliminates traditional backend database costs by combining static pre-i
      * **Primary Language & Runtime**.
    * Filters out generic "awesome lists" and tutorials so users searching for systems software find actual codebases.
 
-2. **Interactive Web Explorer, 3D Galaxy & Stack Architect (`web/`):**
+2. **Interactive Web Explorer, 3D Galaxy, Stack Architect & SQL Studio (`web/`):**
    * **Catalog Explorer:** Instant sub-5ms client-side faceted filtering and tokenized search across domains, subsystems, star thresholds, and languages.
    * **3D Topological Knowledge Galaxy:** Custom WebGL-free 3D Canvas projection rendering force-directed clusters, logarithmic spiral arms, moving particle beams, and neighborhood semantic graphs at 60 FPS.
    * **Synergetic Tech Stack Architect:** Dynamic architectural pooling sandbox that tests pairwise runtime boundaries, shared memory primitives (e.g. Arrow, Zero-Copy), and copyleft license reciprocity with interactive 3D stack constellation visualization.
+   * **In-Browser SQL Studio:** Lightning-fast client-side SQL execution console over 123,000+ repositories allowing arbitrary queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with live timing and one-click CSV export.
 
 3. **Zero-Maintenance Automation (`.github/workflows/`):**
    * `backfill_123k.yml` (monthly) enumerates the full >500★ universe, rebuilds the

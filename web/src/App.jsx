@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
 import InspirationGenerator from './InspirationGenerator.jsx';
+import SqlStudio from './SqlStudio.jsx';
 
 export default function App() {
   const [repos, setRepos] = useState([]);
@@ -335,6 +336,17 @@ export default function App() {
               <Compass className="w-3.5 h-3.5" />
               <span>3D Galaxy</span>
             </button>
+            <button
+              onClick={() => setActiveTab('sql')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                activeTab === 'sql'
+                  ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>SQL Studio</span>
+            </button>
 
             {/* Share Link Button */}
             <button
@@ -378,6 +390,12 @@ export default function App() {
         ) : activeTab === 'inspire' ? (
           /* SYNERGETIC TECH STACK ARCHITECT & POOLING SANDBOX */
           <InspirationGenerator
+            repos={repos}
+            onSelectRepo={(repo) => handleOpenRepoModal(repo)}
+          />
+        ) : activeTab === 'sql' ? (
+          /* IN-BROWSER SQL STUDIO CONSOLE */
+          <SqlStudio
             repos={repos}
             onSelectRepo={(repo) => handleOpenRepoModal(repo)}
           />
