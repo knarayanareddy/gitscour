@@ -35,6 +35,20 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     return map;
   }, [repos]);
 
+  // Unique domains list for user-scoped filtering per slot
+  const domainsList = useMemo(() => {
+    return Array.from(new Set(repos.map((r) => r.domain).filter(Boolean))).sort();
+  }, [repos]);
+
+  const ROLE_SUBSYSTEM_HINTS = {
+    "Vector / State Store": ["vector", "store", "database", "sql", "olap", "cache", "key-value", "columnar", "storage", "timeseries", "embedded-db"],
+    "Inference / LLM Engine": ["inference", "llm", "serving", "vllm", "llama", "model", "agent", "training", "diffusion", "rag"],
+    "API Gateway / Backend": ["gateway", "proxy", "mesh", "backend", "framework", "api", "grpc", "graphql", "server", "fastapi", "express", "actix"],
+    "Async API Backend": ["gateway", "proxy", "mesh", "backend", "framework", "api", "grpc", "graphql", "server", "fastapi", "express", "actix"],
+    "Reactive UI / Canvas": ["ui", "component", "canvas", "frontend", "webgl", "visualization", "react", "vue", "tailwind", "design-system", "charts"],
+    "Modern Analytics UI": ["ui", "component", "canvas", "frontend", "webgl", "visualization", "react", "vue", "tailwind", "design-system", "charts"]
+  };
+
   // Seed initial popular store (DuckDB) once repos load if first slot is empty
   useEffect(() => {
     if (repos.length > 0) {
@@ -175,6 +189,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
       return {
         score: 0,
         grade: "Empty",
+        gradeColor: "text-zinc-500",
         selectedCount: 0,
         matrix: [],
         positiveSignals: [],
@@ -184,14 +199,28 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
       };
     }
 
-    let positiveScore = 0;
-    let frictionScore = 0;
+    if (selectedRepos.length === 1) {
+      return {
+        score: 100,
+        grade: "Single Layer Selected",
+        gradeColor: "text-zinc-400",
+        selectedCount: 1,
+        matrix: [],
+        positiveSignals: [{ pair: selectedRepos[0].repo.name, desc: "Awaiting second layer to run pairwise compatibility test." }],
+        frictions: [],
+        runtimeHarmonies: [],
+        items: selectedRepos
+      };
+    }
+
     const positiveSignals = [];
     const frictions = [];
     const runtimeHarmonies = [];
     const matrix = [];
+    let pairScoreSum = 0;
+    let evaluatedPairs = 0;
 
-    // Pairwise Cartesian Evaluation
+    // Pairwise Cartesian Evaluation across selected components
     for (let i = 0; i < selectedRepos.length; i++) {
       for (let j = i + 1; j < selectedRepos.length; j++) {
         const a = selectedRepos[i].repo;
@@ -199,74 +228,118 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
         const roleA = selectedRepos[i].role;
         const roleB = selectedRepos[j].role;
 
-        let pairScore = 50;
-        let pairStatus = "Compatible";
+        let pairScore = 55; // Neutral baseline for decoupled software systems
         let pairNotes = [];
 
-        // 1. Runtime Harmony
+        // 1. Runtime & Process Boundary Mechanics
         const langA = (a.language || 'Other').toLowerCase();
         const langB = (b.language || 'Other').toLowerCase();
         
         if (langA === langB && langA !== 'other') {
-          pairScore += 25;
-          positiveScore += 15;
-          const note = `Native ${a.language} ecosystem: direct in-process binding without FFI overhead.`;
+          pairScore += 22;
+          const note = `Unified ${a.language} runtime: direct in-process binding without FFI or serialization cost.`;
           pairNotes.push(note);
           runtimeHarmonies.push({ pair: `${a.name} ↔ ${b.name}`, text: note });
+          positiveSignals.push({ pair: `${a.name} ↔ ${b.name}`, desc: note });
         } else if (
           (langA === 'typescript' && langB === 'javascript') ||
           (langA === 'javascript' && langB === 'typescript') ||
           (langA === 'c++' && langB === 'c') ||
           (langA === 'c' && langB === 'c++')
         ) {
-          pairScore += 20;
-          positiveScore += 10;
-          pairNotes.push(`Native interop between ${a.language} and ${b.language}.`);
+          pairScore += 18;
+          const note = `Native ecosystem interop between ${a.language} and ${b.language}.`;
+          pairNotes.push(note);
+          runtimeHarmonies.push({ pair: `${a.name} ↔ ${b.name}`, text: note });
         } else if (
           (langA === 'python' && ['rust', 'c++', 'c'].includes(langB)) ||
           (langB === 'python' && ['rust', 'c++', 'c'].includes(langA))
         ) {
-          pairScore += 15;
-          positiveScore += 10;
-          pairNotes.push(`High-performance C-extension / PyO3 binding: ${b.name} natively accelerates ${a.name}.`);
+          pairScore += 18;
+          const note = `Native PyO3 / C-Extension acceleration: ${b.name} natively accelerates ${a.name} workload.`;
+          pairNotes.push(note);
+          positiveSignals.push({ pair: `${a.name} ↔ ${b.name}`, desc: note });
+        } else if (
+          (['javascript', 'typescript'].includes(langA) && (b.domain === 'Web Platforms & Frameworks' || b.domain === 'Cloud & Infrastructure')) ||
+          (['javascript', 'typescript'].includes(langB) && (a.domain === 'Web Platforms & Frameworks' || a.domain === 'Cloud & Infrastructure'))
+        ) {
+          pairScore += 10;
+          pairNotes.push(`Standard HTTP/JSON decoupled client-server web boundary.`);
         } else {
-          pairScore -= 5;
-          frictionScore += 5;
+          pairScore -= 4;
           frictions.push({
             pair: `${a.name} (${a.language}) ↔ ${b.name} (${b.language})`,
-            type: "Network / IPC Boundary",
+            type: "Process / IPC Boundary",
             severity: "low",
-            desc: `Requires serialized communication (HTTP/JSON, gRPC, or WebSockets) across processes.`
+            desc: `Requires serialized communication (HTTP/JSON, gRPC, or WebSockets) across process memory.`
           });
-          pairNotes.push(`IPC / Network protocol bridge required.`);
+          pairNotes.push(`Decoupled process boundary via network/IPC.`);
         }
 
-        // 2. Shared Architectural Primitives
+        // 2. Protocol & Interoperability Compatibility
+        const compA = a.compatibility || [];
+        const compB = b.compatibility || [];
+        const sharedComp = compA.filter(c => compB.includes(c));
+
+        if (sharedComp.length > 0) {
+          pairScore += 18;
+          const note = `Aligned on wire standard [${sharedComp.join(', ')}].`;
+          pairNotes.push(note);
+          positiveSignals.push({
+            pair: `${a.name} ↔ ${b.name}`,
+            desc: `Both components share communication standard: ${sharedComp.join(', ')}.`
+          });
+        }
+
+        // Complementary protocol handshakes (DB <-> Backend, Model Serving <-> API)
+        const isDbA = a.domain === 'Databases & Storage';
+        const isDbB = b.domain === 'Databases & Storage';
+        const isBackendA = a.domain === 'Web Platforms & Frameworks' || a.domain === 'Networking & Distributed Systems';
+        const isBackendB = b.domain === 'Web Platforms & Frameworks' || b.domain === 'Networking & Distributed Systems';
+        
+        if ((isDbA && isBackendB) || (isDbB && isBackendA)) {
+          if (compA.includes('PostgreSQL Compatible') || compB.includes('PostgreSQL Compatible')) {
+            pairScore += 14;
+            pairNotes.push(`PostgreSQL wire protocol natively supported by backend drivers.`);
+          } else if (compA.includes('Redis Compatible') || compB.includes('Redis Compatible')) {
+            pairScore += 14;
+            pairNotes.push(`Redis RESP protocol natively supported by backend client pools.`);
+          }
+        }
+
+        // OpenAI API Protocol Handshake for Model Serving
+        if ((compA.includes('OpenAI API Compatible') && (b.domain === 'AI & Machine Learning' || isBackendB)) ||
+            (compB.includes('OpenAI API Compatible') && (a.domain === 'AI & Machine Learning' || isBackendA))) {
+          pairScore += 16;
+          const note = `OpenAI ChatCompletions API compatibility enables drop-in client integration.`;
+          pairNotes.push(note);
+          positiveSignals.push({ pair: `${a.name} ↔ ${b.name}`, desc: note });
+        }
+
+        // 3. Shared Architectural & Hardware Primitives
         const primsA = a.primitives || [];
         const primsB = b.primitives || [];
         const sharedPrims = primsA.filter(p => primsB.includes(p));
 
         if (sharedPrims.length > 0) {
-          pairScore += 20;
-          positiveScore += 20;
-          const note = `Aligned on architectural primitive [${sharedPrims.join(', ')}].`;
+          pairScore += 18;
+          const note = `Aligned on hardware primitive [${sharedPrims.join(', ')}].`;
           pairNotes.push(note);
           positiveSignals.push({
             pair: `${a.name} ↔ ${b.name}`,
             primitive: sharedPrims.join(', '),
-            desc: `Both components are optimized for ${sharedPrims.join(', ')}, eliminating memory transcode bottlenecks.`
+            desc: `Both components share hardware optimization [${sharedPrims.join(', ')}], eliminating transcode overhead.`
           });
         }
 
-        // 3. Commercial License Compatibility Check
+        // 4. Commercial License Compatibility Check
         const licA = (a.license || 'Open Source').toLowerCase();
         const licB = (b.license || 'Open Source').toLowerCase();
         const isCopyleftA = licA.includes('gpl') && !licA.includes('lgpl');
         const isCopyleftB = licB.includes('gpl') && !licB.includes('lgpl');
 
         if (isCopyleftA !== isCopyleftB && (isCopyleftA || isCopyleftB)) {
-          pairScore -= 15;
-          frictionScore += 15;
+          pairScore -= 18;
           frictions.push({
             pair: `${a.name} (${a.license}) ↔ ${b.name} (${b.license})`,
             type: "License Reciprocity Asymmetry",
@@ -274,12 +347,26 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
             desc: `Copyleft license terms (${isCopyleftA ? a.name : b.name}) may mandate open-sourcing client proprietary source code if statically linked.`
           });
           pairNotes.push(`GPL reciprocity considerations.`);
+        } else if (!isCopyleftA && !isCopyleftB && (licA.includes('mit') || licA.includes('apache') || licA.includes('bsd'))) {
+          pairScore += 4;
         }
 
-        pairScore = Math.max(10, Math.min(100, pairScore));
-        if (pairScore >= 75) pairStatus = "High Synergy";
-        else if (pairScore >= 50) pairStatus = "Compatible";
+        // Domain Duplication check (e.g. 2 monolithic relational DBs in one stack)
+        if (isDbA && isDbB && a.id !== b.id && !compA.includes('Vector Database') && !compB.includes('Vector Database')) {
+          pairScore -= 12;
+          pairNotes.push(`Multiple relational/state stores may introduce redundant data synchronization.`);
+        }
+
+        pairScore = Math.max(15, Math.min(99, Math.round(pairScore)));
+        
+        let pairStatus = "Compatible";
+        if (pairScore >= 78) pairStatus = "High Synergy";
+        else if (pairScore >= 60) pairStatus = "Production Viable";
+        else if (pairScore >= 45) pairStatus = "Standard IPC";
         else pairStatus = "Friction Warning";
+
+        pairScoreSum += pairScore;
+        evaluatedPairs++;
 
         matrix.push({
           nodeA: a,
@@ -293,18 +380,34 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
       }
     }
 
-    let totalScore = 50 + (positiveScore * 0.8) - (frictionScore * 0.9);
-    totalScore = Math.max(15, Math.min(98, Math.round(totalScore)));
+    // Normalized aggregate score = Mean of evaluated pairs
+    const meanPairScore = evaluatedPairs > 0 ? (pairScoreSum / evaluatedPairs) : 50;
+
+    // Stack Completeness & Cohesion Adjustments
+    let completenessBonus = 0;
+    const domainsPresent = new Set(selectedRepos.map(s => s.repo.domain));
+    if (domainsPresent.has('Databases & Storage') && (domainsPresent.has('Web Platforms & Frameworks') || domainsPresent.has('Networking & Distributed Systems'))) {
+      completenessBonus += 4; // Complete Storage + Backend pipeline
+    }
+    if (domainsPresent.has('AI & Machine Learning') && (domainsPresent.has('Web Platforms & Frameworks') || domainsPresent.has('Databases & Storage'))) {
+      completenessBonus += 3; // AI runtime integrated with state or serving
+    }
+    if (selectedRepos.length >= 4 && (domainsPresent.size >= 3)) {
+      completenessBonus += 3; // Balanced multi-tier architecture
+    }
+
+    let finalScore = Math.round(meanPairScore + completenessBonus);
+    finalScore = Math.max(15, Math.min(98, finalScore));
 
     let grade = "Production Ready";
     let gradeColor = "text-signal-ok";
-    if (totalScore >= 80) { grade = "High Architectural Synergy"; gradeColor = "text-signal-ok"; }
-    else if (totalScore >= 60) { grade = "Production Viable (Standard IPC)"; gradeColor = "text-signal-info"; }
-    else if (totalScore >= 40) { grade = "Architectural Friction Detected"; gradeColor = "text-signal-star"; }
+    if (finalScore >= 82) { grade = "High Architectural Synergy"; gradeColor = "text-signal-ok"; }
+    else if (finalScore >= 65) { grade = "Production Viable (Standard IPC)"; gradeColor = "text-signal-info"; }
+    else if (finalScore >= 48) { grade = "Moderate Friction Detected"; gradeColor = "text-signal-star"; }
     else { grade = "High Coupling / License Conflict"; gradeColor = "text-signal-risk"; }
 
     return {
-      score: totalScore,
+      score: finalScore,
       grade,
       gradeColor,
       selectedCount: selectedRepos.length,
@@ -322,71 +425,85 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
   const getCandidatesForSlot = (slotIdx) => {
     const slot = customPool[slotIdx];
     const searchVal = (slotSearches[slotIdx] || '').trim().toLowerCase();
+    const hints = ROLE_SUBSYSTEM_HINTS[slot.role] || [];
 
-    // Base pool matching domain
-    let base = repos.filter(r => slot.domainFilter === 'all' || r.domain === slot.domainFilter);
+    let pool = repos;
+    if (slot.domainFilter && slot.domainFilter !== 'all') {
+      pool = repos.filter(r => r.domain === slot.domainFilter);
+    }
 
     // Apply text search if entered
     if (searchVal) {
-      base = base.filter(r => r.name.toLowerCase().includes(searchVal) || r.owner.toLowerCase().includes(searchVal));
+      let matched = pool.filter(r => r.name.toLowerCase().includes(searchVal) || r.owner.toLowerCase().includes(searchVal));
+      // Fallback: if not found in the scoped domain, search across the entire 123k catalog so user is never blocked!
+      if (matched.length < 5 && slot.domainFilter !== 'all') {
+        matched = repos.filter(r => r.name.toLowerCase().includes(searchVal) || r.owner.toLowerCase().includes(searchVal));
+      }
+      return matched.slice(0, 80);
     }
 
-    // If guided cascading is disabled or this is Layer 1, return standard top-starred candidates
-    if (!enableGuidedCascading || slotIdx === 0) {
-      return base.slice(0, 45);
-    }
-
-    // Previous upstream selections
+    // Previous upstream selections for cascading synergy
     const upstreamSelections = customPool
       .slice(0, slotIdx)
-      .map(s => s.repoId ? repoMap.get(s.repoId) : null)
+      .map(s => s.repoId ? (repoMap.get(s.repoId) || null) : null)
       .filter(Boolean);
 
-    if (upstreamSelections.length === 0) {
-      return base.slice(0, 45);
-    }
+    // Score and rank candidates by role subsystem relevance, artifact quality, and community adoption
+    const scoredCandidates = pool.map(cand => {
+      let candScore = Math.log10(Math.max(10, cand.stars || 10)) * 3;
+      const subLower = (cand.subsystem || '').toLowerCase();
+      const nameLower = cand.name.toLowerCase();
 
-    // Score and rank candidates by synergetic compatibility with upstream choices
-    const scoredCandidates = base.map(cand => {
-      let candSynergyScore = 0;
-      let reasons = [];
+      // Prioritize candidates matching the slot's architectural role
+      if (hints.some(h => subLower.includes(h) || nameLower.includes(h))) {
+        candScore += 45;
+      }
 
-      upstreamSelections.forEach(up => {
-        // 1. Language harmony
-        const upLang = (up.language || '').toLowerCase();
-        const candLang = (cand.language || '').toLowerCase();
-        if (upLang === candLang && upLang !== 'other') {
-          candSynergyScore += 30;
-          reasons.push(`Shared runtime (${up.language}) with ${up.name}`);
-        } else if (
-          (upLang === 'python' && ['rust', 'c++', 'c'].includes(candLang)) ||
-          (candLang === 'python' && ['rust', 'c++', 'c'].includes(upLang))
-        ) {
-          candSynergyScore += 20;
-          reasons.push(`PyO3 / C-Extension synergy with ${up.name}`);
-        }
+      // Prioritize system engines, frameworks, and SDKs over static documentation
+      if (cand.artifact !== 'Curated List / Docs') {
+        candScore += 25;
+      }
 
-        // 2. Shared primitives
-        const shared = (cand.primitives || []).filter(p => (up.primitives || []).includes(p));
-        if (shared.length > 0) {
-          candSynergyScore += 25;
-          reasons.push(`Shared [${shared.join(', ')}] with ${up.name}`);
-        }
-      });
+      let synergyReason = "";
+      if (enableGuidedCascading && upstreamSelections.length > 0) {
+        upstreamSelections.forEach(up => {
+          const upLang = (up.language || '').toLowerCase();
+          const candLang = (cand.language || '').toLowerCase();
+          if (upLang === candLang && upLang !== 'other') {
+            candScore += 25;
+            synergyReason = `Shared runtime (${up.language}) with ${up.name}`;
+          } else if (
+            (upLang === 'python' && ['rust', 'c++', 'c'].includes(candLang)) ||
+            (candLang === 'python' && ['rust', 'c++', 'c'].includes(upLang))
+          ) {
+            candScore += 20;
+            synergyReason = `PyO3 / C-Extension synergy with ${up.name}`;
+          }
 
-      // Factor in general community popularity slightly
-      candSynergyScore += Math.log10(cand.stars) * 2;
+          const shared = (cand.primitives || []).filter(p => (up.primitives || []).includes(p));
+          if (shared.length > 0) {
+            candScore += 25;
+            synergyReason = `Shared [${shared[0]}] with ${up.name}`;
+          }
+
+          const compShared = (cand.compatibility || []).filter(c => (up.compatibility || []).includes(c));
+          if (compShared.length > 0) {
+            candScore += 20;
+            synergyReason = `Shared [${compShared[0]}] standard`;
+          }
+        });
+      }
 
       return {
         ...cand,
-        synergyScore: candSynergyScore,
-        synergyReason: reasons[0] || "Standard REST/IPC compatible"
+        _candScore: candScore,
+        synergyReason
       };
     });
 
-    // Sort highest synergy first
-    scoredCandidates.sort((a, b) => b.synergyScore - a.synergyScore);
-    return scoredCandidates.slice(0, 45);
+    // Sort highest relevance and synergy first
+    scoredCandidates.sort((a, b) => b._candScore - a._candScore);
+    return scoredCandidates.slice(0, 80);
   };
 
   // Seed initial architecture blueprint stack once repos load
@@ -499,17 +616,40 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                     )}
                   </div>
 
-                  {/* Filterable Dropdown with Search Box */}
+                  {/* Filterable Dropdown with Search Box & Domain Scope */}
                   <div className="space-y-1.5 mb-2">
+                    {/* Domain Scope Selector */}
+                    <div className="flex items-center gap-1.5 text-[10px]">
+                      <span className="text-zinc-500 whitespace-nowrap font-medium">Scope:</span>
+                      <select
+                        value={slot.domainFilter || 'all'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomPool(prev => prev.map((s, i) => i === idx ? { ...s, domainFilter: val } : s));
+                        }}
+                        className="w-full bg-obs-surface border border-white/[0.08] rounded px-1.5 py-0.5 text-[10px] text-zinc-300 focus:outline-none focus:border-white/30 truncate"
+                      >
+                        <option value="all">All 123k Repositories</option>
+                        {domainsList.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500" />
                       <input
                         type="text"
-                        placeholder="Search 123k repos..."
+                        placeholder="Search 123k repos (e.g. 'redis', 'envoy')..."
                         value={slotSearches[idx] || ''}
                         onChange={(e) => setSlotSearches(prev => ({ ...prev, [idx]: e.target.value }))}
                         className="w-full bg-obs-surface border border-white/[0.09] rounded-lg pl-7 pr-2 py-1 text-[11px] text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07]"
                       />
+                    </div>
+
+                    <div className="flex justify-between items-center text-[9px] text-zinc-500 px-0.5">
+                      <span>{slot.domainFilter === 'all' ? 'Universe Search' : slot.domainFilter.split('&')[0].trim()}</span>
+                      <span>Showing {candidates.length} relevant</span>
                     </div>
 
                     <select

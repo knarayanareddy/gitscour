@@ -82,26 +82,50 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     return stars;
   }, []);
 
-  // 1. Build Graph Topology, Node Geometries & Force-Layout Positioning
+  // 1. Build Canonical Cluster Centers across all domains in the catalog
+  const allDomainNames = useMemo(() => {
+    return Array.from(new Set(repos.map((r) => r.domain).filter(Boolean))).sort();
+  }, [repos]);
+
+  const clusterCenters = useMemo(() => {
+    const centers = {};
+    allDomainNames.forEach((d, idx) => {
+      const angle = (idx / Math.max(1, allDomainNames.length)) * Math.PI * 2;
+      const elevation = ((idx % 2 === 0 ? 1 : -1) * 0.35);
+      const clusterRadius = 310 * repulsionForce;
+      centers[d] = {
+        x: Math.cos(angle) * clusterRadius,
+        y: elevation * 140 * repulsionForce,
+        z: Math.sin(angle) * clusterRadius
+      };
+    });
+    return centers;
+  }, [allDomainNames, repulsionForce]);
+
+  // Synchronize filterDomain immediately when selectedDomain prop changes from parent
+  useEffect(() => {
+    const dom = selectedDomain || 'all';
+    setFilterDomain(dom);
+
+    if (dom !== 'all' && clusterCenters[dom]) {
+      const center = clusterCenters[dom];
+      const targetRotY = -Math.atan2(center.x, center.z);
+      targetCam.current = {
+        targetRotX: 0.22,
+        targetRotY,
+        targetZoom: 1.55,
+        frames: 35
+      };
+      setAutoRotate(false);
+    }
+  }, [selectedDomain, clusterCenters]);
+
+  // 2. Build Graph Topology, Node Geometries & Force-Layout Positioning
   const { nodes, links, domainClusters, nodeLookup } = useMemo(() => {
     const validRepos = repos.filter((r) => {
       if (filterDomain !== 'all' && r.domain !== filterDomain) return false;
       if (r.stars < filterMinStars) return false;
       return true;
-    });
-
-    const domainNames = Array.from(new Set(validRepos.map((r) => r.domain).filter(Boolean)));
-    const clusterCenters = {};
-
-    domainNames.forEach((d, idx) => {
-      const angle = (idx / domainNames.length) * Math.PI * 2;
-      const elevation = ((idx % 2 === 0 ? 1 : -1) * 0.35);
-      const clusterRadius = 310 * repulsionForce;
-      clusterCenters[d] = {
-        x: Math.cos(angle) * clusterRadius,
-        y: elevation * 140 * repulsionForce,
-        z: Math.sin(angle) * clusterRadius
-      };
     });
 
     const lookup = {};
@@ -201,8 +225,8 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       }
     }
 
-    return { nodes: graphNodes, links: graphLinks, domainClusters: domainNames, nodeLookup: lookup };
-  }, [repos, filterDomain, filterMinStars, viewMode, repulsionForce, nodeSizingMetric]);
+    return { nodes: graphNodes, links: graphLinks, domainClusters: allDomainNames, nodeLookup: lookup };
+  }, [repos, filterDomain, filterMinStars, viewMode, repulsionForce, nodeSizingMetric, clusterCenters, allDomainNames]);
 
   // Active Focus & Connected Neighborhood Computation (with Hop Depth support)
   const activeFocusNode = selectedNode || hoveredNode;
