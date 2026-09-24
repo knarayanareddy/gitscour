@@ -1,4 +1,7 @@
+import argparse
 import json
+import os
+
 from taxonomy_engine import enrich_repository_record
 
 # Rich curated repository knowledge base with deep beginner & inspirational context
@@ -398,12 +401,34 @@ SEEDS = [
     }
 ]
 
-def generate_dataset():
+def generate_dataset(output_path: str | None = None) -> str:
     enriched = [enrich_repository_record(r) for r in SEEDS]
-    output_path = "web/public/repos.json"
+    if output_path is None:
+        # NEVER default to web/public/repos.json: that is a live 63 MB catalog
+        # artifact (byte-identical alias of catalog-index.json), and overwriting
+        # it with ~16 demo rows broke verify_catalog.py and the deploy gate —
+        # README quick-start step 2 used to do exactly that (review finding #6).
+        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed_demo.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(enriched, f, indent=2)
     print(f"Generated {len(enriched)} enriched repository records with deep beginner intel at {output_path}")
+    return output_path
+
 
 if __name__ == "__main__":
-    generate_dataset()
+    parser = argparse.ArgumentParser(description="Generate the demo seed dataset (never touches the live catalog)")
+    parser.add_argument("--output", default=None,
+                        help="destination path (default: pipeline/seed_demo.json; "
+                             "web/public/ paths are rejected on purpose)")
+    args = parser.parse_args()
+
+    if args.output:
+        resolved = os.path.abspath(args.output)
+        public_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web", "public"))
+        if resolved.startswith(public_dir + os.sep):
+            parser.error(
+                f"refusing to write into {public_dir}: it holds the live catalog "
+                "(catalog-index.json / repos.json / shards). "
+                "Use --output with a path outside web/public."
+            )
+    generate_dataset(args.output)

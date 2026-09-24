@@ -55,6 +55,13 @@ jobs:
         working-directory: web
         run: npm run build
 
+      # Contract gate over the artefacts that just got built: Tier-1 unpack,
+      # star sort/floor, shard coverage, and the lazy Tier-2 modal merge.
+      # The smoke test existed but was never wired into CI (review finding #14).
+      - name: Smoke Test Built Artefacts
+        working-directory: web
+        run: npm run smoke
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:

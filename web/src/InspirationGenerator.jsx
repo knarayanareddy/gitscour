@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Sparkles, Shuffle, ArrowRight, Layers, ExternalLink, 
   Database, Cpu, Globe, CheckCircle2, Shield, Rocket, Copy, Check,
@@ -22,7 +22,11 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
 
   // 1. Dynamic User Stack Pooling Sandbox
   const [customPool, setCustomPool] = useState([
-    { role: "Vector / State Store", repoId: 44211562, domainFilter: "Databases & Storage" }, // duckdb
+    // Layer 0 seeds from the catalog itself once loaded — never hardcode a repo
+    // id here: the catalog uses synthetic blake2b ids, and a stale truthy id
+    // (e.g. duckdb's real GitHub id 44211562) used to survive every self-heal
+    // guard and crash the pairwise analysis. See EXPERT_PANEL_REVIEW.md #1.
+    { role: "Vector / State Store", repoId: null, domainFilter: "Databases & Storage" },
     { role: "Inference / LLM Engine", repoId: null, domainFilter: "AI & Machine Learning" },
     { role: "API Gateway / Backend", repoId: null, domainFilter: "Web Platforms & Frameworks" },
     { role: "Reactive UI / Canvas", repoId: null, domainFilter: "Web Platforms & Frameworks" }
@@ -35,13 +39,22 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     return map;
   }, [repos]);
 
-  // Seed initial duckdb/popular if available
-  useMemo(() => {
-    if (repos.length > 0 && !customPool[0].repoId) {
-      const db = repos.find(r => r.name.toLowerCase() === 'duckdb') || repos.find(r => r.domain === 'Databases & Storage');
-      if (db) customPool[0].repoId = db.id;
+  // Seed Layer 0 with duckdb (or the top database repo) once the catalog loads.
+  // Replaces a side-effectful useMemo that mutated state during render and only
+  // checked truthiness, so it could never heal a stale-but-truthy id. This also
+  // self-heals: any Layer-0 id missing from the catalog is re-seeded.
+  useEffect(() => {
+    if (repos.length === 0) return;
+    const currentId = customPool[0] && customPool[0].repoId;
+    if (currentId && repoMap.has(currentId)) return; // valid selection — keep the user's choice
+    const db = repos.find(r => r.name.toLowerCase() === 'duckdb') || repos.find(r => r.domain === 'Databases & Storage');
+    if (db) {
+      setCustomPool(prev => prev.map((s, i) => (i === 0 ? { ...s, repoId: db.id } : s)));
     }
-  }, [repos]);
+    // customPool intentionally omitted: this must only re-run when the catalog
+    // changes, not on every slot edit (user edits of Layer 0 are respected).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repos, repoMap]);
 
   // Categorize repositories into architectural roles
   const categorized = useMemo(() => {
@@ -162,7 +175,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
   const customPoolAnalysis = useMemo(() => {
     const selectedRepos = customPool
       .map(slot => ({ role: slot.role, repo: slot.repoId ? repoMap.get(slot.repoId) : null }))
-      .filter(item => item.repo !== null);
+      .filter(item => item.repo); // truthy: drops null AND undefined (stale ids — review finding #1)
 
     if (selectedRepos.length === 0) {
       return {
@@ -465,7 +478,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
         {/* Dynamic Architectural Slots Grid with Guided Cascading */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {customPool.map((slot, idx) => {
-            const selectedItem = slot.repoId ? repoMap.get(slot.repoId) : null;
+            const selectedItem = (slot.repoId && repoMap.get(slot.repoId)) || null;
             const candidates = getCandidatesForSlot(idx);
 
             return (

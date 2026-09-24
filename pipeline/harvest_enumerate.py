@@ -165,23 +165,36 @@ class GitHub:
 
 def window_clause(star_lo: int, star_hi: int, fork_lo: int | None, fork_hi: int | None) -> str:
     stars = f"stars:{star_lo}" if star_lo == star_hi else f"stars:{star_lo}..{star_hi}"
-    if fork_lo is not None:
-        forks = f" forks:{fork_lo}" if fork_lo == (fork_hi or fork_lo) else f" forks:{fork_lo}..{fork_hi}"
-    else:
+    if fork_lo is None:
         forks = ""
+    elif fork_hi is None:
+        # Open-ended upper bound. This used to emit an EXACT `forks:{N}`, which
+        # silently skipped every repo with more than N forks at that star value
+        # (review finding #2d). `forks:>=N` is a documented GitHub qualifier.
+        forks = f" forks:>={fork_lo}"
+    elif fork_lo == fork_hi:
+        forks = f" forks:{fork_lo}"
+    else:
+        forks = f" forks:{fork_lo}..{fork_hi}"
     return f"{stars}{forks} sort:stars-desc"
 
 
-def probe_count(gh: GitHub, clause: str, retries: int = 8) -> int:
+def probe_count(gh: GitHub, clause: str, retries: int = 8) -> int | None:
+    """repositoryCount for a clause, or None if the probe failed.
+
+    A failure must NOT read as 0: count 0 makes the planner skip that star
+    range entirely, turning a transient API error into a silent hole in the
+    harvested universe (review finding #2b). None means "retry / abort".
+    """
     for attempt in range(retries):
         try:
             data = gh.run(COUNT_QUERY, {"q": clause})
             return int((data.get("search") or {}).get("repositoryCount") or 0)
-        except Backoff as exc:
+        except Backoff:
             time.sleep(min(90.0, 5.0 * (attempt + 1)) + random.uniform(0, 2))
         except RuntimeError:
-            return 0
-    return 0
+            return None
+    return None
 
 
 def plan_windows(gh: GitHub, star_lo: int, star_hi: int, concurrency: int, log) -> list[dict]:
@@ -189,12 +202,28 @@ def plan_windows(gh: GitHub, star_lo: int, star_hi: int, concurrency: int, log) 
     frontier = [{"star_lo": star_lo, "star_hi": star_hi, "fork_lo": None, "fork_hi": None}]
     leaves: list[dict] = []
     probed = 0
+    probe_failures: dict[str, int] = {}  # clause -> consecutive failed attempts
     while frontier:
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
             results = list(pool.map(lambda w: probe_count(gh, window_clause(**{k: w[k] for k in ("star_lo", "star_hi", "fork_lo", "fork_hi")})), frontier))
         probed += len(results)
         nxt: list[dict] = []
         for w, count in zip(frontier, results):
+            clause = window_clause(w["star_lo"], w["star_hi"], w["fork_lo"], w["fork_hi"])
+            if count is None:
+                # Probe failed: re-queue for another attempt, abort hard after 3
+                # so a star range can never be dropped from the plan (finding #2b).
+                attempts = probe_failures.get(clause, 0) + 1
+                probe_failures[clause] = attempts
+                if attempts >= 3:
+                    raise RuntimeError(
+                        f"planning probe failed {attempts}x for '{clause}' — "
+                        "aborting rather than silently skipping that star range"
+                    )
+                log(f"  ! probe failed for '{clause}' (attempt {attempts}/3); will retry")
+                nxt.append(w)
+                continue
+            probe_failures.pop(clause, None)
             if count == 0:
                 continue
             if count <= MAX_RESULTS_PER_QUERY:
@@ -271,18 +300,20 @@ def harvest_window(gh: GitHub, window: dict) -> tuple[dict, list[dict], int]:
     cursor = None
     pages = 0
     retries = 0
-    while pages < (MAX_RESULTS_PER_QUERY // PAGE_SIZE):
+    while True:
         try:
             data = gh.run(SEARCH_QUERY, {"q": clause, "cursor": cursor})
-        except Backoff as exc:
+        except Backoff:
             retries += 1
             if retries > 12:
                 raise
-            log_delay = min(90.0, 5.0 * retries) + random.uniform(0, 2)
-            time.sleep(log_delay)
+            time.sleep(min(90.0, 5.0 * retries) + random.uniform(0, 2))
             continue
         except RuntimeError:
-            break
+            # Mid-pagination failure. This window must NOT be returned as if it
+            # were complete: the caller used to checkpoint partial windows as
+            # done, permanently losing the remaining pages (finding #2a).
+            raise
         pages += 1
         search = data.get("search") or {}
         for node in search.get("nodes") or []:
@@ -304,6 +335,14 @@ def harvest_window(gh: GitHub, window: dict) -> tuple[dict, list[dict], int]:
         info = search.get("pageInfo") or {}
         if not info.get("hasNextPage"):
             break
+        if pages >= (MAX_RESULTS_PER_QUERY // PAGE_SIZE):
+            # The window grew past the search cap between planning and harvest
+            # (repos gained stars). Falling through would silently drop the
+            # remaining pages, so fail loudly instead (finding #2c).
+            raise RuntimeError(
+                f"window '{clause}' still reports more pages after {pages} pages — "
+                "window outgrew the search cap; rerun to re-plan"
+            )
         cursor = info.get("endCursor")
     return window, records, retries
 
@@ -317,6 +356,9 @@ def main() -> int:
     parser.add_argument("--concurrency", type=int, default=12)
     parser.add_argument("--rps", type=float, default=18.0, help="global request cap per second")
     parser.add_argument("--dry-plan", action="store_true", help="only print the window plan")
+    parser.add_argument("--allow-truncated", action="store_true",
+                        help="exit 0 even if some windows were truncated by the 1,000-result cap "
+                             "(default: exit non-zero so CI cannot ignore coverage holes)")
     args = parser.parse_args()
 
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -335,7 +377,13 @@ def main() -> int:
 
     log(f"start={start_wall} threshold>={args.min_stars} concurrency={args.concurrency} rps={args.rps}")
     log("planning star windows (each <= %d repos)..." % MAX_RESULTS_PER_QUERY)
-    windows = plan_windows(gh, args.min_stars, args.max_stars, args.concurrency, log)
+    try:
+        windows = plan_windows(gh, args.min_stars, args.max_stars, args.concurrency, log)
+    except RuntimeError as exc:
+        # A probe that keeps failing must abort the run (finding #2b) — never
+        # fall through with a plan that silently omits a star range.
+        log(f"ERROR: planning aborted: {exc}")
+        return 1
     planned_total = sum(w.get("count", 0) for w in windows)
     log(f"plan complete: {len(windows)} windows, universe estimate {planned_total} repos ({time.time()-t0:.0f}s)")
 
@@ -350,14 +398,18 @@ def main() -> int:
     done_lock = threading.Lock()
     finished = 0
     truncated = 0
+    failed = 0
 
     def work(window):
-        nonlocal finished, truncated
+        nonlocal finished, truncated, failed
         try:
             w, records, retries = harvest_window(gh, window)
         except Exception as exc:
+            # Never checkpointed: the window stays pending so a rerun retries it,
+            # and the run exits non-zero so CI cannot ship a partial universe.
             with done_lock:
-                log(f"  x window {window['star_lo']}..{window['star_hi']} failed: {exc}")
+                failed += 1
+                log(f"  x window {window['star_lo']}..{window['star_hi']} failed (not checkpointed): {exc}")
             return
         ckpt.write_records(records)
         ckpt.complete(window)
@@ -379,11 +431,26 @@ def main() -> int:
             "elapsed_s": round(time.time() - t0, 1),
             "windows_planned": len(windows),
             "windows_done": len(ckpt.done),
+            "windows_failed": failed,
             "windows_truncated": truncated,
             "universe_estimate": planned_total,
         }, fh, indent=2)
 
     log(f"DONE: {len(ckpt.done)} windows in {time.time()-t0:.0f}s -> {args.output}")
+
+    # Completeness is a guarantee, not a hope: a failed or truncated window is a
+    # silent hole in the universe, so the run must fail loudly (finding #2a/c).
+    if failed:
+        log(f"ERROR: {failed} window(s) failed mid-harvest — data is INCOMPLETE; "
+            "rerun to retry the pending windows before rebuilding the catalog")
+        return 2
+    if truncated:
+        if args.allow_truncated:
+            log(f"WARNING: {truncated} window(s) truncated by the 1,000-result cap (allowed by --allow-truncated)")
+        else:
+            log(f"ERROR: {truncated} window(s) truncated by the 1,000-result cap — coverage is INCOMPLETE; "
+                "re-run to re-plan them, or pass --allow-truncated to accept the holes explicitly")
+            return 3
     return 0
 
 

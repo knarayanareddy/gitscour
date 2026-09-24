@@ -5,6 +5,7 @@ import {
   SlidersHorizontal, Target, Crosshair, ArrowRight, Play, ExternalLink,
   Share2, Network, Sliders, Activity, Focus, Orbit, Radio
 } from 'lucide-react';
+import { deriveCompatibility, tier1Corpus } from './compatibility.js';
 
 export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain }) {
   const canvasRef = useRef(null);
@@ -23,6 +24,14 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   const [hoveredNode, setHoveredNode] = useState(null);
   const [filterDomain, setFilterDomain] = useState(selectedDomain || 'all');
   const [filterMinStars, setFilterMinStars] = useState(500);
+
+  // Prop-sync: the cluster-filter dropdown lives in App.jsx and writes
+  // `selectedDomain`. Without this effect the local copy was set once at mount
+  // and never again, so the dropdown was inert while the tab stayed open
+  // (review finding #7a).
+  useEffect(() => {
+    setFilterDomain(selectedDomain || 'all');
+  }, [selectedDomain]);
 
   // Second Brain / Obsidian & 3D Force Graph Interactive Controls
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -156,7 +165,12 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         forks: repo.forks,
         language: repo.language,
         primitives: repo.primitives || [],
-        compatibility: repo.compatibility || [],
+        // Tier-1 rows don't carry `compatibility` (it lives in Tier-2), so the
+        // interop signal is derived from the shared lexicon — otherwise every
+        // "Shared Interop" edge was dead wiring (review finding #7b).
+        compatibility: (repo.compatibility && repo.compatibility.length)
+          ? repo.compatibility
+          : deriveCompatibility(tier1Corpus(repo)),
         color: DOMAIN_CONFIG[repo.domain] || DOMAIN_CONFIG["Other / General"],
         size,
         baseX: x, baseY: y, baseZ: z,
@@ -725,6 +739,32 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                     }`}
                   >
                     {h} Hop{h > 1 ? 's' : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Minimum Star Filter — this setter previously had no UI at all
+                (review finding #7a); presets keep it deterministic. */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-[10px] font-semibold uppercase text-zinc-400">
+                  Minimum Stars
+                </label>
+                <span className="font-mono text-zinc-300">{filterMinStars.toLocaleString()}★</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1 bg-obs-inset p-1 rounded-lg border border-white/[0.07]">
+                {[500, 1000, 5000, 25000].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setFilterMinStars(m)}
+                    className={`py-1 text-[11px] rounded transition-colors ${
+                      filterMinStars === m
+                        ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white font-medium'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {m >= 1000 ? `${m / 1000}k` : m}
                   </button>
                 ))}
               </div>

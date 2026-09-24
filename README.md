@@ -69,10 +69,15 @@ npm run dev
 ```
 Open `http://localhost:5173` to explore the catalog.
 
-### 2. Run the Classification Pipeline
+### 2. Run the Classification Pipeline (offline demo)
 ```bash
 python3 pipeline/generate_seed.py
 ```
+Enriches 16 curated seed records through the real taxonomy engine and writes them
+to `pipeline/seed_demo.json` (gitignored). This is a self-contained demo — it
+**never writes into `web/public/`**, so running it cannot clobber the live
+catalog artifacts (`repos.json`, `catalog-index.json`, the shards) the way an
+older version of this script did.
 
 ### 3. Fetch Repositories via GitHub GraphQL API
 ```bash
