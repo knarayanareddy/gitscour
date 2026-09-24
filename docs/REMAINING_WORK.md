@@ -2,29 +2,37 @@
 
 Companion to `docs/EXPERT_PANEL_REVIEW.md` (findings) and `docs/W1_CHECKLIST.md` (done).
 W1 closed: **#1 Stack-Architect crash, #2 harvest silent-loss paths (all four), #7a/7b Graph3D
-wiring, #6 seed clobber, #14 smoke-in-deploy**. Everything below is still open, ordered as
-W2 → W3 → W4 → cross-cutting ops. **Standing rule for every item: zero LLM calls — deterministic
+wiring, #6 seed clobber, #14 smoke-in-deploy**. §0 follow-up cuts closed: **R0.1 (#7c honest
+node counts), R0.2 (smoke in backfill CI), R0.3 (harvest test suite in both workflows)**.
+Everything from §1 downward is still open, ordered as W2 → W3 → W4 → cross-cutting ops. **Standing rule for every item: zero LLM calls — deterministic
 rules, hashing, statistics, or precomputed-at-pack-time indexes only.**
 
 ---
 
 ## 0. Deliberate W1 scope cuts — small, do first
 
-- [ ] **R0.1 — Honest graph node counts (finding #7c).** `App.jsx` header renders
+**Status: DONE (2026-09-24)** — verified per `docs/R0_CHECKLIST.md`; checks below kept for traceability.
+
+- [x] **R0.1 — Honest graph node counts (finding #7c).** `App.jsx` header rendered
   `3D Topological Knowledge Galaxy (123,153 Nodes)` while `Graph3DExplorer` samples ≤1,600 nodes
-  and links only the first 450. *Files:* `web/src/App.jsx` (header), optionally `Graph3DExplorer.jsx`
-  (export `SAMPLE_LIMIT`). *Accept:* header shows catalog total AND rendered count
-  (e.g. `123,153 catalog · 1,600 rendered`); the in-graph HUD, if added, matches reality.
-- [ ] **R0.2 — Smoke test in the backfill workflow (finding #14).** `deploy.yml` now runs
-  `npm run smoke`, but `backfill_123k.yml` can still open a PR with artefacts that fail the
-  decode contract. *Files:* `.github/workflows/backfill_123k.yml`. *Accept:* step
-  `node web/smoke-test.mjs web/public` (smoke accepts any dir) runs after `verify_catalog.py`
-  and before the PR step.
-- [ ] **R0.3 — Promote today's harvest probes to a real test file.** The 7 probes used to verify
+  and links only the first 450. *Files:* `web/src/App.jsx` (header + `graphStats` state),
+  `web/src/Graph3DExplorer.jsx` (exports `GRAPH_SAMPLE_LIMIT`/`GRAPH_LINK_LIMIT`, reports live
+  `{filtered, rendered, linked}` via `onStatsChange`). *Accept:* header shows catalog total AND
+  rendered count — now `123,153 catalog · 1,600 rendered · top 450 linked`, live under filter
+  changes, with a tooltip explaining the star-ranked sample.
+- [x] **R0.2 — Smoke test in the backfill workflow (finding #14).** `deploy.yml` now runs
+  `npm run smoke`, but `backfill_123k.yml` could still open a PR with artefacts that fail the
+  decode contract. *Files:* `.github/workflows/backfill_123k.yml`. *Accept:* Node 20 pinned +
+  `node web/smoke-test.mjs web/public` after `verify_catalog.py` and before the PR step —
+  verified standalone against the live `web/public` (OK).
+- [x] **R0.3 — Promote today's harvest probes to a real test file.** The 7 probes used to verify
   W1 live only in session history. *Files:* new `tests/test_harvest_enumerate.py`
   (window_clause cases, probe-None, planner abort, partial-window raise, page-cap raise,
-  clean-window pass) + wire `python3 -m pytest tests/` into both workflows.
-  *Accept:* tests run in CI; no network calls (fake `GitHub` stubs as in the probes).
+  clean-window pass + gap-free split and fork-axis planner integration — 14 tests total)
+  + wired `python -m pytest tests/ -q` into both workflows (after `pip install pytest`:
+  deploy runs before verify, backfill runs before harvesting).
+  *Accept:* tests run in CI; no network calls (fake `GitHub` stubs) — 14/14 pass under both
+  `unittest` and `pytest`.
 
 ---
 

@@ -30,6 +30,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      # Deterministic unit tests, no network: window planner, harvest
+      # completeness guarantees, fork-clause emission. pytest is the only
+      # Python dependency (the pipeline itself is stdlib-only).
+      - name: Install Test Runner
+        run: python -m pip install pytest
+
+      - name: Unit Tests (no network)
+        run: python -m pytest tests/ -q
+
       # Deploys are reproducible: this workflow publishes exactly the catalog
       # committed to the branch. It used to run `pipeline/harvest_scale.py`
       # here, which rebuilt the Tier-1 fallback index and every Tier-2 shard

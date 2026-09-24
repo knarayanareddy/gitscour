@@ -113,6 +113,17 @@ resolves catalog rows the sweep did not match, drops deleted / taken-down /
 sub-threshold repos, and collapses renames so one project is never listed twice
 under its old and new `owner/name`.
 
+### 5. Run the test suite
+```bash
+python3 -m pytest tests/ -q                # what both CI workflows run
+# or, with zero dependencies:
+python3 -m unittest discover -s tests -v
+```
+Deterministic and network-free: window-planner split arithmetic, harvest
+completeness guarantees (partial-window detection, probe-failure abort,
+`forks:>=N` clauses). `deploy.yml` runs this before verifying, and
+`backfill_123k.yml` runs it before harvesting.
+
 | Script | Role |
 | --- | --- |
 | `harvest_enumerate.py` | Window-partitioned GraphQL sweep; the only harvester that can exceed 1,000 records per query |

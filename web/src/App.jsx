@@ -56,6 +56,11 @@ export default function App() {
   const [copiedText, setCopiedText] = useState(null);
   const [urlShareCopied, setUrlShareCopied] = useState(false);
 
+  // Live stats reported by Graph3DExplorer: what is actually rendered vs the
+  // full catalog. The header used to claim every catalog node was on screen
+  // while the graph draws a ≤1,600-node sample (review finding #7c).
+  const [graphStats, setGraphStats] = useState({ filtered: 0, rendered: 0, linked: 0 });
+
   // SQL Console state
   const [sqlQuery, setSqlQuery] = useState(
     "SELECT name, stars, language, domain, subsystem\nFROM repos\nWHERE domain = 'Databases & Storage' AND stars >= 20000\nORDER BY stars DESC;"
@@ -395,7 +400,14 @@ export default function App() {
               <div>
                 <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                   <Compass className="w-4 h-4 text-zinc-300" />
-                  3D Topological Knowledge Galaxy (<span className="num">{repos.length.toLocaleString()}</span> Nodes)
+                  <span title="The galaxy draws a star-ranked sample of the catalog, not every row: 'rendered' = nodes drawn after the domain/star filters, 'linked' = the cohort that gets synthesized relationships.">
+                    3D Topological Knowledge Galaxy (
+                    <span className="num">{repos.length.toLocaleString()}</span>
+                    {graphStats.rendered > 0
+                      ? ` catalog · ${graphStats.rendered.toLocaleString()} rendered · top ${graphStats.linked.toLocaleString()} linked`
+                      : ' catalog'}
+                    )
+                  </span>
                 </h2>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   Explore force-directed topologies, directional beam particles, and multi-hop neighborhood bridges.
@@ -422,6 +434,7 @@ export default function App() {
               repos={repos}
               selectedDomain={selectedDomain}
               onSelectRepo={(repo) => handleOpenRepoModal(repo)}
+              onStatsChange={setGraphStats}
             />
           </div>
         ) : (

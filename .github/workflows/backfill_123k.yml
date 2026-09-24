@@ -34,6 +34,14 @@ jobs:
         with:
           python-version: '3.11'
 
+      # Fail before harvesting if the harvest guarantees themselves regress:
+      # same deterministic, network-free suite as deploy.yml.
+      - name: Install Test Runner
+        run: python -m pip install pytest
+
+      - name: Unit Tests (no network)
+        run: python -m pytest tests/ -q
+
       # A single job, not a star-window matrix: GitHub truncates every search
       # query at 1,000 results, so the old 12-way matrix could never capture
       # more than ~12,000 records per run and could never share a resume point.
@@ -57,6 +65,18 @@ jobs:
 
       - name: Verify catalog integrity
         run: python3 pipeline/verify_catalog.py --min-stars "$MIN_STARS"
+
+      # Same contract gate as deploy.yml: this workflow opens a PR that ships
+      # regenerated artefacts, so catch a broken Tier-1 decode / Tier-2 lazy-merge
+      # contract before the PR exists (review finding #14: the smoke test was in
+      # neither workflow). smoke-test.mjs is dependency-free.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Smoke test regenerated artefacts
+        run: node web/smoke-test.mjs web/public
 
       - name: Upload harvest checkpoint
         if: always()

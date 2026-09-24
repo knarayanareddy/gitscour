@@ -7,7 +7,14 @@ import {
 } from 'lucide-react';
 import { deriveCompatibility, tier1Corpus } from './compatibility.js';
 
-export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain }) {
+// Rendered-sample limits — the galaxy cannot draw all 123k nodes, so it draws a
+// star-ranked sample and synthesizes links for a smaller cohort. Exported so the
+// App header can state what is actually on screen instead of claiming every
+// catalog node is rendered (review finding #7c).
+export const GRAPH_SAMPLE_LIMIT = 1600;
+export const GRAPH_LINK_LIMIT = 450;
+
+export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, onStatsChange }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -92,7 +99,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   }, []);
 
   // 1. Build Graph Topology, Node Geometries & Force-Layout Positioning
-  const { nodes, links, domainClusters, nodeLookup } = useMemo(() => {
+  const { nodes, links, domainClusters, nodeLookup, filteredCount, linkedCount } = useMemo(() => {
     const validRepos = repos.filter((r) => {
       if (filterDomain !== 'all' && r.domain !== filterDomain) return false;
       if (r.stars < filterMinStars) return false;
@@ -114,7 +121,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     });
 
     const lookup = {};
-    const sampleLimit = Math.min(validRepos.length, 1600);
+    const sampleLimit = Math.min(validRepos.length, GRAPH_SAMPLE_LIMIT);
     const graphNodes = validRepos.slice(0, sampleLimit).map((repo, idx) => {
       let x = 0, y = 0, z = 0;
 
@@ -184,7 +191,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
     // 2. Synthesize High-Signal Relationships & Multi-Hop Bridges
     const graphLinks = [];
-    const maxLinkNodes = Math.min(graphNodes.length, 450);
+    const maxLinkNodes = Math.min(graphNodes.length, GRAPH_LINK_LIMIT);
 
     for (let i = 0; i < maxLinkNodes; i++) {
       for (let j = i + 1; j < maxLinkNodes; j++) {
@@ -215,8 +222,30 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       }
     }
 
-    return { nodes: graphNodes, links: graphLinks, domainClusters: domainNames, nodeLookup: lookup };
+    return {
+      nodes: graphNodes,
+      links: graphLinks,
+      domainClusters: domainNames,
+      nodeLookup: lookup,
+      filteredCount: validRepos.length,   // rows passing domain + min-stars filters
+      linkedCount: maxLinkNodes,          // nodes eligible for link synthesis
+    };
   }, [repos, filterDomain, filterMinStars, viewMode, repulsionForce, nodeSizingMetric]);
+
+  // Report live graph stats so the App header can state real numbers instead of
+  // the old bare "123,153 Nodes" claim (review finding #7c). Deps are numeric
+  // primitives from the memo above, and the callback goes through a ref: the
+  // effect fires when graph content changes — never on parent re-renders, so no
+  // setState loop even if a caller passes an inline arrow.
+  const onStatsRef = useRef(onStatsChange);
+  useEffect(() => { onStatsRef.current = onStatsChange; });
+  useEffect(() => {
+    onStatsRef.current?.({
+      filtered: filteredCount,
+      rendered: nodes.length,
+      linked: linkedCount,
+    });
+  }, [filteredCount, nodes.length, linkedCount]);
 
   // Active Focus & Connected Neighborhood Computation (with Hop Depth support)
   const activeFocusNode = selectedNode || hoveredNode;
