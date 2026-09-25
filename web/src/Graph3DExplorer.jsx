@@ -51,6 +51,8 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, o
 
   // Interaction Refs (for 60 FPS physics & rendering loops)
   const isDragging = useRef(false);
+  const touchStart = useRef(null);
+  const pickedOnDown = useRef(null);
   const isPanning = useRef(false);
   const prevMousePos = useRef({ x: 0, y: 0 });
   const animationFrameId = useRef(null);
@@ -562,13 +564,39 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, o
 
   // Mouse & Touch Controls
   const handleMouseDown = (e) => {
+    // W4 §3.7: unified pointer handling — works for mouse AND touch/pen.
+    if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* already released */ }
+    }
     if (e.button === 2 || e.shiftKey) {
       isPanning.current = true;
     } else {
       isDragging.current = true;
+      touchStart.current = { x: e.clientX, y: e.clientY };
     }
     prevMousePos.current = { x: e.clientX, y: e.clientY };
     setAutoRotate(false);
+    // touch has no hover: pick a node on contact so a tap can open it too
+    if (e.pointerType === 'touch' && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const picked = pickNode(e.clientX - rect.left, e.clientY - rect.top);
+      if (picked) setHoveredNode(picked);
+      pickedOnDown.current = picked;
+    }
+  };
+
+  const pickNode = (mouseX, mouseY) => {
+    let found = null;
+    let closestDist = 18;
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      const dist = Math.hypot(n.screenX - mouseX, n.screenY - mouseY);
+      if (dist < closestDist) {
+        found = n;
+        closestDist = dist;
+      }
+    }
+    return found;
   };
 
   const handleMouseMove = (e) => {
@@ -600,21 +628,19 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, o
     }
 
     // Raycast / Proximity Check
-    let found = null;
-    let closestDist = 18;
-
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      const n = nodes[i];
-      const dist = Math.hypot(n.screenX - mouseX, n.screenY - mouseY);
-      if (dist < closestDist) {
-        found = n;
-        closestDist = dist;
-      }
-    }
-    setHoveredNode(found);
+    setHoveredNode(pickNode(mouseX, mouseY));
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    // Tap detection (touch): a press that barely moved opens the picked node.
+    if (e && touchStart.current) {
+      const dx = e.clientX - touchStart.current.x;
+      const dy = e.clientY - touchStart.current.y;
+      if (Math.hypot(dx, dy) < 6 && pickedOnDown.current) {
+        flyToNode(pickedOnDown.current);
+      }
+    }
+    pickedOnDown.current = null;
     isDragging.current = false;
     isPanning.current = false;
   };
@@ -635,12 +661,14 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, o
       <div 
         ref={containerRef}
         className="relative flex-1 w-full h-full cursor-grab active:cursor-grabbing"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onPointerDown={handleMouseDown}
+        onPointerMove={handleMouseMove}
+        onPointerUp={handleMouseUp}
+        onPointerCancel={handleMouseUp}
         onWheel={handleWheel}
         onClick={handleClick}
         onContextMenu={(e) => e.preventDefault()}
+        style={{ touchAction: 'none' }}
       >
         <canvas ref={canvasRef} className="w-full h-full block" />
 

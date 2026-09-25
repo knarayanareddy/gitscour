@@ -8,10 +8,10 @@ import {
   ChevronDown, SlidersHorizontal, Sliders
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
-import { rankQuery } from './search-core.mjs';
 // W4 §3.1: asset URL only — the WASM binary is fetched on first engine init.
 import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { isReadOnlySql, resultsToCsv, SQL_COLUMNS, repoToSqlValues, RESULT_PREVIEW_LIMIT } from './sql-utils.mjs';
+import { filterOrdinals, majorLanguages, LONG_TAIL_LANGUAGE } from './filter-core.mjs';
 import InspirationGenerator from './InspirationGenerator.jsx';
 
 export default function App() {
@@ -167,10 +167,18 @@ export default function App() {
   ];
 
   const applyDiscoveryPill = (pill) => {
-    if (pill.domain) setSelectedDomain(pill.domain);
-    if (pill.primitive) setSelectedPrimitive(pill.primitive);
-    if (pill.language) setSelectedLanguage(pill.language);
-    if (pill.q) setSearchQuery(pill.q);
+    // W4 §3.7: pills RESET every facet they don't mention — no stale filters
+    // silently narrowing the discovery they just set up.
+    setSelectedDomain(pill.domain || 'all');
+    setSelectedSubsystem('all');
+    setSelectedArtifact('all');
+    setSelectedLanguage(pill.language || 'all');
+    setSelectedPrimitive(pill.primitive || 'all');
+    setSelectedLicenseTier('all');
+    setSearchQuery(pill.q || '');
+    setDebouncedQuery(pill.q || '');
+    setHideDormant(false);
+    setSortBy('stars');
     setVisibleCount(36);
   };
 
@@ -247,14 +255,16 @@ export default function App() {
           };
         });
 
+        packedForWorkerRef.current = data; // raw payload staged for the filter worker
         setRepos(unpacked);
         setLoading(false);
 
         if (initialUrl.inspect) {
-          const match = unpacked.find(
-            r => r.name.toLowerCase() === initialUrl.inspect.toLowerCase() ||
-                 `${r.owner}/${r.name}`.toLowerCase() === initialUrl.inspect.toLowerCase()
-          );
+          // W4 §3.7: prefer the unambiguous owner/name form; bare name is fallback.
+          const target = initialUrl.inspect.toLowerCase();
+          const match =
+               unpacked.find((r) => `${r.owner}/${r.name}`.toLowerCase() === target) ||
+               unpacked.find((r) => r.name.toLowerCase() === target);
           if (match) {
             handleOpenRepoModal(match);
           }
@@ -340,7 +350,7 @@ export default function App() {
     if (selectedPrimitive !== 'all') params.set('primitive', selectedPrimitive);
     if (selectedLicenseTier !== 'all') params.set('license', selectedLicenseTier);
     if (minStars > 500) params.set('minStars', minStars);
-    if (activeRepoModal) params.set('inspect', activeRepoModal.name);
+    if (activeRepoModal) params.set('inspect', `${activeRepoModal.owner}/${activeRepoModal.name}`);
 
     const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
     window.history.replaceState({}, '', newUrl);
@@ -376,10 +386,15 @@ export default function App() {
     return ['all', ...Array.from(set).sort()];
   }, [repos]);
 
+  // W4 §3.7: the 282 long-tail languages (<50 rows) group into one facet entry;
+  // rows keep their true language (filter logic lives in filter-core.mjs).
+  const languageStats = useMemo(() => majorLanguages(repos), [repos]);
   const languages = useMemo(() => {
-    const set = new Set(repos.map((r) => r.language).filter(Boolean));
-    return ['all', ...Array.from(set).sort()];
-  }, [repos]);
+    const tail = languageStats.tail.length
+      ? [`${LONG_TAIL_LANGUAGE}:Long tail (${languageStats.tail.length} langs · ${languageStats.tailRows.toLocaleString()})`]
+      : [];
+    return ['all', ...languageStats.majors, ...tail];
+  }, [languageStats]);
 
   const primitives = useMemo(() => {
     const set = new Set();
@@ -395,63 +410,99 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const starsByOrdinal = useMemo(() => repos.map((r) => r.stars || 0), [repos]);
 
   // W3 §2.1/2.2: ranked search — field-weighted BM25-lite over the pack-time
   // inverted index (top-N relevance ordering replaces stars-desc-only), falling
   // back to substring matching over the memoized corpus when the index is absent.
-  const filteredRepos = useMemo(() => {
-    const facetOk = (repo) => {
-      if (repo.stars < minStars) return false;
-      if (selectedDomain !== 'all' && repo.domain !== selectedDomain) return false;
-      if (selectedSubsystem !== 'all' && repo.subsystem !== selectedSubsystem) return false;
-      if (selectedArtifact !== 'all' && repo.artifact !== selectedArtifact) return false;
-      if (selectedLanguage !== 'all' && repo.language !== selectedLanguage) return false;
-      if (selectedPrimitive !== 'all' && !(repo.primitives || []).includes(selectedPrimitive)) return false;
-      if (selectedLicenseTier !== 'all' && repo.licenseTier !== selectedLicenseTier) return false;
-      return true;
-    };
+  // ===== W4 §3.7: filter+search in a Web Worker (sync fallback shares the
+  // same filter-core module, so worker and main can never diverge) =====
+  const filterWorkerRef = useRef(null);
+  const reqSeqRef = useRef(0);
+  const lastAcceptedReqRef = useRef(0);
+  const packedForWorkerRef = useRef(null);
+  const [filterResult, setFilterResult] = useState(null); // {key, ordinals} | null
+  const [workerFailed, setWorkerFailed] = useState(false);
 
-    // W3 §2.6: dormant = idle (no push within 365 days) or archived
-    const activityOk = (repo) => {
-      if (!hideDormant) return true;
-      const s = repo.activity && repo.activity.status;
-      return s !== 'idle' && s !== 'archived';
-    };
-
-    const q = debouncedQuery.trim();
-    if (q && searchIndex) {
-      // Ranked path: relevance order wins over the star/recent sort (labelled
-      // in the UI), the dormant filter still applies.
-      const ranked = rankQuery(searchIndex, q, starsByOrdinal);
-      const out = [];
-      for (const [ord] of ranked) {
-        const repo = repos[ord];
-        if (repo && facetOk(repo) && activityOk(repo)) out.push(repo);
-      }
-      return out;
+  useEffect(() => {
+    if (typeof Worker === 'undefined') { setWorkerFailed(true); return undefined; }
+    let worker;
+    try {
+      worker = new Worker(new URL('./filter-core.worker.js', import.meta.url), { type: 'module' });
+      worker.onmessage = (e) => {
+        const d = e.data || {};
+        if (d.type === 'result') {
+          if (d.reqId >= lastAcceptedReqRef.current) {
+            lastAcceptedReqRef.current = d.reqId;
+            setFilterResult({ key: d.key, ordinals: d.ordinals });
+          }
+        } else if (d.type === 'error') {
+          setWorkerFailed(true);
+        }
+      };
+      worker.onerror = () => setWorkerFailed(true);
+      filterWorkerRef.current = worker;
+    } catch {
+      setWorkerFailed(true);
     }
+    return () => {
+      if (worker) worker.terminate();
+      filterWorkerRef.current = null;
+    };
+  }, []);
 
-    const queryTokens = q ? q.toLowerCase().split(/\s+/).filter(Boolean) : [];
-    const base = repos.filter((repo) => {
-      if (!facetOk(repo) || !activityOk(repo)) return false;
-      for (const token of queryTokens) {
-        if (!repo.searchCorpus.includes(token)) return false;
-      }
-      return true;
-    });
-    if (!q && sortBy === 'recent') {
-      // recently-pushed first; rows without push data sink deterministically
-      return [...base].sort((a, b) => {
-        const ta = (a.activity && a.activity.pushedAt) || 0;
-        const tb = (b.activity && b.activity.pushedAt) || 0;
-        return tb - ta || b.stars - a.stars;
-      });
-    }
-    return base;
-  }, [repos, debouncedQuery, searchIndex, starsByOrdinal, selectedDomain, selectedSubsystem,
-      selectedArtifact, selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars,
+  const filterOpts = useMemo(() => ({
+    q: debouncedQuery.trim(),
+    domain: selectedDomain,
+    subsystem: selectedSubsystem,
+    artifact: selectedArtifact,
+    language: selectedLanguage,
+    primitive: selectedPrimitive,
+    licenseTier: selectedLicenseTier,
+    minStars,
+    hideDormant,
+    sortBy,
+  }), [debouncedQuery, selectedDomain, selectedSubsystem, selectedArtifact,
+      selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars,
       hideDormant, sortBy]);
+  const optsKey = useMemo(() => JSON.stringify(filterOpts), [filterOpts]);
+
+  // hand the parsed packed payload to the worker once (structured clone)
+  useEffect(() => {
+    const worker = filterWorkerRef.current;
+    if (!worker || workerFailed || !repos.length || !packedForWorkerRef.current) return;
+    worker.postMessage({
+      type: 'init',
+      packed: packedForWorkerRef.current,
+      majors: languageStats.majors,
+    });
+    packedForWorkerRef.current = null; // clone sent; free the raw payload
+  }, [repos.length, workerFailed, languageStats.majors]);
+
+  useEffect(() => {
+    const worker = filterWorkerRef.current;
+    if (worker && !workerFailed && searchIndex) worker.postMessage({ type: 'index', index: searchIndex });
+  }, [searchIndex, workerFailed]);
+
+  useEffect(() => {
+    const worker = filterWorkerRef.current;
+    if (!worker || workerFailed || !repos.length) return;
+    reqSeqRef.current += 1;
+    worker.postMessage({ type: 'filter', reqId: reqSeqRef.current, key: optsKey, opts: filterOpts });
+  }, [optsKey, filterOpts, repos.length, workerFailed, searchIndex]);
+
+  const filteredRepos = useMemo(() => {
+    if (!repos.length) return [];
+    // Fresh worker answer wins; while a new reply is in flight we keep showing
+    // the previous ordinals (smooth, zero main-thread work — the corrected
+    // reply lands within ~10 ms).
+    if (filterResult && !workerFailed) {
+      return filterResult.ordinals.map((o) => repos[o]).filter(Boolean);
+    }
+    // Sync fallback: worker unsupported/failed, or before the first reply —
+    // identical pipeline via filter-core (single source of truth).
+    return filterOrdinals(repos, searchIndex, filterOpts, languageStats.majorsSet)
+      .map((o) => repos[o]).filter(Boolean);
+  }, [repos, filterResult, searchIndex, filterOpts, languageStats.majorsSet]);
 
   const visibleRepos = useMemo(() => {
     return filteredRepos.slice(0, visibleCount);
@@ -879,11 +930,16 @@ export default function App() {
                     }}
                     className="w-full bg-obs-inset border border-white/[0.10] rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
                   >
-                    {languages.map((l) => (
-                      <option key={l} value={l}>
-                        {l === 'all' ? 'All Languages' : l}
-                      </option>
-                    ))}
+                    {languages.map((entry) => {
+                      const sep = entry.indexOf(':');
+                      const value = sep === -1 ? entry : entry.slice(0, sep);
+                      const label = sep === -1 ? entry : entry.slice(sep + 1);
+                      return (
+                        <option key={value} value={value}>
+                          {value === 'all' ? 'All Languages' : label}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 

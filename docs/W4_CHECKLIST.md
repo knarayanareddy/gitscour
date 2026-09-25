@@ -29,16 +29,16 @@ Standing rule: **zero LLM calls at runtime** — everything deterministic, rule-
 
 ## A. §3.1 SQL Studio — make the README true (flagship)
 
-- [ ] Add `sql` tab; `sql.js` (WASM, lazy `import()` on first tab open — zero cost for
+- [x] Add `sql` tab; `sql.js` (WASM, lazy `import()` on first Run — zero cost for
       Explorer users) builds one in-memory `repos` table from the unpacked catalog
       (INSERT in a single transaction; loading state while building)
-- [ ] Read-only guard: statements must start `SELECT`/`WITH`; errors render inline
-- [ ] Demo query (existing `sqlQuery` state) executes on demand; Ctrl+Enter runs
-- [ ] Results grid + **CSV export via `URL.createObjectURL`** (full result, not just page)
-- [ ] UI copy documents the README subset (`SELECT/WHERE/ORDER BY/LIMIT`)
-- [ ] Smoke gate: node runs sql.js against a sample table — demo query returns the
-      expected top row, CSV serialization round-trips, non-SELECT is rejected
-- *Accept:* README §2 accurate; demo query executes; CSV downloads.
+- [x] Read-only guard: statements must start `SELECT`/`WITH`; errors render inline
+- [x] Demo query (existing `sqlQuery` state) executes on demand; Ctrl+Enter runs
+- [x] Results grid (200-row preview, honest caption) + **CSV export via `URL.createObjectURL`** (full result)
+- [x] UI copy documents the README subset (`SELECT/WHERE/ORDER BY/LIMIT`)
+- [x] Smoke gate: node runs sql.js against a sample table — demo query returns 101
+      rows from a 5k sample ordered correctly, CSV re-parses cell-for-cell, INSERT/DROP rejected
+- *Accept:* README §2 accurate ✓; demo query executes ✓; CSV downloads ✓ (build splits a 44.7 kB js chunk + 659.8 kB wasm asset, both fetched only on first Run)
 
 ## B. §3.7 Perf/UX hygiene
 

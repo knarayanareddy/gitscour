@@ -68,6 +68,7 @@ check(searchIndex.t.length === searchIndex.d.length && searchIndex.t.length === 
   'search index token/df/postings arrays are ragged');
 check(searchIndex.f.length === searchIndex.w.length, 'search index field/weight arrays are ragged');
 const starsByOrdinal = unpacked.map((r) => r.stars);
+const starsByOrdinalDirect = starsByOrdinal; // alias for the filter-core parity check
 const rankOnce = (q) => rankQuery(searchIndex, q, starsByOrdinal);
 
 // warm-up + deterministic ordering
@@ -298,6 +299,72 @@ check(!isReadOnlySql("DROP TABLE repos;"), 'DROP accepted by read-only guard');
       `top = ${values[0][0]} (${values[0][1].toLocaleString()}★) | CSV round-trip ${csv.length} bytes`);
   }
   db.close();
+}
+
+// 10. W4 §3.7 — filter-core (worker + sync fallback share this module)
+const { filterOrdinals, majorLanguages, unpackLight, LONG_TAIL_LANGUAGE } =
+  await import('./src/filter-core.mjs');
+
+const light = unpackLight(packed);
+check(light.length === rows.length, `unpackLight rows ${light.length} != ${rows.length}`);
+check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length > 0,
+  'unpackLight corpus empty');
+{
+  const stats = majorLanguages(light);
+  const tailCount = stats.tailRows;
+  const base = { q: '', domain: 'all', subsystem: 'all', artifact: 'all', language: 'all',
+    primitive: 'all', licenseTier: 'all', minStars: 500, hideDormant: false, sortBy: 'stars' };
+
+  const t0 = performance.now();
+  const identity = filterOrdinals(light, searchIndex, base, stats.majorsSet);
+  const tEmpty = performance.now() - t0;
+  check(identity.length === rows.length, `empty filter returned ${identity.length}`);
+  let starsDesc = true;
+  for (let i = 1; i < identity.length; i++) if (light[identity[i]].stars > light[identity[i - 1]].stars) starsDesc = false;
+  check(starsDesc, 'empty filter is not stars-desc');
+
+  // domain count must equal the pack-time facet truth
+  const dbCount = filterOrdinals(light, searchIndex, { ...base, domain: 'Databases & Storage' }, stats.majorsSet).length;
+  const dbFacet = facets.domains.find((d) => d.name === 'Databases & Storage');
+  check(dbFacet && dbCount === dbFacet.count,
+    `domain filter ${dbCount} != facet ${dbFacet && dbFacet.count}`);
+
+  // long-tail language grouping: exactly the tail rows, never a major
+  const tailOnly = filterOrdinals(light, searchIndex, { ...base, language: LONG_TAIL_LANGUAGE }, stats.majorsSet);
+  check(tailOnly.length === tailCount, `tail filter ${tailOnly.length} != ${tailCount}`);
+  check(tailOnly.every((o) => !stats.majorsSet.has(light[o].language)), 'tail filter included a major language');
+  check(stats.majors.length === 61, `expected 61 major languages, got ${stats.majors.length}`);
+
+  // dormant filter drops idle+archived
+  const active = filterOrdinals(light, searchIndex, { ...base, hideDormant: true }, stats.majorsSet);
+  check(active.every((o) => !light[o].activity || light[o].activity.status === 'active'),
+    'hideDormant kept a non-active row');
+  check(active.length < rows.length, 'hideDormant removed nothing');
+
+  // recent sort: pushedAt non-increasing over rows that have data
+  const recent = filterOrdinals(light, searchIndex, { ...base, sortBy: 'recent' }, stats.majorsSet);
+  let recentOk = true;
+  let prev = Infinity;
+  for (const o of recent) {
+    const ts = (light[o].activity && light[o].activity.pushedAt) || 0;
+    if (ts > prev) { recentOk = false; break; }
+    if (ts) prev = ts;
+  }
+  check(recentOk, 'recent sort is not pushedAt-desc');
+
+  // ranked query parity with the W3 search gate (same counts, same top-5)
+  const t1 = performance.now();
+  const ranked = filterOrdinals(light, searchIndex, { ...base, q: 'sql vector' }, stats.majorsSet);
+  const tQuery = performance.now() - t1;
+  check(ranked.length === 947, `'sql vector' via filter-core returned ${ranked.length}, want 947`);
+  const direct = rankQuery(searchIndex, 'sql vector', starsByOrdinalDirect).slice(0, 5).map(([o]) => o);
+  check(ranked.slice(0, 5).join(',') === direct.join(','),
+    'filter-core rank order diverges from rankQuery');
+  const again = filterOrdinals(light, searchIndex, { ...base, q: 'sql vector' }, stats.majorsSet);
+  check(again.join(',') === ranked.join(','), 'filter-core is not deterministic');
+  console.log(`\nfilter-core: identity ${identity.length.toLocaleString()} rows in ${tEmpty.toFixed(1)}ms | ` +
+    `ranked 'sql vector' ${ranked.length} in ${tQuery.toFixed(1)}ms | tail ${tailCount} rows / ${stats.tail.length} langs | ` +
+    `hideDormant ${active.length.toLocaleString()}`);
 }
 
 console.log(fail.length ? `\nFAILED (${fail.length}):\n  ` + fail.slice(0, 10).join('\n  ')
