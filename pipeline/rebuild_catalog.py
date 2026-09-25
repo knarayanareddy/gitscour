@@ -36,6 +36,8 @@ the same code path:
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
+import time
 import hashlib
 import json
 import os
@@ -65,6 +67,47 @@ MAX_COMPAT = 4
 # W2 §1.4: topics travel with Tier-1 rows going forward (topics[:8] in shards and
 # re-attached fill-if-empty), so reclassification never depends on a live API call.
 MAX_TOPICS = 8
+
+# W3 §2.6: the pre-W3 shard writer stamped a fake "fresh" timestamp on rows
+# that had no real push data. That sentinel is treated as *missing* everywhere
+# (packing activity, maturity) until the next backfill rewrites the shards.
+FABRICATED_PUSHED_AT = "2026-09-01T00:00:00Z"
+
+
+def real_pushed_at(rec: dict) -> str | None:
+    """Pushed-at value with the fabricated sentinel treated as null."""
+    v = rec.get("pushed_at")
+    if not v or v == FABRICATED_PUSHED_AT:
+        return None
+    return v
+
+
+def _parse_ts(value: str | None) -> int | None:
+    """ISO-8601 (Z or offset) -> epoch seconds; None on anything unparsable."""
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return int(dt.timestamp())
+
+
+def build_activity(records: list, now_ts: int) -> list:
+    """W3 §2.6: parallel array aligned with rows — [[status, pushed_epoch], ...]
+    where status is 'active' (<=365d), 'idle', 'archived', or null (no data)."""
+    out = []
+    for r in records:
+        ts = _parse_ts(real_pushed_at(r))
+        if r.get("is_archived"):
+            out.append(["archived", ts])
+        elif ts is None:
+            out.append([None, None])
+        else:
+            out.append(["active" if now_ts - ts <= 365 * 86400 else "idle", ts])
+    return out
 # Deep fields re-attached from Tier-2 shards. `topics` is fill-if-empty: a fresher
 # topics list from the harvest merge must win over the stored shard copy.
 DEEP_FIELDS = ("beginner_intel", "license_intel", "quickstart_code", "usecases",
@@ -346,7 +389,7 @@ def finalize_records(catalog: dict, min_stars: int, stats: Counter) -> list:
 
     # maturity is star-driven, so recompute it for every row (cheap + deterministic)
     for r in records:
-        r["maturity"] = classify_maturity(int(r["stars"]), int(r.get("forks") or 0), r.get("pushed_at"))
+        r["maturity"] = classify_maturity(int(r["stars"]), int(r.get("forks") or 0), real_pushed_at(r))
         r.setdefault("full_name", f"{r['owner']}/{r['name']}")
         r["shard"] = slugify(r.get("domain"))
         # ~3% of GitHub repositories have no description at all (e.g. deepseek-ai/
@@ -415,8 +458,12 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
             "maturity": r.get("maturity") or {"rating": "Community Popular (>500★)", "level": "tier-3"},
             "quickstart_code": r.get("quickstart_code") or f"git clone https://github.com/{r['owner']}/{r['name']}.git",
             # the modal's "Pushed:" line reads this off the merged deep record, and
-            # Tier-1 (packed rows) does not carry it -- it must stay here.
-            "pushed_at": r.get("pushed_at") or "2026-09-01T00:00:00Z",
+            # Tier-1 (packed rows) does not carry it -- it must stay here. W3 §2.6:
+            # NULL instead of the old fabricated "2026-09-01" stamp; the UI guards
+            # the parse so missing data reads "Unknown", never "Invalid Date".
+            "pushed_at": real_pushed_at(r),
+            "created_at": r.get("created_at") or None,
+            "is_archived": bool(r.get("is_archived")),
         }
 
     os.makedirs(details_dir, exist_ok=True)
@@ -503,6 +550,9 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
         "languages": {v: k for k, v in lang_map.items()},
         "artifacts": {v: k for k, v in artifact_map.items()},
         "rows": rows,
+        # W3 §2.6: activity aligned with rows (sort/filter/badges stay off the
+        # row schema, so 12..15-field arity and index ordinals are unchanged)
+        "activity": build_activity(records, int(time.time())),
     }
     packed_out = os.path.join(base_dir, "catalog-packed.json")
     with open(packed_out, "w", encoding="utf-8") as fh:

@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 
 # --- EXPANDED TAXONOMY DOMAINS & SUBSYSTEMS ---
@@ -182,32 +183,69 @@ def classify_license_freedom(license_str: str) -> Dict[str, str]:
         "desc": "Custom or unspecified license. Review the repository LICENSE file for explicit commercial terms."
     }
 
+def _parse_ts(pushed_at: Optional[str]) -> Optional["datetime"]:
+    if not pushed_at or not isinstance(pushed_at, str):
+        return None
+    try:
+        return datetime.fromisoformat(pushed_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def classify_maturity(stars: int, forks: int, pushed_at: Optional[str]) -> Dict[str, str]:
-    """Calculates battle-tested maturity rating."""
+    """Battle-tested maturity rating — W3 §2.6 v2.
+
+    v2 uses `forks` and `pushed_at` (v1 ignored both, so a repo last pushed a
+    decade ago could still read "Production Battle-Tested" off its 20k stars):
+
+    * stars >= 20k keeps the production claim only with real fork traction
+      (>= 1000 forks) and a push within the last 4 years; star-heavy /
+      fork-light repos read as viral-but-shallow, long-dormant repos as
+      dormant legacy. Missing pushed_at is *unknown*, never assumed dormant.
+    """
+    pushed = _parse_ts(pushed_at)
+    now = datetime.now(timezone.utc)
+    dormant_years = None
+    if pushed is not None:
+        if pushed.tzinfo is None:
+            pushed = pushed.replace(tzinfo=timezone.utc)
+        dormant_years = (now - pushed).days / 365.25
+
+    if dormant_years is not None and dormant_years >= 4.0:
+        return {
+            "rating": f"Dormant Legacy (last push {pushed.year})",
+            "level": "tier-4",
+            "desc": "No pushes in over four years — stars reflect historical adoption, not current maintenance.",
+        }
     if stars >= 50000:
         return {
             "rating": "Hyper-Scale / Industry Standard",
             "level": "tier-1",
             "desc": "Massively adopted across global technology industry."
         }
-    elif stars >= 20000:
+    if stars >= 20000:
+        if (forks or 0) >= 1000:
+            return {
+                "rating": "Production Battle-Tested",
+                "level": "tier-2",
+                "desc": "High ecosystem stability, active community, and proven production deployments."
+            }
         return {
-            "rating": "Production Battle-Tested",
-            "level": "tier-2",
-            "desc": "High ecosystem stability, active community, and proven production deployments."
+            "rating": "High Adoption / Low Fork Traction",
+            "level": "tier-3",
+            "desc": "Star-heavy but modest fork activity — viral reach, narrower production footprint."
         }
-    elif stars >= 5000:
+    if stars >= 5000:
         return {
             "rating": "Rapid Growth / Emerging Core",
             "level": "tier-3",
             "desc": "Significant traction with expanding developer adoption."
         }
-    else:
-        return {
-            "rating": "Promising / Specialized",
-            "level": "tier-4",
-            "desc": "Specialized utility or rising repository crossing high-star threshold."
-        }
+    return {
+        "rating": "Promising / Specialized",
+        "level": "tier-4",
+        "desc": "Specialized utility or rising repository crossing high-star threshold."
+    }
 
 def match_lexicon_rules(text_corpus: str, rules_dict: Dict[str, List[str]], max_matches: int = 4) -> List[str]:
     """Extracts keywords matching predefined regex patterns."""

@@ -158,11 +158,26 @@ check(recount.size === facets.domains.length, 'facet domain list does not cover 
 console.log(`facets: ${facets.domains.length} domains verified against row recount ` +
   `(${facets.domains.slice(0, 3).map((f) => `${f.name} (${f.count})`).join(', ')}, ...)`);
 
-// 6. Tier-2 lazy shard fetch + modal merge for a sample across every domain
+// 6. W3 §2.6 — activity array aligned with rows, statuses well-formed
+if (packed.activity !== undefined) {
+  check(packed.activity.length === rows.length, `activity length ${packed.activity.length} != rows ${rows.length}`);
+  const allowed = new Set(['active', 'idle', 'archived', null]);
+  let badStatus = 0, badTs = 0, unknown = 0;
+  for (const a of packed.activity) {
+    if (!Array.isArray(a) || !allowed.has(a[0])) badStatus++;
+    else if (a[0] === null) unknown++;
+    else if (!(a[1] > 0)) badTs++;
+  }
+  check(badStatus === 0, `${badStatus} activity entries with bad status`);
+  check(badTs === 0, `${badTs} non-null activity entries without a pushed timestamp`);
+  console.log(`activity: ${packed.activity.length === rows.length} aligned | unknown(no push data): ${unknown}`);
+}
+
+// 7. Tier-2 lazy shard fetch + modal merge for a sample across every domain
 const byShard = new Map();
 for (const r of unpacked) if (!byShard.has(r.shard)) byShard.set(r.shard, r);
 console.log(`\nshards referenced by Tier-1: ${byShard.size}`);
-let deepCoverage = 0, pushedAt = 0, quickstart = 0, beginner = 0, sampled = 0;
+let deepCoverage = 0, pushedAt = 0, nullPushed = 0, invalidPushed = 0, quickstart = 0, beginner = 0, sampled = 0;
 for (const [shard, repo] of byShard) {
   const data = JSON.parse(readFileSync(join(dir, 'data', 'details', `${shard}.json`), 'utf8'));
   const rec = data[repo.id];
@@ -171,18 +186,27 @@ for (const [shard, repo] of byShard) {
   if (!rec) continue;
   deepCoverage++;
   const merged = { ...repo, ...(rec || {}) };
-  if (merged.pushed_at && !Number.isNaN(Date.parse(merged.pushed_at))) pushedAt++;
+  // W3 §2.6: null pushed_at is valid data ("Pushed: Unknown"); an
+  // unparsable non-null string is what renders "Invalid Date".
+  const hasPushed = Object.prototype.hasOwnProperty.call(merged, 'pushed_at') && merged.pushed_at != null;
+  if (hasPushed) {
+    if (Number.isNaN(Date.parse(merged.pushed_at))) invalidPushed++;
+    else pushedAt++;
+  } else {
+    nullPushed++;
+  }
   if (merged.quickstart_code) quickstart++;
   if (merged.beginner_intel && merged.beginner_intel.what_it_does) beginner++;
   check(merged.stars === repo.stars, `Tier-2 mirror overrode Tier-1 stars for ${repo.name}`);
 }
 console.log(`sampled one repo per shard: ${sampled} | deep record found ${deepCoverage} | ` +
-  `valid pushed_at ${pushedAt} | quickstart ${quickstart} | beginner_intel ${beginner}`);
+  `valid pushed_at ${pushedAt} | null pushed_at ${nullPushed} | invalid ${invalidPushed} | ` +
+  `quickstart ${quickstart} | beginner_intel ${beginner}`);
 check(deepCoverage === sampled, 'some shards did not resolve the sampled id');
-check(pushedAt === sampled, 'pushed_at missing/invalid on a deep record (modal "Pushed:" line would read Invalid Date)');
+check(invalidPushed === 0, `${invalidPushed} deep records carry an unparsable pushed_at (Invalid Date in the modal)`);
 check(beginner === sampled, 'beginner_intel.what_it_does missing on a deep record');
 
-// 7. Fallback path: catalog-index.json must describe the same catalog
+// 8. Fallback path: catalog-index.json must describe the same catalog
 const index = JSON.parse(readFileSync(join(dir, 'catalog-index.json'), 'utf8'));
 check(index.length === unpacked.length, `fallback index holds ${index.length} records vs packed ${unpacked.length}`);
 const idxIds = new Set(index.map((r) => r.id));

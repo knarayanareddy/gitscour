@@ -64,6 +64,8 @@ query($q: String!, $cursor: String) {
         licenseInfo { spdxId name }
         repositoryTopics(first: 8) { nodes { topic { name } } }
         pushedAt
+        createdAt
+        isArchived
       }
     }
   }
@@ -331,6 +333,8 @@ def harvest_window(gh: GitHub, window: dict) -> tuple[dict, list[dict], int]:
                 "license": lic.get("spdxId") or lic.get("name") or "Unknown",
                 "topics": [t["topic"]["name"] for t in node.get("repositoryTopics", {}).get("nodes", []) if t.get("topic")],
                 "pushed_at": node.get("pushedAt"),
+                "created_at": node.get("createdAt"),
+                "is_archived": node.get("isArchived"),
             })
         info = search.get("pageInfo") or {}
         if not info.get("hasNextPage"):

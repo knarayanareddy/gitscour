@@ -50,9 +50,14 @@ export default function App() {
   const [selectedPrimitive, setSelectedPrimitive] = useState(initialUrl.primitive);
   const [selectedLicenseTier, setSelectedLicenseTier] = useState(initialUrl.license);
   const [minStars, setMinStars] = useState(initialUrl.minStars);
+  // W3 §2.6: activity intelligence — dormant filter + recently-pushed sort
+  const [hideDormant, setHideDormant] = useState(false);
+  const [sortBy, setSortBy] = useState('stars'); // 'stars' | 'recent'
   // W3 §2.1: pack-time inverted index for ranked search (fetched alongside the
   // packed rows; the memoized substring corpus remains the fallback).
   const [searchIndex, setSearchIndex] = useState(null);
+  // W3 §2.4: pack-time kNN edge list for the graph + Similar-repositories tab.
+  const [edgeList, setEdgeList] = useState(null);
 
   // Inspector Modal / Drawer
   const [activeRepoModal, setActiveRepoModal] = useState(null);
@@ -102,6 +107,12 @@ export default function App() {
       .then((res) => (res.ok ? res.json() : null))
       .then((idx) => { if (idx && Array.isArray(idx.t)) setSearchIndex(idx); })
       .catch(() => {});
+    // W3 §2.4 — pack-time kNN edges (Graph3D keeps its legacy synthesis as the
+    // fallback when this file is absent).
+    fetch('./edges.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data && Array.isArray(data.edges)) setEdgeList(data.edges); })
+      .catch(() => {});
     fetch('./catalog-packed.json')
       .then((res) => {
         if (!res.ok) throw new Error('Packed index not found, falling back');
@@ -109,8 +120,9 @@ export default function App() {
       })
       .then((packed) => {
         const { domains, subsystems, languages, artifacts, rows } = packed;
-        const unpacked = rows.map((r) => {
+        const unpacked = rows.map((r, rowIdx) => {
           const domName = domains[r[6]] || "Other / General";
+          const act = Array.isArray(data.activity) ? data.activity[rowIdx] : null;
           return {
             id: r[0],
             name: r[1],
@@ -134,6 +146,8 @@ export default function App() {
             compatibility: Array.isArray(r[14]) ? r[14] : [],
             url: `https://github.com/${r[2]}/${r[1]}`,
             shard: slugify(domName),
+            // W3 §2.6: [status, pushed_epoch] aligned with rows (null = no data)
+            activity: act && act[0] ? { status: act[0], pushedAt: act[1] } : null,
             // W3 §2.3: memoized search corpus — built ONCE per unpack instead of
             // per keystroke; §2.2: includes primitives/license/compatibility/topics.
             searchCorpus: [
@@ -310,31 +324,82 @@ export default function App() {
       return true;
     };
 
+    // W3 §2.6: dormant = idle (no push within 365 days) or archived
+    const activityOk = (repo) => {
+      if (!hideDormant) return true;
+      const s = repo.activity && repo.activity.status;
+      return s !== 'idle' && s !== 'archived';
+    };
+
     const q = debouncedQuery.trim();
     if (q && searchIndex) {
+      // Ranked path: relevance order wins over the star/recent sort (labelled
+      // in the UI), the dormant filter still applies.
       const ranked = rankQuery(searchIndex, q, starsByOrdinal);
       const out = [];
       for (const [ord] of ranked) {
         const repo = repos[ord];
-        if (repo && facetOk(repo)) out.push(repo);
+        if (repo && facetOk(repo) && activityOk(repo)) out.push(repo);
       }
       return out;
     }
 
     const queryTokens = q ? q.toLowerCase().split(/\s+/).filter(Boolean) : [];
-    return repos.filter((repo) => {
-      if (!facetOk(repo)) return false;
+    const base = repos.filter((repo) => {
+      if (!facetOk(repo) || !activityOk(repo)) return false;
       for (const token of queryTokens) {
         if (!repo.searchCorpus.includes(token)) return false;
       }
       return true;
     });
+    if (!q && sortBy === 'recent') {
+      // recently-pushed first; rows without push data sink deterministically
+      return [...base].sort((a, b) => {
+        const ta = (a.activity && a.activity.pushedAt) || 0;
+        const tb = (b.activity && b.activity.pushedAt) || 0;
+        return tb - ta || b.stars - a.stars;
+      });
+    }
+    return base;
   }, [repos, debouncedQuery, searchIndex, starsByOrdinal, selectedDomain, selectedSubsystem,
-      selectedArtifact, selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars]);
+      selectedArtifact, selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars,
+      hideDormant, sortBy]);
 
   const visibleRepos = useMemo(() => {
     return filteredRepos.slice(0, visibleCount);
   }, [filteredRepos, visibleCount]);
+
+  // W3 §2.5: top-5 "Similar repositories" from the pack-time kNN edge list;
+  // reason strings are templates computed at render from the shared sets.
+  const similarRepos = useMemo(() => {
+    if (!activeRepoModal || !edgeList) return [];
+    const ord = repos.findIndex((r) => r.id === activeRepoModal.id);
+    if (ord < 0) return [];
+    const entries = edgeList[ord] || [];
+    return entries.slice(0, 5).map(([j, weight]) => {
+      const repo = repos[j] || null;
+      let reason = 'Nearby catalog entry (no shared signals)';
+      if (repo) {
+        const a = activeRepoModal;
+        if (a.subsystem && a.subsystem === repo.subsystem && !a.subsystem.startsWith('General')) {
+          reason = `Shared Subsystem (${a.subsystem})`;
+        } else {
+          const p = (a.primitives || []).find((x) => (repo.primitives || []).includes(x));
+          const c = (a.compatibility || []).find((x) => (repo.compatibility || []).includes(x));
+          const t = (a.topics || []).find((x) => (repo.topics || []).includes(x));
+          if (p) reason = `Shared Primitive (${p})`;
+          else if (c) reason = `Shared Interop (${c})`;
+          else if (t) reason = `Shared Topic (${t})`;
+          else if (repo.language && repo.language === a.language && repo.language !== 'Other') {
+            reason = `Same Language (${repo.language})`;
+          }
+        }
+      }
+      return { repo, weight, reason };
+    }).filter((x) => x.repo);
+  }, [activeRepoModal, edgeList, repos]);
+
+
 
   return (
     <div className="min-h-screen bg-obs-base text-zinc-100 flex flex-col font-sans selection:bg-white/20">
@@ -483,6 +548,7 @@ export default function App() {
               selectedDomain={selectedDomain}
               onSelectRepo={(repo) => handleOpenRepoModal(repo)}
               onStatsChange={setGraphStats}
+              edgeList={edgeList}
             />
           </div>
         ) : (
@@ -647,6 +713,42 @@ export default function App() {
                     className="w-full cursor-pointer mt-1"
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                      Sort
+                    </label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => {
+                        setSortBy(e.target.value);
+                        setVisibleCount(36);
+                      }}
+                      className="w-full bg-obs-inset border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/25"
+                    >
+                      <option value="stars">Most stars</option>
+                      <option value="recent">Recently pushed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                      Activity
+                    </label>
+                    <label className="flex items-center gap-2 bg-obs-inset border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 cursor-pointer h-[30px]">
+                      <input
+                        type="checkbox"
+                        checked={hideDormant}
+                        onChange={(e) => {
+                          setHideDormant(e.target.checked);
+                          setVisibleCount(36);
+                        }}
+                        className="accent-white"
+                      />
+                      Hide dormant
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -741,6 +843,21 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center space-x-2">
+                      {repo.activity && repo.activity.status === 'active' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-signal-ok/[0.1] text-signal-ok border border-signal-ok/30">
+                          Active
+                        </span>
+                      )}
+                      {repo.activity && repo.activity.status === 'idle' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-signal-warn/[0.1] text-signal-warn border border-signal-warn/30">
+                          Idle
+                        </span>
+                      )}
+                      {repo.activity && repo.activity.status === 'archived' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-white/[0.06] text-zinc-400 border border-white/[0.15]">
+                          Archived
+                        </span>
+                      )}
                       <span className="text-[11px] font-mono text-zinc-300">{repo.language}</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-white/[0.05] text-zinc-300 border border-white/[0.10]">
                         {repo.license}
@@ -843,6 +960,17 @@ export default function App() {
               >
                 <Play className="w-4 h-4" />
                 <span>Quickstart &amp; Architecture</span>
+              </button>
+              <button
+                onClick={() => setModalTab('similar')}
+                className={`py-3 border-b-2 transition-colors flex items-center gap-2 ${
+                  modalTab === 'similar'
+                    ? 'border-white/80 text-white'
+                    : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Network className="w-4 h-4" />
+                <span>Similar Repositories</span>
               </button>
             </div>
 
@@ -1013,12 +1141,68 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {modalTab === 'similar' && (
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 block mb-2 flex items-center gap-1.5">
+                    <Network className="w-4 h-4 text-signal-accent" />
+                    Similar repositories
+                    <span className="text-[10px] text-zinc-500 normal-case font-normal ml-1">
+                      pack-time kNN over topics, subsystem, primitives &amp; compatibility
+                    </span>
+                  </label>
+                  {!edgeList && (
+                    <p className="text-zinc-400 text-xs bg-obs-inset border border-white/[0.07] rounded-xl p-4">
+                      Similarity index is still loading…
+                    </p>
+                  )}
+                  {edgeList && similarRepos.length === 0 && (
+                    <p className="text-zinc-400 text-xs bg-obs-inset border border-white/[0.07] rounded-xl p-4">
+                      No neighbours recorded for this repository.
+                    </p>
+                  )}
+                  {similarRepos.map(({ repo, weight, reason }) => (
+                    <button
+                      key={`${repo.id}-${weight}`}
+                      onClick={() => handleOpenRepoModal(repo)}
+                      className="w-full text-left bg-obs-inset hover:bg-white/[0.06] border border-white/[0.07] rounded-xl p-3.5 transition-colors space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="font-semibold text-zinc-100 text-xs truncate block">
+                            {repo.owner}/{repo.name}
+                          </span>
+                          <span className="text-[10px] text-zinc-500">
+                            {repo.subsystem} &middot; {repo.language}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-signal-star font-mono shrink-0">
+                          ★ {repo.stars.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[10px] text-zinc-400 bg-white/[0.06] border border-white/[0.08] rounded px-2 py-0.5">
+                          {reason}
+                        </span>
+                        <span className="text-[10px] text-zinc-500 font-mono shrink-0">
+                          match {Math.round(weight * 100)}%
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-white/[0.07] bg-obs-raised flex items-center justify-between">
               <span className="text-[11px] text-zinc-400">
-                Pushed: {new Date(activeRepoDetails.pushed_at).toLocaleDateString()}
+                {activeRepoDetails.pushed_at && !Number.isNaN(Date.parse(activeRepoDetails.pushed_at))
+                  ? `Pushed: ${new Date(activeRepoDetails.pushed_at).toLocaleDateString()}`
+                  : 'Pushed: Unknown'}
+                {activeRepoDetails.created_at && !Number.isNaN(Date.parse(activeRepoDetails.created_at))
+                  ? ` • Created: ${new Date(activeRepoDetails.created_at).toLocaleDateString()}`
+                  : ''}
               </span>
               <a
                 href={activeRepoDetails.url}

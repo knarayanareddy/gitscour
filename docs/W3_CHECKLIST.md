@@ -67,25 +67,39 @@ Branch `arena/01a0d2cb-gitscour`. Standing rule: **zero LLM calls.** Predecessor
       i±8) guarantees ≥1 edge — builder report: 985,224 edges, **min degree 8**,
       fallback 74.85% locally (empty topics until the CI backfill lands them),
       top bucket **19.7% ≤25%**
-- [ ] `Graph3DExplorer.jsx` consumes `edges.json` (client compatibility derivation stays as
-      fallback); nodes may still be sampled for layout, but links come from real data
+- [x] `Graph3DExplorer.jsx` consumes `edges.json` (fetched in App, passed as `edgeList`;
+      nodes still sampled for layout but every link comes from the file, deduped
+      bidirectional pairs, template reasons derived at render, legacy O(450²)
+      synthesis kept as the fetch-failure fallback; a post-pass links any sampled
+      node left isolated to its nearest sampled ordinal — `linked` stat now reports
+      nodes actually holding ≥1 link)
 - *Accept:* every node has ≥1 edge ✓ (min degree 8); no bucket >25% ✓ (19.7%)
 
 ## 2.5 "Similar repositories" Neighbors tab (feature 3.4)
 
-- [ ] New modal tab: top-5 neighbours from `edges.json`, template reason strings computed
-      from the shared sets at render time (`shares subsystem X + primitive Y`), deterministic
+- [x] New modal tab **"Similar Repositories"**: top-5 neighbours from `edges.json`,
+      template reason strings computed from the shared sets at render
+      (`Shared Subsystem/Primitive/Interop/Topic/Same Language`, else
+      `Nearby catalog entry (no shared signals)`), match % from the stored weight,
+      click-through opens that repo's modal — deterministic
 
 ## 2.6 Activity & freshness intelligence (features 3.2 + finding #11)
 
-- [ ] GraphQL adds `isArchived`, `createdAt` (harvest output), pack derives
-      **Active / Idle / Archived** status + recently-pushed sort + dormant filter
-- [ ] **Maturity v2** uses `pushed_at`/`forks` — a 10-year-dormant repo stops reading
-      "Production Battle-Tested"
-- [ ] Remove fabricated `pushed_at: "2026-09-01T00:00:00Z"` fallback (write `null`, UI guards
-      the date parse)
-- *Design note:* activity travels as parallel pack-time arrays (not a row-schema change —
-      row arity stays 12|13 with `domain_margin` @ 12)
+- [x] GraphQL adds `isArchived` + `createdAt` (harvest query + node mapping); pack derives
+      **Active / Idle / Archived** into a parallel `activity` array in `catalog-packed.json`
+      (`[status, pushed_epoch]` per row — row arity untouched at 12..15, index ordinals
+      unchanged); UI: status badges on cards, `Sort: Recently pushed`, `Hide dormant`
+      filter (idle+archived), URL stays shareable
+- [x] **Maturity v2** (`classify_maturity`): dormant ≥4y → "Dormant Legacy (last push YYYY)"
+      tier-4 regardless of stars; 20k+ stars needs ≥1000 forks for "Production
+      Battle-Tested" (else "High Adoption / Low Fork Traction"); missing/unparsable
+      date = unknown, never assumed dormant — 6 unit tests
+- [x] Fabricated `pushed_at: "2026-09-01T00:00:00Z"` fallback removed (sentinel
+      `FABRICATED_PUSHED_AT` treated as null in pack/maturity; shard writer writes null);
+      modal footer guards the parse → "Pushed: Unknown" instead of Invalid Date,
+      plus a Created line when `createdAt` exists
+- *Local evidence:* activity counts 63,714 active / 59,439 idle / 0 archived
+  (archived needs the backfill's `isArchived`), 0 unknown locally
 
 ## 2.7 License normalization + working facet (finding #12, feature 3.7)
 

@@ -14,7 +14,7 @@ import { deriveCompatibility, tier1Corpus } from './compatibility.js';
 export const GRAPH_SAMPLE_LIMIT = 1600;
 export const GRAPH_LINK_LIMIT = 450;
 
-export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, onStatsChange }) {
+export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, onStatsChange, edgeList }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -121,6 +121,9 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, o
     });
 
     const lookup = {};
+    // Row ordinals: nodes index edges.json (pack-time kNN), and filtering
+    // preserves repos order, so the ORIGINAL repos index is the edge key.
+    const ordinalById = new Map(repos.map((r, i) => [r.id, i]));
     const sampleLimit = Math.min(validRepos.length, GRAPH_SAMPLE_LIMIT);
     const graphNodes = validRepos.slice(0, sampleLimit).map((repo, idx) => {
       let x = 0, y = 0, z = 0;
@@ -172,12 +175,12 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, o
         forks: repo.forks,
         language: repo.language,
         primitives: repo.primitives || [],
-        // Tier-1 rows don't carry `compatibility` (it lives in Tier-2), so the
-        // interop signal is derived from the shared lexicon — otherwise every
-        // "Shared Interop" edge was dead wiring (review finding #7b).
+        // W3 §2.4: rows now carry `compatibility` themselves (15-field schema);
+        // deriveCompatibility stays as the legacy-row fallback (review #7b).
         compatibility: (repo.compatibility && repo.compatibility.length)
           ? repo.compatibility
           : deriveCompatibility(tier1Corpus(repo)),
+        ordinal: ordinalById.get(repo.id),
         color: DOMAIN_CONFIG[repo.domain] || DOMAIN_CONFIG["Other / General"],
         size,
         baseX: x, baseY: y, baseZ: z,
@@ -189,37 +192,100 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, o
       return nodeObj;
     });
 
-    // 2. Synthesize High-Signal Relationships & Multi-Hop Bridges
+    // 2. Edges: pack-time kNN from edges.json (W3 §2.4), with the old client
+    // derivation kept as fallback when the file has not loaded.
     const graphLinks = [];
+    const seenPairs = new Set();
+    const pushLink = (a, b, strength, relationship) => {
+      const key = a.id < b.id ? `${a.id}:${b.id}` : `${b.id}:${a.id}`;
+      if (a === b || seenPairs.has(key)) return false;
+      seenPairs.add(key);
+      graphLinks.push({ source: a, target: b, strength, relationship });
+      return true;
+    };
+    // Template reason strings, derived at render from the shared evidence sets
+    const reasonFor = (a, b) => {
+      if (a.subsystem && a.subsystem === b.subsystem && !a.subsystem.startsWith('General')) {
+        return `Shared Subsystem (${a.subsystem})`;
+      }
+      const p = (a.primitives || []).find((x) => (b.primitives || []).includes(x));
+      if (p) return `Shared Primitive (${p})`;
+      const c = (a.compatibility || []).find((x) => (b.compatibility || []).includes(x));
+      if (c) return `Shared Interop (${c})`;
+      const ta = a.repo.topics || [];
+      const tb = b.repo.topics || [];
+      const t = ta.find((x) => tb.includes(x));
+      if (t) return `Shared Topic (${t})`;
+      const la = a.language, lb = b.language;
+      if (la && la === lb && la !== 'Other') return `Same Language (${la})`;
+      return null;
+    };
+
     const maxLinkNodes = Math.min(graphNodes.length, GRAPH_LINK_LIMIT);
+    const edgesReady = Array.isArray(edgeList) && edgeList.length > 0;
+    let linkedCount = 0;
 
-    for (let i = 0; i < maxLinkNodes; i++) {
-      for (let j = i + 1; j < maxLinkNodes; j++) {
-        const a = graphNodes[i];
-        const b = graphNodes[j];
-        
-        let strength = 0;
-        let relationship = "";
-
-        if (a.subsystem && b.subsystem && a.subsystem === b.subsystem) {
-          strength += 3;
-          relationship = `Shared Subsystem (${a.subsystem})`;
-        }
-        const commonPrim = a.primitives.find((p) => b.primitives.includes(p));
-        if (commonPrim) {
-          strength += 2;
-          relationship = `Shared Primitive (${commonPrim})`;
-        }
-        const commonComp = a.compatibility.find((c) => b.compatibility.includes(c));
-        if (commonComp) {
-          strength += 2;
-          relationship = `Shared Interop (${commonComp})`;
-        }
-
-        if (strength >= 3) {
-          graphLinks.push({ source: a, target: b, strength, relationship });
+    if (edgesReady) {
+      const nodeByOrdinal = new Map(graphNodes.map((n) => [n.ordinal, n]));
+      const linked = new Set();
+      for (const node of graphNodes) {
+        const entries = edgeList[node.ordinal] || [];
+        for (const entry of entries) {
+          const [jOrd, w] = entry;
+          const other = nodeByOrdinal.get(jOrd);
+          if (!other) continue; // neighbour outside the graph sample
+          const reason = reasonFor(node, other)
+            || (w <= 0.1 ? 'Nearby catalog entry (no shared signals)' : 'Weighted Similarity');
+          if (pushLink(node, other, w, reason)) linked.add(node.id);
         }
       }
+      // Every sampled node keeps at least one link: nearest sampled ordinal.
+      const ordinals = graphNodes.map((n) => n.ordinal).sort((a, b) => a - b);
+      for (const node of graphNodes) {
+        if (linked.has(node.id)) continue;
+        let best = null, bestGap = Infinity;
+        for (const o of ordinals) {
+          if (o === node.ordinal) continue;
+          const gap = Math.abs(o - node.ordinal);
+          if (gap < bestGap) { bestGap = gap; best = o; }
+        }
+        if (best !== null) {
+          const other = nodeByOrdinal.get(best);
+          if (pushLink(node, other, 0.1, 'Nearest catalog neighbor (graph sample)')) {
+            linked.add(node.id);
+          }
+        }
+      }
+      linkedCount = linked.size;
+    } else {
+      // Legacy fallback: synthesize relationships over the first cohort only
+      // (pre-W3 behaviour — O(450^2), first 450 sampled nodes).
+      for (let i = 0; i < maxLinkNodes; i++) {
+        for (let j = i + 1; j < maxLinkNodes; j++) {
+          const a = graphNodes[i];
+          const b = graphNodes[j];
+          let strength = 0;
+          let relationship = "";
+          if (a.subsystem && b.subsystem && a.subsystem === b.subsystem) {
+            strength += 3;
+            relationship = `Shared Subsystem (${a.subsystem})`;
+          }
+          const commonPrim = a.primitives.find((p) => b.primitives.includes(p));
+          if (commonPrim) {
+            strength += 2;
+            relationship = `Shared Primitive (${commonPrim})`;
+          }
+          const commonComp = a.compatibility.find((c) => b.compatibility.includes(c));
+          if (commonComp) {
+            strength += 2;
+            relationship = `Shared Interop (${commonComp})`;
+          }
+          if (strength >= 3) {
+            graphLinks.push({ source: a, target: b, strength, relationship });
+          }
+        }
+      }
+      linkedCount = Math.min(maxLinkNodes, graphNodes.length);
     }
 
     return {
@@ -228,9 +294,9 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, o
       domainClusters: domainNames,
       nodeLookup: lookup,
       filteredCount: validRepos.length,   // rows passing domain + min-stars filters
-      linkedCount: maxLinkNodes,          // nodes eligible for link synthesis
+      linkedCount,                        // nodes actually holding >= 1 link
     };
-  }, [repos, filterDomain, filterMinStars, viewMode, repulsionForce, nodeSizingMetric]);
+  }, [repos, filterDomain, filterMinStars, viewMode, repulsionForce, nodeSizingMetric, edgeList]);
 
   // Report live graph stats so the App header can state real numbers instead of
   // the old bare "123,153 Nodes" claim (review finding #7c). Deps are numeric
