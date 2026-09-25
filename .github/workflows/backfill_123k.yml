@@ -149,6 +149,31 @@ jobs:
 
           Merging deploys the refreshed catalog via \`deploy.yml\`.
           EOF
+          # W4 §3.3: append the top star movers (diff of the last two history
+          # snapshots) so the reviewer sees the trend without opening the files.
+          if [ -f web/public/changelog.json ]; then
+            python3 - >> pr_body.md <<'PY'
+          import json
+          cl = json.load(open("web/public/changelog.json"))
+          movers = cl.get("top_movers") or []
+          period = cl.get("period")
+          if movers and period:
+              print()
+              print(f"## Star movers {period['from']} -> {period['to']}")
+              for r in movers[:10]:
+                  sign = "+" if r["delta"] >= 0 else "-"
+                  lang = f" `{r['language']}`" if r.get("language") else ""
+                  print(f"- **{r['full_name']}** {sign}{abs(r['delta']):,} "
+                        f"({r['from']:,} -> {r['to']:,}){lang}")
+              print()
+              print(f"Full list in `web/public/changelog.json` — "
+                    f"{cl.get('mover_count', 0)} movers, "
+                    f"+{cl.get('added_count', 0)} added / -{cl.get('removed_count', 0)} removed.")
+          elif cl.get("note"):
+              print()
+              print(f"_History: {cl['note']}_")
+          PY
+          fi
           gh pr create --base "${{ github.ref_name }}" --head "$BRANCH" \
             --title "data: backfill catalog to ${REPO_COUNT} repositories" \
             --body-file pr_body.md || true

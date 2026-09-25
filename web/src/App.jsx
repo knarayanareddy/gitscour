@@ -5,7 +5,7 @@ import {
   CheckCircle2, AlertTriangle, Info, X, Copy, Check, ArrowRight,
   Boxes, Server, Lock, Flame, Compass, Network, HelpCircle,
   Zap, GitCompare, Play, BookOpen, Lightbulb, Share2, Loader2,
-  ChevronDown, SlidersHorizontal, Sliders
+  ChevronDown, SlidersHorizontal, Sliders, TrendingUp
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
 // W4 §3.1: asset URL only — the WASM binary is fetched on first engine init.
@@ -63,6 +63,8 @@ export default function App() {
   const [edgeList, setEdgeList] = useState(null);
   // W3 §2.8: pack-time facet counts for chips with live numbers.
   const [facets, setFacets] = useState(null);
+  // W4 §3.3: pack-time star-delta changelog (Rising shelf + Changelog tab).
+  const [changelog, setChangelog] = useState(null);
 
   // Inspector Modal / Drawer
   const [activeRepoModal, setActiveRepoModal] = useState(null);
@@ -206,6 +208,12 @@ export default function App() {
     fetch('./facets.json')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => { if (data && Array.isArray(data.domains)) setFacets(data); })
+      .catch(() => {});
+    // W4 §3.3: changelog diff of the last two history snapshots (absent until
+    // a second snapshot exists is handled as an honest empty state).
+    fetch('./changelog.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data && typeof data === 'object') setChangelog(data); })
       .catch(() => {});
     fetch('./catalog-packed.json')
       .then((res) => {
@@ -508,6 +516,25 @@ export default function App() {
     return filteredRepos.slice(0, visibleCount);
   }, [filteredRepos, visibleCount]);
 
+  // W4 §3.2: modal momentum badge + sparkline source (null until the repo
+  // appears as a mover — no fabricated history).
+  const modalMomentum = useMemo(() => {
+    if (!changelog || !activeRepoModal || !Array.isArray(changelog.top_movers)) return null;
+    const key = `${activeRepoModal.owner}/${activeRepoModal.name}`;
+    return changelog.top_movers.find((m) => m.full_name === key) || null;
+  }, [changelog, activeRepoModal]);
+
+  // W4 §3.2: "Rising this month" shelf — top movers that resolve to a live
+  // catalog row (removed rows still show in the Changelog tab, unclickable).
+  const risingMovers = useMemo(() => {
+    if (!changelog || !Array.isArray(changelog.top_movers)) return [];
+    const byName = new Map(repos.map((r) => [`${r.owner}/${r.name}`, r]));
+    return changelog.top_movers
+      .map((m) => ({ mover: m, repo: byName.get(m.full_name) }))
+      .filter((x) => x.repo)
+      .slice(0, 10);
+  }, [changelog, repos]);
+
   // W3 §2.5: top-5 "Similar repositories" from the pack-time kNN edge list;
   // reason strings are templates computed at render from the shared sets.
   const similarRepos = useMemo(() => {
@@ -609,6 +636,17 @@ export default function App() {
             >
               <Terminal className="w-3.5 h-3.5" />
               <span>SQL Studio</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('changelog')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                activeTab === 'changelog'
+                  ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Rising</span>
             </button>
 
             {/* Share Link Button */}
@@ -770,6 +808,139 @@ export default function App() {
                 <p>The engine loads lazily on your first Run — Explorer users never download it.</p>
                 <p>Examples: <code className="text-zinc-300">SELECT name, stars FROM repos WHERE language = 'Rust' ORDER BY stars DESC LIMIT 20;</code></p>
                 <p><code className="text-zinc-300">SELECT domain, COUNT(*) AS n FROM repos GROUP BY domain ORDER BY n DESC;</code></p>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'changelog' ? (
+          /* W4 §3.3 — STAR-DELTA CHANGELOG (diff of history snapshots) */
+          <div className="bg-obs-surface border border-white/[0.07] rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-signal-star" />
+                Catalog changelog
+              </h2>
+              {changelog && changelog.period && (
+                <span className="text-[11px] font-mono text-zinc-400 bg-obs-inset px-2 py-1 rounded border border-white/[0.08]">
+                  {changelog.period.from} &rarr; {changelog.period.to}
+                </span>
+              )}
+            </div>
+
+            {!changelog ? (
+              <p className="text-xs text-zinc-500">Loading changelog.json&hellip;</p>
+            ) : !changelog.period ? (
+              <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-4 space-y-1.5">
+                <p className="text-xs text-zinc-300">
+                  {changelog.note || 'No star history yet.'}
+                </p>
+                <p className="text-[11px] text-zinc-500">
+                  Every rebuild appends <code>web/public/history/&lt;date&gt;-stars.json</code>;
+                  the first two snapshots automatically produce added/removed/top-movers here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2.5 text-center">
+                  <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-3">
+                    <div className="num text-lg text-signal-star">{(changelog.mover_count || 0).toLocaleString()}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-zinc-500">Movers</div>
+                  </div>
+                  <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-3">
+                    <div className="num text-lg text-signal-ok">+{(changelog.added_count || 0).toLocaleString()}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-zinc-500">Added</div>
+                  </div>
+                  <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-3">
+                    <div className="num text-lg text-red-300">&minus;{(changelog.removed_count || 0).toLocaleString()}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-zinc-500">Removed</div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                    Top star movers (by |delta|)
+                  </h3>
+                  <div className="overflow-x-auto rounded-lg border border-white/[0.07]">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-[10px] uppercase tracking-wider text-zinc-500 bg-obs-inset">
+                          <th className="text-left px-3 py-2 font-semibold">Repository</th>
+                          <th className="text-right px-3 py-2 font-semibold">Stars</th>
+                          <th className="text-right px-3 py-2 font-semibold">Delta</th>
+                          <th className="text-right px-3 py-2 font-semibold hidden sm:table-cell">%</th>
+                          <th className="text-left px-3 py-2 font-semibold hidden md:table-cell">Language</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {changelog.top_movers.slice(0, 50).map((m) => (
+                          <tr
+                            key={m.full_name}
+                            className="border-t border-white/[0.05] hover:bg-white/[0.03] cursor-pointer"
+                            onClick={() => {
+                              const repo = repos.find(
+                                (r) => `${r.owner}/${r.name}` === m.full_name
+                              );
+                              if (repo) handleOpenRepoModal(repo);
+                            }}
+                            title="Open repository inspector"
+                          >
+                            <td className="px-3 py-1.5 font-mono text-zinc-200">{m.full_name}</td>
+                            <td className="px-3 py-1.5 text-right num text-zinc-300">{m.to.toLocaleString()}</td>
+                            <td className={`px-3 py-1.5 text-right num font-semibold ${m.delta > 0 ? 'text-signal-ok' : 'text-red-300'}`}>
+                              {m.delta > 0 ? '+' : ''}{m.delta.toLocaleString()}
+                            </td>
+                            <td className="px-3 py-1.5 text-right num text-zinc-500 hidden sm:table-cell">
+                              {m.delta > 0 ? '+' : ''}{m.pct}%
+                            </td>
+                            <td className="px-3 py-1.5 text-zinc-400 hidden md:table-cell">{m.language || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {changelog.mover_count > 50 && (
+                    <p className="text-[10px] text-zinc-500 mt-1.5">
+                      Top 50 of {changelog.mover_count.toLocaleString()} movers — full list in
+                      <code> web/public/changelog.json</code>.
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-3">
+                    <h4 className="text-[10px] uppercase tracking-wider text-signal-ok font-semibold mb-1.5">
+                      New in the catalog ({(changelog.added_count || 0).toLocaleString()})
+                    </h4>
+                    {changelog.added.length === 0 ? (
+                      <p className="text-[11px] text-zinc-500">None this period.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {changelog.added.slice(0, 8).map((a) => (
+                          <li key={a.full_name} className="font-mono text-[11px] text-zinc-300 flex justify-between gap-2">
+                            <span className="truncate">{a.full_name}</span>
+                            <span className="num text-zinc-500 shrink-0">{a.stars.toLocaleString()}&nbsp;★</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-3">
+                    <h4 className="text-[10px] uppercase tracking-wider text-red-300 font-semibold mb-1.5">
+                      Gone since last snapshot ({(changelog.removed_count || 0).toLocaleString()})
+                    </h4>
+                    {changelog.removed.length === 0 ? (
+                      <p className="text-[11px] text-zinc-500">None this period.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {changelog.removed.slice(0, 8).map((r) => (
+                          <li key={r.full_name} className="font-mono text-[11px] text-zinc-400 flex justify-between gap-2">
+                            <span className="truncate line-through decoration-red-300/50">{r.full_name}</span>
+                            <span className="num text-zinc-600 shrink-0">{r.stars.toLocaleString()}&nbsp;★</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1123,6 +1294,49 @@ export default function App() {
               </span>
             </div>
 
+            {/* W4 §3.2 — "Rising this month" shelf (star-delta top movers) */}
+            {risingMovers.length > 0 && (
+              <div className="bg-obs-surface border border-signal-star/20 rounded-xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-signal-star" />
+                    Rising this month
+                    {changelog && changelog.period && (
+                      <span className="text-[10px] font-mono text-zinc-500 font-normal">
+                        {changelog.period.from} &rarr; {changelog.period.to}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => setActiveTab('changelog')}
+                    className="text-[10px] text-zinc-400 hover:text-white transition-colors flex items-center gap-1"
+                  >
+                    Full changelog <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {risingMovers.map(({ mover, repo }) => (
+                    <button
+                      key={mover.full_name}
+                      onClick={() => handleOpenRepoModal(repo)}
+                      className="shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-obs-inset hover:bg-white/[0.06] border border-white/[0.10] hover:border-signal-star/40 text-left transition-all"
+                      title={`${mover.from.toLocaleString()} → ${mover.to.toLocaleString()} stars`}
+                    >
+                      <span className="text-[11px] font-medium text-zinc-200 max-w-[160px] truncate">
+                        {mover.full_name}
+                      </span>
+                      <span className="num text-[10px] font-bold text-signal-ok shrink-0">
+                        +{mover.delta.toLocaleString()}
+                      </span>
+                      <span className="num text-[10px] text-zinc-500 shrink-0">
+                        {mover.to.toLocaleString()}★
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Repos Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {visibleRepos.map((repo) => (
@@ -1277,7 +1491,60 @@ export default function App() {
                 </div>
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <span>{activeRepoDetails.owner} / {activeRepoDetails.name}</span>
+                  {/* W4 §3.2: momentum badge (only for rows with real history) */}
+                  {modalMomentum && (
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                        modalMomentum.delta > 0
+                          ? 'bg-signal-ok/[0.1] text-signal-ok border-signal-ok/40'
+                          : 'bg-red-400/[0.1] text-red-300 border-red-400/40'
+                      }`}
+                      title={`Star momentum vs the previous snapshot (${changelog.period ? changelog.period.from : ''})`}
+                    >
+                      {modalMomentum.delta > 0 ? '\u25B2 +' : '\u25BC '}{modalMomentum.delta.toLocaleString()}
+                    </span>
+                  )}
                 </h2>
+                {modalMomentum && Array.isArray(modalMomentum.series) && modalMomentum.series.length > 0 && (
+                  <div className="mt-1.5 flex items-center gap-2">
+                    {modalMomentum.series.length >= 2 ? (() => {
+                      const vals = modalMomentum.series.map(([, s]) => s);
+                      const min = Math.min(...vals);
+                      const max = Math.max(...vals);
+                      const span = max - min || 1;
+                      const pts = vals.map((v, i) => {
+                        const x = (i / (vals.length - 1)) * 120 + 2;
+                        const y = 24 - ((v - min) / span) * 20;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                      }).join(' ');
+                      const up = vals[vals.length - 1] >= vals[0];
+                      return (
+                        <svg width="124" height="28" viewBox="0 0 124 28" aria-label="Star history sparkline">
+                          <polyline
+                            points={pts}
+                            fill="none"
+                            stroke={up ? 'rgb(52 211 153)' : 'rgb(252 165 165)'}
+                            strokeWidth="2"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                          {vals.map((v, i) => {
+                            const x = (i / (vals.length - 1)) * 120 + 2;
+                            const y = 24 - ((v - min) / span) * 20;
+                            return <circle key={i} cx={x} cy={y} r="2" fill="rgb(228 228 231)" />;
+                          })}
+                        </svg>
+                      );
+                    })() : (
+                      <span className="text-[10px] font-mono text-zinc-500">
+                        baseline {modalMomentum.series[0][0]}: {modalMomentum.series[0][1].toLocaleString()}&#9733;
+                      </span>
+                    )}
+                    <span className="text-[10px] text-zinc-500">
+                      {modalMomentum.series.length} snapshot{modalMomentum.series.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setActiveRepoModal(null)}

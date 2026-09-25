@@ -75,15 +75,25 @@ Standing rule: **zero LLM calls at runtime** — everything deterministic, rule-
 
 ## D. §3.2 + §3.3 Star-delta trending & changelog
 
-- [ ] `pipeline/` writes `web/public/history/<date>-stars.json` snapshot per rebuild
-      (columnar `{id: [stars, forks]}`) + keeps the previous one (CI commits them;
-      ~1–2 MB/yr budget)
-- [ ] Rebuild diffs the last two snapshots → `web/public/changelog.json`
-      (added/removed, top movers, label/domain moves from packed metadata)
-- [ ] App: `changelog` tab rendering it + **"Rising this month"** shelf on Explorer
-      (top star-delta over the snapshot window), modal **sparkline**, momentum badge
-- [ ] Backfill workflow: commit history + print top movers in the PR body (workflow edit)
-- [ ] Seeded now: first snapshot from the current packed rows so the next backfill diffs
+- [x] `pipeline/history.py` writes `web/public/history/<date>-stars.json` per rebuild
+      (columnar `{names: [...], stars: [...]}`, ~3.7 MB/snapshot) and keeps every
+      previous one; same-day re-runs overwrite byte-identically; backfill's existing
+      `git add web/public` commits them with the PR
+- [x] Rebuild diffs the last two snapshots → `web/public/changelog.json`
+      (added/removed + counts, |delta|-sorted top 100 movers with from/to/pct/
+      language/domain from packed metadata + per-mover `series` for sparklines;
+      first run = honest seeded-baseline note, zero invented movers)
+- [x] App: **Rising** tab renders the full changelog (period header, mover/added/
+      removed counts, 50-row mover table, added/removed lists, empty states) +
+      **"Rising this month"** shelf on Explorer (top 10 resolvable movers, click =
+      inspector) + modal **sparkline** (SVG polyline of the per-snapshot series,
+      baseline text at 1 point) + **momentum badge** (▲/▼ delta chip, only for
+      rows with real history)
+- [x] Backfill workflow: `git add web/public` already commits history+changelog;
+      PR body now appends a `## Star movers <from> -> <to>` top-10 list parsed from
+      `changelog.json` (or the seeded-baseline note); YAML + heredoc dedent verified
+- [x] Seeded now: `history/2026-09-25-stars.json` written from the current packed
+      rows (smoke asserts names/stars alignment vs packed head); next backfill diffs it
 
 ## E. §3.5 Topic facets + Ecosystems
 

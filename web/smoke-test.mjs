@@ -3,7 +3,7 @@
 //
 // The query path is NOT mirrored: this test imports `src/search-core.mjs`, the
 // exact module App.jsx uses, so the gate exercises the shipped algorithm.
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { performance } from 'perf_hooks';
 import { rankQuery, tokenize } from './src/search-core.mjs';
@@ -379,6 +379,41 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   console.log(`\nfilter-core: identity ${identity.length.toLocaleString()} rows in ${tEmpty.toFixed(1)}ms | ` +
     `ranked 'sql vector' ${ranked.length} in ${tQuery.toFixed(1)}ms | tail ${tailCount} rows / ${stats.tail.length} langs | ` +
     `hideDormant ${active.length.toLocaleString()} | signal mean ${sigMean.toFixed(1)}, ≥60: ${sigFiltered.length.toLocaleString()}`);
+}
+
+// 11. W4 §3.2/§3.3 — history snapshots + changelog diff
+{
+  const clPath = join(dir, 'changelog.json');
+  const clRaw = existsSync(clPath) ? readFileSync(clPath, 'utf8') : null;
+  check(clRaw !== null, 'changelog.json missing from dist');
+  const cl = clRaw ? JSON.parse(clRaw) : {};
+  check(Array.isArray(cl.top_movers), 'changelog.top_movers not an array');
+  check(typeof cl.generated === 'string' && cl.generated.length > 0, 'changelog.generated missing');
+  if (cl.period) {
+    check(cl.period.from < cl.period.to, 'changelog period not ordered');
+    const deltas = cl.top_movers.map((m) => Math.abs(m.delta));
+    check(deltas.every((d) => d > 0), 'zero-delta mover present');
+    for (let i = 1; i < deltas.length; i++) check(deltas[i] <= deltas[i - 1], 'movers not |delta|-desc');
+    check(cl.top_movers.every((m) => m.from !== m.to), 'mover with from == to');
+  } else {
+    check(typeof cl.note === 'string' && cl.note.includes('Baseline'),
+      'first-run changelog lacks seeded-baseline note');
+    check(cl.top_movers.length === 0, 'single-snapshot changelog must not invent movers');
+  }
+  const histDir = join(dir, 'history');
+  const snaps = existsSync(histDir)
+    ? readdirSync(histDir).filter((f) => f.endsWith('-stars.json')) : [];
+  check(snaps.length >= 1, 'no history snapshots');
+  const first = JSON.parse(readFileSync(join(histDir, snaps.sort()[0]), 'utf8'));
+  check(Array.isArray(first.names) && first.names.length === first.stars.length
+    && first.names.length === rows.length, 'snapshot alignment/count mismatch');
+  if (snaps.length === 1) {
+    check(first.names[0] === `${unpacked[0].owner}/${unpacked[0].name}`
+      && first.stars[0] === unpacked[0].stars, 'seeded snapshot != packed head row');
+  }
+  console.log(`changelog: ${snaps.length} snapshot(s), generated ${cl.generated}, ` +
+    `${cl.top_movers.length} movers, +${cl.added_count}/-${cl.removed_count}` +
+    (cl.period ? ` | ${cl.period.from} -> ${cl.period.to}` : ' (baseline)'));
 }
 
 console.log(fail.length ? `\nFAILED (${fail.length}):\n  ` + fail.slice(0, 10).join('\n  ')
