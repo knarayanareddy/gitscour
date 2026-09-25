@@ -155,9 +155,20 @@ Standing rule: **zero LLM calls at runtime** — everything deterministic, rule-
 
 ## Verification gates
 
-- [ ] `python3 -m unittest discover -s tests -p "test_*.py" -q` green (62 + new)
-- [ ] `npm run build` + `node smoke-test.mjs dist` exit 0 (adds SQL + worker-parity +
-      snapshot/changelog gates)
-- [ ] `verify_catalog.py` exit 0 after each pack-time regen; Tier-2 shards untouched
-- [ ] Both workflow YAMLs parse (D needs a backfill-workflow edit)
-- [ ] README updated where behavior changes (signal formula, SQL subset, history)
+- [x] `python3 -m unittest discover -s tests -p "test_*.py" -q` green: **102/102 OK**
+      (W3 baseline 62 → +signal 13 → +history 11 → +tier 8 → +worker 6 → +search 7 →
+      +topics 8 → +blueprints 7 → +synergy 1)
+- [x] `npm run build` (3.10s) + `node smoke-test.mjs dist` exit **0** — smoke spans
+      SQL, worker-parity, §11 snapshot/changelog, §12 topic-map, §13 blueprint/engine:
+      `OK: packed decode, ranked search, edges, facets, Tier-2 merge, and fallback index consistent for 123,153 repos.`
+- [x] `verify_catalog.py --base-dir web/public` exit **0** after every regen;
+      Tier-2 `web/public/data/details` byte-untouched (`git status` clean — all local
+      regens ran with `write_shards=False`)
+- [x] Both workflow YAMLs parse (js-yaml): `backfill_123k.yml` + `deploy.yml`.
+      Backfill needs **no topic-map edit** — it already runs `git add web/public`
+      (ships `topic-map.json`) and `node web/smoke-test.mjs web/public` (so the new
+      gates run in CI too)
+- [x] README updated where behavior changes: Signal formula + term table + test pin,
+      SQL Studio subset incl. mutation rejection, topic facet + topic cloud +
+      Ecosystems/`topic-map.json`, History/Rising semantics (honest single-snapshot
+      baseline), Inspire blueprints + `?seed=` reproducibility + mean-over-pairs synergy

@@ -20,8 +20,11 @@ GitScour eliminates traditional backend database costs by combining static pre-i
    * Filters out generic "awesome lists" and tutorials so users searching for systems software find actual codebases.
 
 2. **Web Explorer & In-Browser SQL Studio (`web/`):**
-   * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, and languages.
-   * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with one-click CSV export.
+   * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, languages, license tiers, and pack-time **topics**.
+   * **Topic cloud & Ecosystems tab:** per-domain topic cloud from `facets.topics_by_domain`, plus a co-occurrence graph (`topic-map.json`: term frequency >= 25, pair count >= 10, top-10 edges per topic) built at pack time by `pipeline/topicmap.py` — click a node to filter the catalog.
+   * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with one-click CSV export; mutation statements (`INSERT`, `UPDATE`, `DROP`, ...) are rejected — the console is read-only over Tier-1.
+   * **History & Rising:** per-rebuild star snapshots (`history/<date>-stars.json`, byte-identical same-day re-runs) diffed into `changelog.json` — added/removed rows and |delta| movers feed the *Rising* tab, the Explorer shelf, and the inspector's momentum sparkline. One snapshot only = honest seeded-baseline note, never invented deltas.
+   * **Inspire (blueprints):** eight curated blueprints in `web/src/blueprints.json` (seeds verified against the packed catalog) completed by the deterministic `blueprint-engine.mjs`; stack generation is reproducible from the URL `?seed=` parameter (mulberry32 — no `Math.random`). Pool synergy is the **mean over pair scores** from `synergy-core.mjs`, so 2-slot and 6-slot stacks are comparable, with a protocol matrix derived from `COMPATIBILITY_RULES` (Postgres-compatible <-> pg drivers, OpenAI-compatible <-> OpenAI clients, ...).
 
 3. **Zero-Maintenance Automation (`.github/workflows/`):**
    * `backfill_123k.yml` (monthly) enumerates the full >500★ universe, rebuilds the
