@@ -49,6 +49,12 @@ jobs:
       - name: Verify Catalog Integrity
         run: python3 pipeline/verify_catalog.py
 
+      # W2 §1.8 (finding #6b): the 16 hand-written SEEDS ELI5 cards finally
+      # reach the deployed bundle. Idempotent — once the backfill PR commits
+      # the merged shards this becomes a no-op that still guards against drift.
+      - name: Merge Curated Seed ELI5 Cards
+        run: python3 pipeline/merge_seed_intel.py --apply
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:

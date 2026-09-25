@@ -5,6 +5,7 @@ from typing import Dict, List, Any, Optional
 TAXONOMY_RULES = {
     "Operating Systems & Low-Level": {
         "keywords": ["kernel", "operating-system", "os", "linux", "embedded", "firmware", "driver", "hardware", "cpu", "arm", "risc-v", "hypervisor", "virtualization", "system-programming"],
+        "strong": ["kernel", "operating-system", "embedded", "firmware", "hypervisor"],
         "subsystems": {
             "Kernel & Core OS": ["kernel", "linux-kernel", "bootloader", "os-kernel", "monolithic-kernel", "microkernel"],
             "Embedded & IoT Firmware": ["firmware", "embedded", "arduino", "esp32", "microcontroller", "stm32", "rtos"],
@@ -12,9 +13,10 @@ TAXONOMY_RULES = {
         }
     },
     "Databases & Storage": {
-        "keywords": ["database", "datastore", "key-value", "relational", "sql", "nosql", "timeseries", "vector-db", "graph-database", "embedded-db", "sqlite", "postgres", "mysql", "redis", "mongodb", "cache", "storage"],
+        "keywords": ["database", "datastore", "key-value", "relational", "sql", "nosql", "timeseries", "vector-db", "vector-search", "vector-database", "graph-database", "embedded-db", "sqlite", "postgres", "postgresql", "mysql", "redis", "mongodb", "cache", "storage", "lakehouse", "big-data", "bigdata"],
+        "strong": ["database", "datastore", "key-value", "nosql", "relational", "sql", "sqlite", "postgres", "postgresql", "mysql", "redis", "mongodb", "vector-db", "vector-search", "vector-database", "graph-database", "embedded-db", "lakehouse", "big-data", "bigdata"],
         "subsystems": {
-            "Vector Database": ["vector-search", "vector-database", "embeddings", "approximate-nearest-neighbor", "ann", "faiss", "hnsw", "milvus", "qdrant", "weaviate", "chroma"],
+            "Vector Database": ["vector-search", "vector-database", "vector", "embeddings", "approximate-nearest-neighbor", "ann", "faiss", "hnsw", "milvus", "qdrant", "weaviate", "chroma"],
             "Distributed SQL Engine": ["distributed-sql", "newsql", "spanner", "cockroachdb", "tidb", "yugabyte", "citus", "distributed-database"],
             "Key-Value & In-Memory Store": ["key-value", "redis", "memcached", "in-memory", "rocksdb", "leveldb", "badgerdb", "kv-store", "lsm-tree", "caching"],
             "Analytical & Columnar (OLAP)": ["olap", "columnar", "clickhouse", "duckdb", "data-warehouse", "parquet", "arrow", "analytics-database", "big-data", "hadoop", "spark"],
@@ -25,6 +27,7 @@ TAXONOMY_RULES = {
     },
     "AI & Machine Learning": {
         "keywords": ["machine-learning", "deep-learning", "ai", "artificial-intelligence", "llm", "neural-network", "nlp", "computer-vision", "transformer", "pytorch", "tensorflow", "diffusion", "stable-diffusion", "generative-ai"],
+        "strong": ["ai", "artificial-intelligence", "machine-learning", "deep-learning", "llm", "neural-network", "pytorch", "tensorflow", "nlp", "computer-vision", "diffusion", "stable-diffusion", "generative-ai"],
         "subsystems": {
             "LLM Inference & Serving": ["llm-inference", "inference-engine", "vllm", "llama.cpp", "ollama", "tgi", "tensorrt", "model-serving", "onnxruntime", "gguf"],
             "Model Training & Fine-Tuning": ["fine-tuning", "lora", "qlora", "deepspeed", "megatron", "distributed-training", "gradient-descent", "pytorch-lightning", "axolotl", "training"],
@@ -35,58 +38,64 @@ TAXONOMY_RULES = {
         }
     },
     "Cloud & Infrastructure": {
-        "keywords": ["infrastructure", "cloud-native", "devops", "kubernetes", "container", "orchestration", "serverless", "iac", "monitoring", "docker", "terraform", "helm", "cloud"],
+        "keywords": ["infrastructure", "cloud-native", "devops", "kubernetes", "container", "orchestration", "serverless", "iac", "monitoring", "docker", "terraform", "helm", "cloud", "observability", "web-server", "reverse-proxy", "load-balancer", "service-mesh", "aws", "azure", "gcp", "api-gateway"],
+        "strong": ["infrastructure", "cloud-native", "devops", "kubernetes", "container", "orchestration", "serverless", "iac", "monitoring", "docker", "terraform", "helm", "cloud", "observability", "web-server", "reverse-proxy", "load-balancer", "service-mesh", "aws", "azure", "gcp", "api-gateway"],
         "subsystems": {
             "Container Orchestration & Runtime": ["kubernetes", "k8s", "containerd", "docker", "cgroups", "podman", "mesos", "scheduler", "wasm-runtime", "containers"],
             "Infrastructure as Code (IaC)": ["terraform", "opentofu", "pulumi", "cloudformation", "ansible", "provisioning", "gitops", "argocd", "flux", "iac"],
-            "Service Mesh & API Gateway": ["service-mesh", "api-gateway", "envoy", "istio", "traefik", "reverse-proxy", "load-balancer", "caddy", "nginx", "kong"],
+            "Service Mesh & API Gateway": ["service-mesh", "mesh", "api-gateway", "envoy", "istio", "traefik", "reverse-proxy", "load-balancer", "caddy", "nginx", "kong"],
             "Observability & Tracing": ["observability", "opentelemetry", "prometheus", "grafana", "tracing", "distributed-tracing", "jaeger", "metrics", "apm", "logging"],
             "Edge & Serverless Computing": ["serverless", "edge-computing", "lambda", "functions", "faas", "cloudflare-workers", "deno-deploy"]
         }
     },
     "Security & Cryptography": {
-        "keywords": ["security", "cybersecurity", "cryptography", "infosec", "authentication", "authorization", "penetration-testing", "vulnerability", "auth", "oauth", "password", "crypto", "encryption", "hacking", "osint"],
+        "keywords": ["security", "cybersecurity", "cryptography", "infosec", "authentication", "authorization", "penetration-testing", "vulnerability", "auth", "oauth", "password", "crypto", "encryption", "hacking", "osint", "sast", "owasp"],
+        "strong": ["security", "cybersecurity", "cryptography", "infosec", "authentication", "authorization", "penetration-testing", "vulnerability", "auth", "oauth", "encryption", "hacking", "osint", "sast", "owasp"],
         "subsystems": {
             "Zero Trust & Identity/Auth": ["auth", "authentication", "authorization", "oauth2", "oidc", "sso", "identity-provider", "keycloak", "rbac", "zero-trust", "jwt", "passwords"],
-            "Secrets & Key Management": ["secrets-management", "vault", "kms", "encryption-at-rest", "pki", "certificates", "hsm"],
+            "Secrets & Key Management": ["secrets-management", "vault", "kms", "encryption-at-rest", "pki", "certificates", "hsm", "secrets"],
             "Vulnerability & Static Analysis": ["sast", "dast", "security-scanner", "vulnerability-scanner", "cve", "static-analysis", "trivy", "semgrep", "osint", "scanner"],
             "Cryptography & ZK Proofs": ["cryptography", "zero-knowledge", "zk-snark", "elliptic-curve", "post-quantum", "tls", "wireguard", "end-to-end-encryption"],
             "Penetration Testing & Red Team": ["red-team", "pentesting", "exploit", "reverse-engineering", "malware-analysis", "packet-sniffer", "metasploit", "wireshark", "payload"]
         }
     },
     "Developer Tooling & Compilers": {
-        "keywords": ["developer-tools", "devtools", "compiler", "bundler", "transpiler", "linter", "formatter", "cli", "profiler", "debugger", "git", "terminal", "shell", "editor", "ide", "vim", "neovim", "testing"],
+        "keywords": ["developer-tools", "devtools", "compiler", "bundler", "transpiler", "linter", "formatter", "cli", "profiler", "debugger", "git", "terminal", "shell", "editor", "ide", "vim", "neovim", "testing", "runtime", "build-system", "build-tool"],
+        "strong": ["developer-tools", "devtools", "compiler", "bundler", "transpiler", "linter", "formatter", "profiler", "debugger", "testing", "editor", "ide", "vim", "neovim", "runtime", "build-system", "build-tool"],
         "subsystems": {
-            "Compilers & Runtimes": ["compiler", "interpreter", "llvm", "bytecode", "jit", "virtual-machine", "runtime", "v8", "webassembly", "rustc", "python", "golang"],
-            "Bundlers & Build Systems": ["bundler", "build-system", "vite", "webpack", "turborepo", "bazel", "esbuild", "rollup", "package-manager", "npm", "cargo"],
+            "Compilers & Runtimes": ["compiler", "interpreter", "llvm", "bytecode", "jit", "virtual-machine", "runtime", "v8", "webassembly", "rustc"],
+            "Bundlers & Build Systems": ["bundler", "build-system", "vite", "webpack", "turborepo", "bazel", "esbuild", "rollup", "package-manager", "npm", "cargo", "make", "cmake", "gradle", "maven"],
             "Linters & Code Quality": ["linter", "code-formatter", "static-analysis", "eslint", "prettier", "biome", "ruff", "ast-parser"],
             "Testing & QA Automation": ["testing", "e2e-testing", "playwright", "cypress", "unit-testing", "fuzzing", "mocking", "benchmark", "test-framework"],
             "Terminal & Editor Utilities": ["cli", "terminal", "tui", "command-line", "shell", "shell-extension", "zsh", "prompt", "neovim", "vim", "tmux"]
         }
     },
     "Web Platforms & Frameworks": {
-        "keywords": ["web-framework", "frontend", "backend", "fullstack", "react", "vue", "svelte", "http-server", "rest-api", "graphql", "javascript", "typescript", "html", "css", "nodejs", "web"],
+        "keywords": ["web-framework", "frontend", "backend", "fullstack", "react", "vue", "svelte", "rest-api", "graphql", "javascript", "typescript", "html", "css", "nodejs", "web", "angular", "rails", "django", "laravel", "spring-boot"],
+        "strong": ["web-framework", "react", "vue", "svelte", "angular", "rails", "django", "laravel", "spring-boot", "rest-api", "graphql"],
         "subsystems": {
-            "Full-Stack & SSR Frameworks": ["fullstack", "ssr", "nextjs", "remix", "nuxt", "sveltekit", "astro", "fastapi", "django", "express", "actix-web", "fiber", "rails", "spring-boot"],
-            "UI Component Architecture": ["ui-library", "component-library", "design-system", "tailwind", "radix-ui", "shadcn", "css-in-js", "animation", "icons"],
+            "Full-Stack & SSR Frameworks": ["fullstack", "ssr", "nextjs", "remix", "nuxt", "sveltekit", "astro", "fastapi", "django", "express", "actix-web", "fiber", "rails", "spring-boot", "flask", "laravel"],
+            "UI Component Architecture": ["ui-library", "component-library", "design-system", "tailwind", "radix-ui", "shadcn", "css-in-js", "animation", "icons", "react", "vue"],
             "API Architecture (GraphQL/gRPC)": ["graphql", "grpc", "trpc", "rest-api", "protobuf", "openapi", "websocket", "realtime-web", "api"],
             "State Management & Data Fetching": ["state-management", "redux", "zustand", "tanstack-query", "swr", "reactive", "signals"]
         }
     },
     "Education & Curated Learning": {
-        "keywords": ["tutorial", "education", "roadmap", "curated-list", "cheatsheet", "interview", "computer-science", "learning", "algorithm", "books", "guide", "free-programming-books"],
+        "keywords": ["tutorial", "education", "roadmap", "curated-list", "cheatsheet", "interview", "computer-science", "algorithm", "books", "guide", "free-programming-books", "awesome"],
+        "strong": ["tutorial", "education", "roadmap", "curated-list", "cheatsheet", "interview", "books", "computer-science", "awesome"],
         "subsystems": {
             "Learning Roadmaps & Study Plans": ["roadmap", "study-plan", "interview", "coding-interview", "guide", "career"],
             "Curated Resources & Awesome Lists": ["awesome", "awesome-list", "resources", "curated-list", "public-apis"],
-            "Interactive Tutorials & Exercises": ["tutorial", "build-your-own", "project-based", "practice", "algorithms", "data-structures"]
+            "Interactive Tutorials & Exercises": ["tutorial", "build-your-own", "project-based", "practice", "algorithms", "data-structures", "exercises"]
         }
     },
     "Networking & Distributed Systems": {
-        "keywords": ["networking", "distributed-systems", "p2p", "mesh", "protocol", "transport", "webrtc", "message-broker", "rpc", "bittorrent", "socket"],
+        "keywords": ["networking", "distributed-systems", "p2p", "protocol", "transport", "webrtc", "message-broker", "message-queue", "messaging", "mqtt", "rpc", "bittorrent", "socket", "vpn", "wireguard"],
+        "strong": ["networking", "p2p", "transport", "webrtc", "message-broker", "message-queue", "messaging", "mqtt", "rpc", "bittorrent", "socket", "protocol", "vpn", "wireguard"],
         "subsystems": {
             "Event Streaming & Message Broker": ["message-broker", "event-driven", "kafka", "rabbitmq", "nats", "pulsar", "sqs", "pubsub"],
             "P2P & Decentralized Networking": ["peer-to-peer", "p2p", "bittorrent", "ipfs", "libp2p", "dht", "decentralized"],
-            "Low-Level Protocols & Transports": ["tcp", "udp", "quic", "http3", "webrtc", "socket", "tun-tap", "ebpf", "packet-processing"]
+            "Low-Level Protocols & Transports": ["tcp", "udp", "quic", "http3", "webrtc", "socket", "tun-tap", "ebpf", "packet-processing", "vpn", "rpc", "serialization", "thrift", "protobuf"]
         }
     }
 }
@@ -212,77 +221,209 @@ def match_lexicon_rules(text_corpus: str, rules_dict: Dict[str, List[str]], max_
             break
     return matched
 
+# --- Taxonomy v2: token-precise keyword matching + calibrated margin rule ---
+# v1 used raw substring tests (`kw in corpus`), which let `os` match
+# *repository/host/cross*, `ai` match *rails/email*, `sql` match *graphql* — and,
+# with no minimum score, a single accidental +1 assigned the domain, while ties
+# favored whichever domain the dict declared first (Operating Systems won every
+# tie). v2 compiles every keyword once into a token-bounded pattern:
+#   * leading look-behind blocks any alphanumerically-adjacent prefix
+#     (so `mysql` never yields `sql`);
+#   * trailing look-ahead blocks letters but allows digits
+#     (so `arm` matches "arm64" and `oauth` matches "oauth2");
+#   * interior separators (space, -, _, ., /) are interchangeable, so
+#     `key-value` matches "key-value", "key_value" and "key value".
+# Corpus and topics MUST be lowercased by the caller (the patterns are lowercase).
+_MIN_DOMAIN_SCORE = 3   # a winning domain must clear this absolute score ...
+_DOMAIN_MARGIN = 2      # ... and beat the runner-up by this much, else Other/General
+_MARGIN_CAP = 9         # domain_margin ships as one small int in Tier-1
+_KW_PATTERNS: Dict[str, "re.Pattern"] = {}
+
+
+def compile_keyword(kw: str) -> "re.Pattern":
+    pat = _KW_PATTERNS.get(kw)
+    if pat is None:
+        pieces = [p for p in re.split(r"[\s\-_./]+", kw.lower()) if p]
+        core = "[^a-z0-9]+".join(re.escape(p) for p in pieces) or re.escape(kw.lower())
+        # Plural-tolerant for keywords of 4+ letters (algorithm -> algorithms,
+        # database -> databases) while short keywords stay strictly singular so
+        # `os` can never match "gpt-oss" or "repository".
+        trail = r"(?:s(?![a-z])|(?![a-z]))" if len(kw) >= 4 else r"(?![a-z])"
+        pat = re.compile(rf"(?<![a-z0-9]){core}{trail}")
+        _KW_PATTERNS[kw] = pat
+    return pat
+
+
+# Fixed priority breaks exact artifact-score ties deterministically (documented,
+# not emergent from dict order).
+_ARTIFACT_PRIORITY = [
+    "Curated List / Docs",
+    "Template / Starter",
+    "Developer Tool / CLI",
+    "Library / SDK",
+    "System Service / Engine",
+    "Framework",
+    "Application / Service",
+]
+
+
 def classify_artifact(repo_name: str, description: str, topics: List[str]) -> str:
-    """Classifies repository into artifact types to prevent curated lists from polluting code search."""
-    full_text = f"{repo_name} {description} {' '.join(topics)}".lower()
-    
+    """Scored artifact classification (v2): weighted evidence over exact tokens.
+
+    Replaces v1's ordered if-chain where `"cli"` ⊂ *client* classified a Redis
+    client library as Developer Tool / CLI, `"engine"` outranked library signals,
+    and everything unmatched fell into the `Application / Service` catch-all
+    (70.7% of the catalog). Deterministic: fixed buckets, fixed tie priority.
+    """
+    name = (repo_name or "").lower()
+    desc = (description or "").lower()
+    topic_list = [t.lower() for t in (topics or [])]
+    topic_text = "\n".join(topic_list)
+
+    # Curated lists stay early returns: name-anchored regexes and explicit topic
+    # tags are high precision, and a curated list must never be outvoted.
     for pattern in CURATED_LIST_PATTERNS:
-        if pattern.search(repo_name) or pattern.search(description):
+        if pattern.search(repo_name or "") or pattern.search(description or ""):
             return "Curated List / Docs"
-            
-    if any(t in ["awesome", "awesome-list", "roadmap", "cheatsheet", "reading-list", "learning", "tutorial"] for t in topics):
+    if {"awesome", "awesome-list", "roadmap", "cheatsheet", "reading-list",
+            "learning", "tutorial", "checklist"} & set(topic_list):
         return "Curated List / Docs"
 
-    if any(k in full_text for k in ["template", "boilerplate", "starter kit", "scaffold"]):
-        return "Template / Starter"
+    corpus = f"{name}\n{desc}\n{topic_text}"
+    scores: Dict[str, int] = {label: 0 for label in _ARTIFACT_PRIORITY}
 
-    if any(k in full_text for k in ["cli", "terminal", "command line", "tui", "command-line tool"]):
-        return "Developer Tool / CLI"
+    def add(label: str, kw: str, name_weight: int, body_weight: int) -> None:
+        # name hit outweighs body hit for the same keyword (never both)
+        pat = compile_keyword(kw)
+        if pat.search(name):
+            scores[label] += name_weight
+        elif pat.search(corpus):
+            scores[label] += body_weight
 
-    if any(k in full_text for k in ["engine", "database server", "daemon", "server application", "service"]):
-        return "System Service / Engine"
+    # Template / Starter
+    for kw in ("template", "boilerplate", "starter", "scaffold", "cookiecutter"):
+        add("Template / Starter", kw, 6, 3)
 
-    if any(k in full_text for k in ["framework", "platform"]):
-        return "Framework"
+    # Developer Tool / CLI — exact `cli`/`tui` tokens only, so `client` can never
+    # leak in here; plus phrase and tool-genre evidence.
+    for kw in ("cli", "tui"):
+        add("Developer Tool / CLI", kw, 6, 5)
+    for kw in ("command line tool", "command line interface", "terminal emulator",
+               "version control", "infrastructure as code"):
+        add("Developer Tool / CLI", kw, 4, 4)
+    for kw in ("bundler", "linter", "formatter", "profiler", "debugger", "scanner",
+               "compiler", "transpiler"):
+        add("Developer Tool / CLI", kw, 4, 3)
+    add("Developer Tool / CLI", "iac", 4, 4)
+    add("Developer Tool / CLI", "codegen", 4, 4)
+    add("Developer Tool / CLI", "code generator", 4, 4)
 
-    if any(k in full_text for k in ["library", "sdk", "client", "driver", "package"]):
-        return "Library / SDK"
+    # Library / SDK
+    for kw in ("library", "sdk", "bindings"):
+        add("Library / SDK", kw, 5, 4)
+    for kw in ("client", "driver", "wrapper"):
+        add("Library / SDK", kw, 4, 3)
+    add("Library / SDK", "extension", 0, 3)
 
+    # System Service / Engine — deliberately demoted: `engine`/`server` alone are
+    # weak (a "query engine library" must stay a library), while server-ish nouns
+    # carry the real signal.
+    add("System Service / Engine", "daemon", 4, 4)
+    add("System Service / Engine", "broker", 4, 3)
+    add("System Service / Engine", "scheduler", 4, 2)
+    add("System Service / Engine", "database server", 4, 3)
+    for kw in ("engine", "server"):
+        add("System Service / Engine", kw, 2, 2)
+    for kw in ("database", "datastore", "in-memory", "store"):
+        add("System Service / Engine", kw, 1, 1)
+
+    # Framework (v1 also counted bare `platform`, which labelled Grafana a
+    # framework — dropped as too weak to prove anything)
+    add("Framework", "framework", 6, 5)
+
+    best = max(scores.values())
+    if best <= 0:
+        return "Application / Service"
+    for label in _ARTIFACT_PRIORITY:
+        if label != "Application / Service" and scores[label] == best:
+            return label
     return "Application / Service"
 
-def classify_domain_and_subsystem(repo_name: str, description: str, topics: List[str], language: Optional[str]) -> tuple:
-    """
-    Deterministically computes Primary Domain and Architectural Subsystem
-    using multi-factor weighted heuristic scoring.
-    """
-    text_corpus = f"{repo_name} {description} {' '.join(topics)} {language or ''}".lower()
-    topic_set = set(t.lower() for t in topics)
 
-    best_domain = "Other / General"
-    best_domain_score = 0
-    best_subsystem = "General Components"
+def classify_domain_and_subsystem(repo_name: str, description: str, topics: List[str],
+                                  language: Optional[str]) -> tuple:
+    """Taxonomy v2: token-scored domain selection with a calibrated margin rule.
 
+    Returns ``(domain, subsystem, domain_margin)``:
+      * domain   — winner only if ``best >= _MIN_DOMAIN_SCORE`` and
+                   ``best - second >= _DOMAIN_MARGIN``; otherwise ``Other / General``.
+                   Tie order is deterministic: (score, topic-hits, alphabetical).
+      * subsystem— scored under the *accepted* domain only (an abstained domain
+                   yields ``General Components``, so subsystem filters never show
+                   labels the domain facet cannot reach). Zero-score fallback keeps
+                   the v1 ``General <domain-head>`` format for stability.
+      * domain_margin — capped 0..9 decisive gap (best - second), shipped in Tier-1
+                   so the UI can flag low-confidence labels.
+    """
+    text_corpus = (f"{repo_name or ''} {description or ''} "
+                   f"{' '.join(topics or [])} {language or ''}").lower()
+    topic_text = "\n".join(t.lower() for t in (topics or []))
+
+    ranked: List[tuple] = []
     for domain_name, domain_data in TAXONOMY_RULES.items():
         score = 0
+        topic_hits = 0
+        # `strong` keywords are near-definitive for their domain (kubernetes ->
+        # Cloud, database -> Databases); a topic hit on them is worth +6 so a
+        # generic topic elsewhere (cli, javascript) cannot force a 3-3 tie.
+        strong = set(domain_data.get("strong") or ())
+        generic_topic = 0
         for kw in domain_data["keywords"]:
-            if kw in topic_set:
-                score += 3
-            elif kw in text_corpus:
+            pat = compile_keyword(kw)
+            if topic_text and pat.search(topic_text):
+                if kw in strong:
+                    score += 6
+                else:
+                    # non-strong topics are worth +3 but capped in total, so
+                    # [javascript, typescript] cannot outvote a strong `runtime`
+                    generic_topic += 1
+                topic_hits += 1
+            elif pat.search(text_corpus):
                 score += 1
-                
-        if score > best_domain_score:
-            best_domain_score = score
-            best_domain = domain_name
+        if generic_topic:
+            score += 3
+        ranked.append((domain_name, score, topic_hits))
+    ranked.sort(key=lambda r: (-r[1], -r[2], r[0]))
 
-    if best_domain in TAXONOMY_RULES:
-        subsystems = TAXONOMY_RULES[best_domain]["subsystems"]
-        best_sub_score = 0
-        
-        for sub_name, sub_keywords in subsystems.items():
-            sub_score = 0
-            for skw in sub_keywords:
-                if skw in topic_set:
-                    sub_score += 4
-                elif skw in text_corpus:
-                    sub_score += 1
-            if sub_score > best_sub_score:
-                best_sub_score = sub_score
-                best_subsystem = sub_name
+    (best_domain, best_score, _), (second_domain, second_score, _) = ranked[0], ranked[1]
+    margin = max(0, min(_MARGIN_CAP, best_score - second_score))
 
-        if best_sub_score == 0:
-            best_subsystem = f"General {best_domain.split('&')[0].strip()}"
+    if best_score < _MIN_DOMAIN_SCORE or (best_score - second_score) < _DOMAIN_MARGIN:
+        return "Other / General", "General Components", margin
+    domain = best_domain
 
-    return best_domain, best_subsystem
+    subsystems = TAXONOMY_RULES[domain]["subsystems"]
+    ranked_subs: List[tuple] = []
+    for sub_name, sub_keywords in subsystems.items():
+        sub_score = 0
+        sub_topic_hits = 0
+        for skw in sub_keywords:
+            pat = compile_keyword(skw)
+            if topic_text and pat.search(topic_text):
+                sub_score += 4
+                sub_topic_hits += 1
+            elif pat.search(text_corpus):
+                sub_score += 1
+        ranked_subs.append((sub_name, sub_score, sub_topic_hits))
+    ranked_subs.sort(key=lambda r: (-r[1], -r[2], r[0]))
+
+    sub_name, sub_score, _ = ranked_subs[0]
+    if sub_score == 0:
+        # same format v1 used, so existing General* labels stay stable
+        subsystem = f"General {domain.split('&')[0].strip()}"
+    else:
+        subsystem = sub_name
+    return domain, subsystem, margin
 
 def generate_beginner_context(name: str, domain: str, subsystem: str, language: str) -> Dict[str, Any]:
     """Generates intuitive contextual explanations for users discovering a project with zero background."""
@@ -311,7 +452,7 @@ def enrich_repository_record(raw_repo: Dict[str, Any]) -> Dict[str, Any]:
     license_str = license_name or "Unknown"
 
     artifact = classify_artifact(name, description, topics)
-    domain, subsystem = classify_domain_and_subsystem(name, description, topics, language)
+    domain, subsystem, domain_margin = classify_domain_and_subsystem(name, description, topics, language)
 
     # Full text corpus including README snippet for deep keyword mining
     corpus = f"{name} {description} {readme_snippet} {' '.join(topics)} {language}".lower()
@@ -345,6 +486,7 @@ def enrich_repository_record(raw_repo: Dict[str, Any]) -> Dict[str, Any]:
         "artifact": artifact,
         "domain": domain,
         "subsystem": subsystem,
+        "domain_margin": domain_margin,
         "primitives": primitives,
         "compatibility": compatibility,
         "usecases": usecases,

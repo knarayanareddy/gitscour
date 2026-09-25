@@ -115,6 +115,10 @@ export default function App() {
             primitives: r[10] || [],
             hook: r[11] || "",
             description: r[11] || "",
+            // W2 §1.1: optional 13th field = taxonomy confidence margin (0..9).
+            // null on legacy 12-field rows and on the fallback index path, so
+            // "no margin data" never renders as "margin 0 = low confidence".
+            domainMargin: r.length > 12 && typeof r[12] === 'number' ? r[12] : null,
             url: `https://github.com/${r[2]}/${r[1]}`,
             shard: slugify(domName)
           };
@@ -643,6 +647,14 @@ export default function App() {
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-zinc-500">
                         {repo.artifact}
                       </span>
+                      {repo.domainMargin != null && repo.domainMargin < 3 && (
+                        <span
+                          className="text-[10px] font-semibold px-1 py-0.5 rounded text-amber-300/90 cursor-help"
+                          title={`Taxonomy margin ${repo.domainMargin}/9 — label is close between domains`}
+                        >
+                          ≈
+                        </span>
+                      )}
                     </div>
 
                     {/* Plain-English Hook: What It Does */}
@@ -726,6 +738,14 @@ export default function App() {
                   <span className="text-xs text-zinc-300 font-medium">
                     {activeRepoDetails.subsystem}
                   </span>
+                  {activeRepoDetails.domainMargin != null && activeRepoDetails.domainMargin < 3 && (
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-300 border border-amber-400/30 font-semibold cursor-help"
+                      title={`Taxonomy margin ${activeRepoDetails.domainMargin}/9 — closest competing domain is nearly tied`}
+                    >
+                      low-confidence label
+                    </span>
+                  )}
                   {loadingShard && (
                     <span className="text-[10px] text-zinc-300 flex items-center gap-1 animate-pulse">
                       <Loader2 className="w-3 h-3 animate-spin" />

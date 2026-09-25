@@ -25,9 +25,17 @@ const unpacked = rows.map((r) => {
     artifact: artifacts[r[8]] || 'Application / Service',
     license: r[9], primitives: r[10] || [], hook: r[11] || '',
     description: r[11] || '', url: `https://github.com/${r[2]}/${r[1]}`, shard: slugify(domName),
+    // W2 §1.1: optional 13th field (domain margin); null when absent
+    domainMargin: r.length > 12 && typeof r[12] === 'number' ? r[12] : null,
   };
 });
 check(unpacked.length === rows.length, 'row count changed during unpack');
+check(rows.every((r) => r.length === 12 || r.length === 13), 'row arity is not 12 or 13');
+check(rows.every((r) => r.length !== 13 || (Number.isInteger(r[12]) && r[12] >= 0 && r[12] <= 9)),
+  'row[12] domainMargin is not an integer in 0..9');
+check(unpacked.every((x) => x.domainMargin === null ||
+  (Number.isInteger(x.domainMargin) && x.domainMargin >= 0 && x.domainMargin <= 9)),
+  'domainMargin decoded outside 0..9');
 check(unpacked.every((x) => x.name && x.owner && Number.isFinite(x.stars)), 'row unpacked without name/owner/stars');
 check(unpacked.every((x) => x.stars >= 500), 'a row is below the 500 star floor');
 check(unpacked.every((x) => x.domain && x.subsystem && x.artifact && x.language), 'a row decoded to an empty facet');

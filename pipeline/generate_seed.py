@@ -156,7 +156,7 @@ SEEDS = [
     {
         "id": 2002,
         "name": "llama.cpp",
-        "owner": "ggerganov",
+        "owner": "ggml-org",  # GitHub rename: was ggerganov/llama.cpp
         "description": "LLM inference in C/C++ with zero dependencies",
         "stars": 72500,
         "forks": 10400,
@@ -164,7 +164,7 @@ SEEDS = [
         "license": "MIT",
         "topics": ["llm", "llm-inference", "gguf", "transformer", "c-plus-plus"],
         "pushed_at": "2026-09-16T08:00:00Z",
-        "quickstart_code": "git clone https://github.com/ggerganov/llama.cpp\ncd llama.cpp && make\n./llama-cli -m model.gguf -p 'Explain quantum computing simply:'",
+        "quickstart_code": "git clone https://github.com/ggml-org/llama.cpp\ncd llama.cpp && make\n./llama-cli -m model.gguf -p 'Explain quantum computing simply:'",
         "beginner_intel": {
             "what_it_does": "Allows you to run state-of-the-art AI language models locally on consumer MacBooks, laptops, and everyday desktop CPUs without requiring an expensive NVIDIA GPU.",
             "why_it_matters": "AI used to require massive multi-thousand-dollar cloud servers. llama.cpp invented the GGUF file format and quantized 4-bit weights so a standard laptop can run AI offline privately.",
@@ -377,8 +377,8 @@ SEEDS = [
     },
     {
         "id": 6003,
-        "name": "shadcn-ui",
-        "owner": "shadcn-ui",
+        "name": "ui",
+        "owner": "shadcn-ui",  # GitHub rename: was shadcn-ui/shadcn-ui
         "description": "Beautifully designed components that you can copy and paste into your apps. Accessible. Customizable. Open Source.",
         "stars": 76800,
         "forks": 6500,

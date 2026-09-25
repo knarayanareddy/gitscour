@@ -40,70 +40,70 @@ rules, hashing, statistics, or precomputed-at-pack-time indexes only.**
 
 ### 1.1 Taxonomy v2 — token scoring + margins (finding #3, P0)
 *File:* `pipeline/taxonomy_engine.py` (`classify_domain_and_subsystem`, `TAXONOMY_RULES`)
-- [ ] **Tokenize, don't substring.** Split corpus on non-word boundaries (hyphen-aware:
+- [x] **Tokenize, don't substring.** Split corpus on non-word boundaries (hyphen-aware:
   `key-value` = one token *and* two). Keyword hit = exact token membership. Kills
   `os`⊂*repository/host/gpt-oss*, `ai`⊂*rails/email*, `sql`⊂*graphql*.
-- [ ] **Short-keyword guard.** Keywords <3 chars (`os`, `ai`, `sql`, `ann`, `arm`, `web`)
+- [x] **Short-keyword guard.** Keywords <3 chars (`os`, `ai`, `sql`, `ann`, `arm`, `web`)
   match only as full tokens, never inside other words.
-- [ ] **Margin rule.** `domain = best` only if `best ≥ min_score (≈3) AND best − second ≥ margin (≈2)`;
+- [x] **Margin rule.** `domain = best` only if `best ≥ min_score (≈3) AND best − second ≥ margin (≈2)`;
   otherwise `Other / General`. Converts "first accidental +1 wins" into calibrated decisions —
   the honest `Other` share will rise; that is correctness, not regression.
-- [ ] **Kill dict-order tie-breaks.** Deterministic order `(score, exact-topic-hits, alphabetical)`.
+- [x] **Kill dict-order tie-breaks.** Deterministic order `(score, exact-topic-hits, alphabetical)`.
   OS currently wins every tie by being declared first (measured: 85.5% of a 3k probe classified
   at score ≤1; word-boundary rescore flipped 40.1%).
-- [ ] **Lexicon gap fills** from spot checks: `angular|vue|svelte|nuxt` under Web, `observability`
+- [x] **Lexicon gap fills** from spot checks: `angular|vue|svelte|nuxt` under Web, `observability`
   under Cloud, message-queue synonyms (`nats|pulsar|rabbitmq|kafka|redpanda`), `graphql` must not
   borrow `sql`, multi-word keywords (`zero-copy`, `service-mesh`, `message-queue`) as compiled
   alternation regexes with `\b`, not substrings.
-- [ ] **Emit `domain_margin` into Tier-1** (one small capped int; schema change — see R1.5).
+- [x] **Emit `domain_margin` into Tier-1** (one small capped int; schema change — see R1.5).
   UI gets a "low-confidence label" badge + filter; you get a ranked to-fix list.
 - *Accept:* golden-set harness (R1.5) ≥95% on famous repos; *ollama, nginx, vscode, rails,
   spring-boot, grafana, curl, FFmpeg* classify to expert-agreed domains; churn histogram printed.
 
 ### 1.2 Artifact classifier v2 — scored rules (finding #13, P2)
 *File:* `pipeline/taxonomy_engine.py` (`classify_artifact`)
-- [ ] Replace ordered if-chain with weighted evidence: name pattern `^awesome-` ≫ topic
+- [x] Replace ordered if-chain with weighted evidence: name pattern `^awesome-` ≫ topic
   `awesome-list` ≫ exact token `cli`/`tui` (never `client`) ≫ token `library|sdk` ≫ …;
   demote `engine/service` unless server-ish signals also present.
 - *Accept:* `Application / Service` share drops from 70.7% to a real minority (target <50%);
   `redis-client` no longer → *Developer Tool / CLI*; `Query engine library` no longer → *System Service / Engine*.
 
 ### 1.3 `reclassify_catalog.py` — make taxonomy fixes reach live rows (finding #5, P1)
-- [ ] New `pipeline/reclassify_catalog.py`: re-run `classify_*` over every row using stored
+- [x] New `pipeline/reclassify_catalog.py`: re-run `classify_*` over every row using stored
   Tier-2 description + topics; write labels back; regenerate **all four artefacts through
   `rebuild_catalog`'s writer** (never hand-edit).
-- [ ] `--dry-run` prints a label-diff histogram (rows changed per domain); fails if churn > N%
+- [x] `--dry-run` prints a label-diff histogram (rows changed per domain); fails if churn > N%
   unless `--allow-churn`.
-- [ ] Wire into backfill workflow after `rebuild_catalog.py`.
+- [x] Wire into backfill workflow after `rebuild_catalog.py`.
 - *Accept:* dry-run on the live 123k shows a reviewable histogram; live run keeps
   `verify_catalog.py` green.
 
 ### 1.4 Store topics going forward (finding #5, second half)
 *Files:* `pipeline/rebuild_catalog.py` (shard writer), `pipeline/harvest_enumerate.py` already fetches 8 topics and `taxonomy_engine.enrich_repository_record` keeps them — `rebuild_catalog` currently discards them.
-- [ ] Persist `topics` (cap 8) in Tier-2 deep records; surface in modal later (W3 search + W4 facets depend on this).
+- [x] Persist `topics` (cap 8) in Tier-2 deep records; surface in modal later (W3 search + W4 facets depend on this).
 - *Accept:* new/re-harvested rows carry `topics` in `data/details/*.json`; `verify_catalog` optionally checks topic cap.
 
 ### 1.5 Golden-set regression harness (feature 3.5)
-- [ ] New `tests/golden_repos.json`: 200–500 hand-labeled fixtures (famous + adversarial:
+- [x] New `tests/golden_repos.json`: 200–500 hand-labeled fixtures (famous + adversarial:
   *ollama, nginx, rails, graphql servers, awesome-lists, client libraries, gpt-oss, rails/email* traps).
-- [ ] `tests/test_taxonomy_golden.py` asserts domain/artifact/subsystem per fixture; runs in CI
+- [x] `tests/test_taxonomy_golden.py` asserts domain/artifact/subsystem per fixture; runs in CI
   **before** deploy.
 - *Accept:* red on any lexicon/rule change that moves a fixture; thresholds documented in README.
 
 ### 1.6 Reconcile in CI (finding #4, P1)
-- [ ] Run `pipeline/reconcile_stale_rows.py` in `backfill_123k.yml` (before `rebuild_catalog.py`),
+- [x] Run `pipeline/reconcile_stale_rows.py` in `backfill_123k.yml` (before `rebuild_catalog.py`),
   so deleted/sub-threshold/renamed repos leave the catalog instead of persisting stale ≥500★ rows
   forever. *Accept:* workflow invokes it; PR body lists reconciled drops/renames.
 
 ### 1.7 Implement verify check #4 + hook bound (finding #10, P1)
 *File:* `pipeline/verify_catalog.py`
-- [ ] Actually verify per-domain shard membership: `misplaced` counter (line ~122) is declared but
+- [x] Actually verify per-domain shard membership: `misplaced` counter (line ~122) is declared but
   never incremented — compute each row's expected shard slug and compare against its record's `shard`.
-- [ ] Add `hook ≤ 90` chars check (writer truncates; gate doesn't verify).
+- [x] Add `hook ≤ 90` chars check (writer truncates; gate doesn't verify).
 - *Accept:* a deliberately misplaced row in a unit test makes the gate fail; live run still passes.
 
 ### 1.8 Curated seed ELI5 never reaches the shipped catalog (finding #6, second half)
-- [ ] Decide: (a) merge `generate_seed.py`'s 16 hand-written `beginner_intel` cards into Tier-2 for
+- [x] Decide: (a) merge `generate_seed.py`'s 16 hand-written `beginner_intel` cards into Tier-2 for
   those exact `owner/name`s (they are currently orphaned — 100% of shipped Tier-2 is the template),
   or (b) drop the curated-copy implication from docs. *Accept:* either the 16 cards appear in the
   shards, or docs stop implying they ship.
