@@ -10,6 +10,7 @@ import {
 import Stack3DVisualizer from './Stack3DVisualizer.jsx';
 import blueprintsDoc from './blueprints.json';
 import { mulberry32, selectBlueprint, completeStack } from './blueprint-engine.mjs';
+import { evaluatePair, synergyFromPairs } from './synergy-core.mjs';
 
 export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeedChange }) {
   const [activeStack, setActiveStack] = useState(null);
@@ -29,10 +30,10 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
     // id here: the catalog uses synthetic blake2b ids, and a stale truthy id
     // (e.g. duckdb's real GitHub id 44211562) used to survive every self-heal
     // guard and crash the pairwise analysis. See EXPERT_PANEL_REVIEW.md #1.
-    { role: "Vector / State Store", repoId: null, domainFilter: "Databases & Storage" },
-    { role: "Inference / LLM Engine", repoId: null, domainFilter: "AI & Machine Learning" },
-    { role: "API Gateway / Backend", repoId: null, domainFilter: "Web Platforms & Frameworks" },
-    { role: "Reactive UI / Canvas", repoId: null, domainFilter: "Web Platforms & Frameworks" }
+    { role: "Vector / State Store", repoId: null, domainFilter: "Databases & Storage", subsystem: "Vector Database" },
+    { role: "Inference / LLM Engine", repoId: null, domainFilter: "AI & Machine Learning", subsystem: "LLM Inference & Serving" },
+    { role: "API Gateway / Backend", repoId: null, domainFilter: "Web Platforms & Frameworks", subsystem: "Service Mesh & API Gateway" },
+    { role: "Reactive UI / Canvas", repoId: null, domainFilter: "Web Platforms & Frameworks", subsystem: "UI Component Architecture" }
   ]);
 
   // Fast Repo ID Lookup Map
@@ -41,6 +42,12 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
     repos.forEach(r => map.set(r.id, r));
     return map;
   }, [repos]);
+
+  // §3.8 — subsystem vocabulary for slot requirements (from the packed catalog)
+  const subsystemOptions = useMemo(
+    () => [...new Set(repos.map(r => r.subsystem).filter(Boolean))].sort(),
+    [repos]
+  );
 
   // Seed Layer 0 with duckdb (or the top database repo) once the catalog loads.
   // Replaces a side-effectful useMemo that mutated state during render and only
@@ -84,12 +91,12 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
 
   // Deterministic stack generation (§3.6/§3.8): rng is a pure function of
   // (URL ?seed=, goal, click-step). No Math.random anywhere in generation.
-  const generateRandomStack = (forcedBlueprint = null, goalOverride = null) => {
+  const generateRandomStack = (forcedBlueprint = null, goalOverride = null, seedOverride = null) => {
     const goal = goalOverride ?? selectedGoal;
     const step = genStep + 1;
     setGenStep(step);
-    const effSeed = seed || `gs-${Date.now().toString(36)}`;
-    if (!seed && onSeedChange) onSeedChange(effSeed); // adopt into ?seed= for sharing
+    const effSeed = seedOverride ?? (seed || `gs-${Date.now().toString(36)}-${genStep}`);
+    if (!seed && !seedOverride && onSeedChange) onSeedChange(effSeed); // adopt into ?seed=
     const rng = mulberry32(`${effSeed}|${goal}|${step}`);
 
     const blueprint = forcedBlueprint || selectBlueprint(BLUEPRINTS, goal, rng);
@@ -97,6 +104,13 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
 
     const { components, missing } = completeStack(blueprint, categorized, repoLookup, rng);
     setActiveStack({ template: blueprint, components, missing });
+  };
+
+  // §3.8 — visible/resettable seed: re-roll writes a fresh ?seed= and rebuilds.
+  const rerollSeed = () => {
+    const s = `gs-${Date.now().toString(36)}-${genStep}`;
+    if (onSeedChange) onSeedChange(s);
+    generateRandomStack(null, null, s);
   };
 
   const copyBlueprint = () => {
@@ -130,129 +144,45 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
       };
     }
 
-    let positiveScore = 0;
-    let frictionScore = 0;
+    // W4 §3.8 — scoring moved to synergy-core.mjs (unit-pinned):
+    //   * score = MEAN over pair scores (2-slot and 6-slot pools comparable)
+    //   * same language alone never reaches "High Synergy" (18 < 25 gap)
+    //   * protocol matrix derived from COMPATIBILITY_RULES labels incl. the
+    //     deterministic client pairings (Postgres-compatible <-> pg drivers …)
     const positiveSignals = [];
     const frictions = [];
     const runtimeHarmonies = [];
     const matrix = [];
+    const pairScores = [];
 
-    // Pairwise Cartesian Evaluation
     for (let i = 0; i < selectedRepos.length; i++) {
       for (let j = i + 1; j < selectedRepos.length; j++) {
         const a = selectedRepos[i].repo;
         const b = selectedRepos[j].repo;
         const roleA = selectedRepos[i].role;
         const roleB = selectedRepos[j].role;
-
-        let pairScore = 50;
-        let pairStatus = "Compatible";
-        let pairNotes = [];
-
-        // 1. Runtime Harmony
-        const langA = (a.language || 'Other').toLowerCase();
-        const langB = (b.language || 'Other').toLowerCase();
-        
-        if (langA === langB && langA !== 'other') {
-          pairScore += 25;
-          positiveScore += 15;
-          const note = `Native ${a.language} ecosystem: direct in-process binding without FFI overhead.`;
-          pairNotes.push(note);
-          runtimeHarmonies.push({ pair: `${a.name} ↔ ${b.name}`, text: note });
-        } else if (
-          (langA === 'typescript' && langB === 'javascript') ||
-          (langA === 'javascript' && langB === 'typescript') ||
-          (langA === 'c++' && langB === 'c') ||
-          (langA === 'c' && langB === 'c++')
-        ) {
-          pairScore += 20;
-          positiveScore += 10;
-          pairNotes.push(`Native interop between ${a.language} and ${b.language}.`);
-        } else if (
-          (langA === 'python' && ['rust', 'c++', 'c'].includes(langB)) ||
-          (langB === 'python' && ['rust', 'c++', 'c'].includes(langA))
-        ) {
-          pairScore += 15;
-          positiveScore += 10;
-          pairNotes.push(`High-performance C-extension / PyO3 binding: ${b.name} natively accelerates ${a.name}.`);
-        } else {
-          pairScore -= 5;
-          frictionScore += 5;
-          frictions.push({
-            pair: `${a.name} (${a.language}) ↔ ${b.name} (${b.language})`,
-            type: "Network / IPC Boundary",
-            severity: "low",
-            desc: `Requires serialized communication (HTTP/JSON, gRPC, or WebSockets) across processes.`
-          });
-          pairNotes.push(`IPC / Network protocol bridge required.`);
-        }
-
-        // 2. Shared Architectural Primitives
-        const primsA = a.primitives || [];
-        const primsB = b.primitives || [];
-        const sharedPrims = primsA.filter(p => primsB.includes(p));
-
-        if (sharedPrims.length > 0) {
-          pairScore += 20;
-          positiveScore += 20;
-          const note = `Aligned on architectural primitive [${sharedPrims.join(', ')}].`;
-          pairNotes.push(note);
-          positiveSignals.push({
-            pair: `${a.name} ↔ ${b.name}`,
-            primitive: sharedPrims.join(', '),
-            desc: `Both components are optimized for ${sharedPrims.join(', ')}, eliminating memory transcode bottlenecks.`
-          });
-        }
-
-        // 3. Commercial License Compatibility Check
-        const licA = (a.license || 'Open Source').toLowerCase();
-        const licB = (b.license || 'Open Source').toLowerCase();
-        const isCopyleftA = licA.includes('gpl') && !licA.includes('lgpl');
-        const isCopyleftB = licB.includes('gpl') && !licB.includes('lgpl');
-
-        if (isCopyleftA !== isCopyleftB && (isCopyleftA || isCopyleftB)) {
-          pairScore -= 15;
-          frictionScore += 15;
-          frictions.push({
-            pair: `${a.name} (${a.license}) ↔ ${b.name} (${b.license})`,
-            type: "License Reciprocity Asymmetry",
-            severity: "medium",
-            desc: `Copyleft license terms (${isCopyleftA ? a.name : b.name}) may mandate open-sourcing client proprietary source code if statically linked.`
-          });
-          pairNotes.push(`GPL reciprocity considerations.`);
-        }
-
-        pairScore = Math.max(10, Math.min(100, pairScore));
-        if (pairScore >= 75) pairStatus = "High Synergy";
-        else if (pairScore >= 50) pairStatus = "Compatible";
-        else pairStatus = "Friction Warning";
-
+        const res = evaluatePair(a, b);
+        pairScores.push(res.score);
+        positiveSignals.push(...res.positives);
+        frictions.push(...res.frictions);
+        runtimeHarmonies.push(...res.harmonies);
         matrix.push({
           nodeA: a,
           nodeB: b,
           roleA,
           roleB,
-          score: pairScore,
-          status: pairStatus,
-          notes: pairNotes
+          score: res.score,
+          status: res.status,
+          notes: res.notes
         });
       }
     }
 
-    let totalScore = 50 + (positiveScore * 0.8) - (frictionScore * 0.9);
-    totalScore = Math.max(15, Math.min(98, Math.round(totalScore)));
-
-    let grade = "Production Ready";
-    let gradeColor = "text-signal-ok";
-    if (totalScore >= 80) { grade = "High Architectural Synergy"; gradeColor = "text-signal-ok"; }
-    else if (totalScore >= 60) { grade = "Production Viable (Standard IPC)"; gradeColor = "text-signal-info"; }
-    else if (totalScore >= 40) { grade = "Architectural Friction Detected"; gradeColor = "text-signal-star"; }
-    else { grade = "High Coupling / License Conflict"; gradeColor = "text-signal-risk"; }
-
+    const agg = synergyFromPairs(pairScores);
     return {
-      score: totalScore,
-      grade,
-      gradeColor,
+      score: agg.score,
+      grade: agg.grade,
+      gradeColor: agg.gradeColor,
       selectedCount: selectedRepos.length,
       matrix,
       positiveSignals,
@@ -271,6 +201,16 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
 
     // Base pool matching domain
     let base = repos.filter(r => slot.domainFilter === 'all' || r.domain === slot.domainFilter);
+
+    // §3.8 — declared subsystem requirement: exact-label matches are boosted to
+    // the front of the candidate list (a boost, not a hard filter: v1 labels
+    // are noisy, and an empty dropdown would be worse than an honest ranking).
+    if (slot.subsystem) {
+      base = [
+        ...base.filter(r => r.subsystem === slot.subsystem),
+        ...base.filter(r => r.subsystem !== slot.subsystem)
+      ];
+    }
 
     // Apply text search if entered
     if (searchVal) {
@@ -389,7 +329,7 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
               onClick={() => {
                 setCustomPool(prev => [
                   ...prev,
-                  { role: `Auxiliary Layer ${prev.length + 1}`, repoId: null, domainFilter: "all" }
+                  { role: `Auxiliary Layer ${prev.length + 1}`, repoId: null, domainFilter: "all", subsystem: null }
                 ]);
               }}
               className="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.09] text-zinc-200 border border-white/[0.10] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
@@ -404,10 +344,10 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
                 const ai = repos.find(r => r.name.toLowerCase() === 'vllm') || repos[2];
                 const ui = repos.find(r => r.name.toLowerCase() === 'tremor') || repos[3];
                 setCustomPool([
-                  { role: "Vector / State Store", repoId: db?.id || null, domainFilter: "Databases & Storage" },
-                  { role: "Inference / LLM Engine", repoId: ai?.id || null, domainFilter: "AI & Machine Learning" },
-                  { role: "Async API Backend", repoId: py?.id || null, domainFilter: "Web Platforms & Frameworks" },
-                  { role: "Modern Analytics UI", repoId: ui?.id || null, domainFilter: "Web Platforms & Frameworks" }
+                  { role: "Vector / State Store", repoId: db?.id || null, domainFilter: "Databases & Storage", subsystem: "Vector Database" },
+                  { role: "Inference / LLM Engine", repoId: ai?.id || null, domainFilter: "AI & Machine Learning", subsystem: "LLM Inference & Serving" },
+                  { role: "Async API Backend", repoId: py?.id || null, domainFilter: "Web Platforms & Frameworks", subsystem: "Service Mesh & API Gateway" },
+                  { role: "Modern Analytics UI", repoId: ui?.id || null, domainFilter: "Web Platforms & Frameworks", subsystem: "UI Component Architecture" }
                 ]);
               }}
               className="btn-primary px-3.5 py-2 rounded-xl text-xs font-bold transition-all"
@@ -457,6 +397,18 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
                         className="w-full bg-obs-surface border border-white/[0.09] rounded-lg pl-7 pr-2 py-1 text-[11px] text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07]"
                       />
                     </div>
+
+                    <select
+                      value={slot.subsystem || ''}
+                      onChange={(e) => setCustomPool(prev => prev.map((s, i) => i === idx ? { ...s, subsystem: e.target.value || null } : s))}
+                      title="Required subsystem for this slot — matches are boosted to the top of the candidate list"
+                      className="w-full bg-obs-surface border border-white/[0.10] rounded-lg px-2 py-1.5 text-[11px] text-zinc-300 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
+                    >
+                      <option value="">Required subsystem: any</option>
+                      {subsystemOptions.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
 
                     <select
                       value={slot.repoId || ''}
@@ -729,13 +681,28 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
                 )}
               </button>
 
-              <button
-                onClick={() => generateRandomStack()}
-                className="btn-primary px-4 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Shuffle className="w-4 h-4" />
-                <span>Shuffle Blueprint</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <span
+                  title="Generation seed — the same ?seed= + goal always rebuilds the identical stack (§3.8)"
+                  className="px-2 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.10] text-[10px] font-mono text-zinc-400 max-w-[160px] truncate"
+                >
+                  seed: {seed || '—'}
+                </span>
+                <button
+                  onClick={rerollSeed}
+                  title="New seed — resets reproducibility"
+                  className="px-2 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.10] text-zinc-300 transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => generateRandomStack()}
+                  className="btn-primary px-4 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Shuffle className="w-4 h-4" />
+                  <span>Shuffle Blueprint</span>
+                </button>
+              </div>
             </div>
           </div>
 

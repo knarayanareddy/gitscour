@@ -128,13 +128,30 @@ Standing rule: **zero LLM calls at runtime** — everything deterministic, rule-
 
 ## G. §3.8 Synergy normalization (`InspirationGenerator.jsx`)
 
-- [ ] Score = **mean over pairs** (2-slot and 6-slot comparable) — pin with unit test
-- [ ] Slots declare a required subsystem; candidates filtered/boosted by it
-- [ ] Deterministic protocol-compatibility matrix derived from `COMPATIBILITY_RULES`
-      (Postgres-compatible ↔ pg drivers, OpenAI-compatible ↔ OpenAI clients …)
-- [ ] Seeded RNG (mulberry32, seed visible/resettable) replaces `Math.random()` —
-      same seed ⇒ same stack
-- [ ] Same language alone never yields "High Synergy" (test)
+- [x] Score = **mean over pairs**: `web/src/synergy-core.mjs:synergyFromPairs`
+      (raw-sum `50 + pos*0.8 − fric*0.9` deleted); pinned by
+      `tests/test_synergy_core.mjs` (22 assertions, run in-gate via
+      `tests/test_synergy_core.py`) — `[60,100]` and `[80]` both score 80,
+      6×80 == 1×80, no-pair pool is neutral "Awaiting Second Component"
+- [x] Slots declare a required subsystem: custom-pool slots gained
+      `subsystem` (4 defaults + per-slot selector over all packed labels;
+      aux slots null); `getCandidatesForSlot` **boosts** exact-label matches
+      to the front of the list (boost, not hard filter — v1 label noise never
+      empties a dropdown); blueprint slots already declare theirs (§3.6)
+- [x] Deterministic protocol matrix: `evaluatePair` intersects
+      `labelsOf(a)/labelsOf(b)` (packed `compatibility` or corpus derive from
+      `web/src/compatibility.js` COMPATIBILITY_RULES) plus the fixed
+      `PROTOCOL_CLIENTS` pairings — unit-proven: pg-server × `psycopg-lite`
+      pairs "PostgreSQL Compatible" at exactly +10 over baseline
+- [x] Seeded RNG: mulberry32 in `blueprint-engine.mjs` (already replacing both
+      `Math.random` sites of the old template/item pick) with **visible seed
+      chip + reset button** next to Shuffle Blueprint; `?seed=` deep-links via
+      App; same seed + goal + step ⇒ byte-identical stack (smoke §13 pins
+      `completeStack` reproducibility; no `Math.random` left in any generation
+      path — only Graph3D's decorative background dust remains, out of scope)
+- [x] Same language alone never "High Synergy": sameLang weight 18 ⇒ 68 < 75,
+      asserted directly on `PAIR_WEIGHTS` and on `evaluatePair` in
+      `test_synergy_core.mjs` (lang + shared primitives still reaches High)
 
 ## Verification gates
 
