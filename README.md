@@ -32,6 +32,27 @@ GitScour eliminates traditional backend database costs by combining static pre-i
      regenerating shards from a partial index during deploy is how the deployed Tier-2
      data could drift away from the repository.
 
+4. **Signal score (pack-time, auditable):** one 0–100 integer per repository written
+   to `catalog-packed.json` as the parallel `signal` array and used by the Explorer's
+   *Signal* sort and *Min Signal* slider. Pure arithmetic -- no LLM, no network:
+
+   ```
+   signal = round(45 · stars_pct
+                + 25 · push_recency
+                + 20 · fork_ratio_pct
+                + 10 · has_release)
+   ```
+
+   | Term | Definition |
+   |---|---|
+   | `stars_pct` | Percentile rank of the row's star count among all 123k rows. |
+   | `push_recency` | `exp(-age_days / 548)` over the last push (≈2-year decay). No push data = **0.5** (unknown, never assumed dead). |
+   | `fork_ratio_pct` | Percentile rank of the `(forks+1)/(stars+1)` ratio. |
+   | `has_release` | 1 when the curated quickstart carries a real install command (`pip install`, `npm install`, `cargo install`, `docker pull`, ...), else 0 (default `git clone` stub). |
+
+   Weights sum to 100; every term is monotone in its input. The formula is pinned by
+   `tests/test_signal.py` (bounds, monotonicity, per-term contributions).
+
 ---
 
 ## 🎨 Design System — Obsidian Dark

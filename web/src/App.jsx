@@ -1007,6 +1007,26 @@ export default function App() {
                   />
                 </div>
 
+                {/* W4 §3.4: minimum Signal (composite quality/activity score) */}
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 flex justify-between">
+                    <span>Min Signal</span>
+                    <span className="font-mono text-zinc-500">{minSignal === 0 ? 'off' : `≥ ${minSignal}`}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="90"
+                    step="5"
+                    value={minSignal}
+                    onChange={(e) => {
+                      setMinSignal(Number(e.target.value));
+                      setVisibleCount(36);
+                    }}
+                    className="w-full cursor-pointer mt-1"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">

@@ -49,6 +49,7 @@ sys.path.append(os.path.dirname(__file__))
 from facets import write_facets  # noqa: E402
 from neighbors import write_edges  # noqa: E402
 from search_index import write_search_index  # noqa: E402
+from signals import build_signals  # noqa: E402
 from taxonomy_engine import (  # noqa: E402
     license_tier,
     normalize_license,
@@ -558,6 +559,8 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
         # W3 §2.7: interned license tier per row for the license filter/chips
         "license_tiers": [license_tier(r.get("license")) for r in records],
     }
+    # W4 §3.4: composite signal (formula documented in README, pinned in tests)
+    payload["signal"] = build_signals(records, payload["activity"], int(time.time()))
     packed_out = os.path.join(base_dir, "catalog-packed.json")
     with open(packed_out, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, separators=(",", ":"))

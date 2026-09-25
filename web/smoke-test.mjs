@@ -362,9 +362,23 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
     'filter-core rank order diverges from rankQuery');
   const again = filterOrdinals(light, searchIndex, { ...base, q: 'sql vector' }, stats.majorsSet);
   check(again.join(',') === ranked.join(','), 'filter-core is not deterministic');
+  // W4 §3.4: pack-time signal — present, in range, sorts, and filters
+  check(Array.isArray(packed.signal) && packed.signal.length === rows.length,
+    `signal array ${packed.signal && packed.signal.length} != ${rows.length}`);
+  check(packed.signal.every((v) => Number.isInteger(v) && v >= 0 && v <= 100),
+    'signal out of 0..100 or non-integer');
+  const bySignal = filterOrdinals(light, searchIndex, { ...base, minSignal: 0, sortBy: 'signal' }, stats.majorsSet);
+  let sigDesc = true;
+  for (let i = 1; i < bySignal.length; i++) if (light[bySignal[i]].signal > light[bySignal[i - 1]].signal) sigDesc = false;
+  check(sigDesc, 'signal sort is not descending');
+  const sigFiltered = filterOrdinals(light, searchIndex, { ...base, minSignal: 60 }, stats.majorsSet);
+  check(sigFiltered.length > 0 && sigFiltered.every((o) => light[o].signal >= 60),
+    'minSignal filter failed');
+  const sigMean = packed.signal.reduce((a, b) => a + b, 0) / packed.signal.length;
+
   console.log(`\nfilter-core: identity ${identity.length.toLocaleString()} rows in ${tEmpty.toFixed(1)}ms | ` +
     `ranked 'sql vector' ${ranked.length} in ${tQuery.toFixed(1)}ms | tail ${tailCount} rows / ${stats.tail.length} langs | ` +
-    `hideDormant ${active.length.toLocaleString()}`);
+    `hideDormant ${active.length.toLocaleString()} | signal mean ${sigMean.toFixed(1)}, ≥60: ${sigFiltered.length.toLocaleString()}`);
 }
 
 console.log(fail.length ? `\nFAILED (${fail.length}):\n  ` + fail.slice(0, 10).join('\n  ')

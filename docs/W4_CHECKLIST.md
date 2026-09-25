@@ -42,15 +42,22 @@ Standing rule: **zero LLM calls at runtime** — everything deterministic, rule-
 
 ## B. §3.7 Perf/UX hygiene
 
-- [ ] Web Worker for filter+search: worker fetches packed+index itself, main posts the
-      filter request, worker replies with ordered row ordinals (60 fps while filtering
-      123k); parity gate: worker core module == current main-thread results on sample
-      queries (shared pure module, unit-tested)
-- [ ] Language facet groups the long tail: languages with <50 rows collapse into one
-      `Other (1,858)` chip entry (rows keep their true language; facet+select only)
-- [ ] Touch handlers on both canvases (galaxy + topic cloud of §E) — pointer events
-- [ ] Discovery pills reset every facet they do not mention (set-then-clear, no stale filters)
-- [ ] `?inspect=` prefers `owner/name`, falls back to bare name; URL writes `owner/name`
+- [x] Web Worker for filter+search (`filter-core.worker.js` + `filter-core.mjs`):
+      main posts the parsed packed payload once + index updates, worker unpacks a
+      light projection and replies with ordered ordinals; sync fallback imports the
+      SAME core (single truth); reqId stale-reply guard; failover to sync on error.
+      Core cost measured in smoke: identity **6.2 ms**, ranked `'sql vector'`
+      **3.1 ms** with top-5 identical to `rankQuery`, deterministic
+- [x] Language facet groups the long tail: **282 languages <50 rows (1,858 rows)**
+      collapse into one `Long tail` option (rows keep their true language; 61 majors;
+      smoke-gated against a recount)
+- [x] Touch handlers on both canvases (Graph3DExplorer + Stack3DVisualizer): pointer
+      events + `setPointerCapture` + `touch-action: none`; touch contact picks a node
+      so tap-to-open works without hover (§E cloud reuses the pattern)
+- [x] Discovery pills reset every facet they do not mention (incl. query, dormant,
+      sort — minStars stays the user's threshold)
+- [x] `?inspect=` prefers `owner/name`, falls back to bare name; share URL now writes
+      `owner/name` (bare name was ambiguous)
 - [x] `pushed_at` guarded before `Date.parse` — done in W3 (modal footer); re-grep gate
       in smoke stays
 

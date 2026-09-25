@@ -18,7 +18,7 @@ export const LONG_TAIL_MIN_COUNT = 50;
  * including the memoized lowercase search corpus (W3 §2.3/§2.2 parity).
  */
 export function unpackLight(packed) {
-  const { domains, subsystems, languages, artifacts, rows, activity, license_tiers } = packed;
+  const { domains, subsystems, languages, artifacts, rows, activity, license_tiers, signal } = packed;
   return rows.map((r, i) => {
     const domName = domains[r[6]] || 'Other / General';
     const subsystem = subsystems[r[7]] || 'General Components';
@@ -36,6 +36,7 @@ export function unpackLight(packed) {
       artifact: artifacts[r[8]] || 'Application / Service',
       license: r[9],
       licenseTier: Array.isArray(license_tiers) ? license_tiers[i] : null,
+      signal: Array.isArray(signal) ? (signal[i] || 0) : 0,
       primitives: r[10] || [],
       hook: r[11] || '',
       topics: Array.isArray(r[13]) ? r[13] : [],
@@ -98,6 +99,7 @@ export function filterOrdinals(rows, index, opts, majorsSet) {
     primitive = 'all',
     licenseTier = 'all',
     minStars = 500,
+    minSignal = 0,
     hideDormant = false,
     sortBy = 'stars',
   } = opts || {};
@@ -114,6 +116,8 @@ export function filterOrdinals(rows, index, opts, majorsSet) {
     }
     if (primitive !== 'all' && !(repo.primitives || []).includes(primitive)) return false;
     if (licenseTier !== 'all' && repo.licenseTier !== licenseTier) return false;
+    // W4 §3.4: minimum pack-time Signal (0 = off)
+    if (minSignal && (repo.signal || 0) < minSignal) return false;
     return true;
   };
 
@@ -155,6 +159,10 @@ export function filterOrdinals(rows, index, opts, majorsSet) {
       const tb = (rows[b].activity && rows[b].activity.pushedAt) || 0;
       return tb - ta || rows[b].stars - rows[a].stars;
     });
+  } else if (!queryTokens.length && sortBy === 'signal') {
+    // W4 §3.4: composite signal desc, stars break ties (deterministic)
+    out.sort((a, b) => (rows[b].signal || 0) - (rows[a].signal || 0)
+      || rows[b].stars - rows[a].stars);
   }
   return out;
 }
