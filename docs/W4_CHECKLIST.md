@@ -63,12 +63,15 @@ Standing rule: **zero LLM calls at runtime** — everything deterministic, rule-
 
 ## C. §3.4 Signal score
 
-- [ ] Pack-time `signal` parallel array (0–100): documented arithmetic —
-      `0.45·stars percentile + 0.25·push recency (decay 18mo) + 0.20·fork ratio
-      percentile + 0.10·has quickstart/release` (exact terms frozen in README)
-- [ ] `Signal` option in Sort select + minimum-signal slider
-- [ ] Unit tests pin the formula (monotonicity, bounds, term contributions)
-- [ ] README: formula section (auditable, no black box)
+- [x] Pack-time `signal` parallel array (0–100) — `pipeline/signals.py`, exact
+      terms frozen in README §4: `round(45·stars_pct + 25·push_recency(548d decay,
+      unknown=0.5) + 20·fork_ratio_pct + 10·has_release(install cmd))`; regenned
+      len 123,153, range 1–89, mean 45.6
+- [x] `Signal` option in Sort select + minimum-signal slider (0–90 step 5, `off`
+      at 0) wired App → filterOpts → worker → filter-core (shared path)
+- [x] Unit tests pin the formula (13 pins: bounds, stars/recency monotonicity,
+      install bonus == 10, unknown == 548·ln2 days, breakdown sums, determinism)
+- [x] README: formula section + per-term table (auditable, no black box)
 
 ## D. §3.2 + §3.3 Star-delta trending & changelog
 
