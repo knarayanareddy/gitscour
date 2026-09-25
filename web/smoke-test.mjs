@@ -481,6 +481,86 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
     `per-domain keys ${Object.keys(tbd).length} | min df ${tm.min_count}, min pair ${tm.min_pair}`);
 }
 
+// ---------------------------------------------------------------------------------------
+// §13 — W4 §3.6: curated blueprint library + completion engine integrity (zero-LLM)
+// ---------------------------------------------------------------------------------------
+{
+  const bpDoc = JSON.parse(readFileSync(new URL('./src/blueprints.json', import.meta.url), 'utf8'));
+  const bps = bpDoc.blueprints || [];
+  const repoSet = new Set(rows.map(r => `${r[2]}/${r[1]}`));
+  const subSet = new Set(Object.values(subsystems));
+
+  check(bps.length >= 6, `blueprint library must exceed the original 4 (got ${bps.length})`);
+  for (const g of ['ai', 'systems', 'security']) {
+    check(bps.filter(b => b.goal === g).length >= 2, `goal ${g} needs >= 2 blueprints`);
+  }
+  const bpIds = bps.map(b => b.id);
+  check(new Set(bpIds).size === bpIds.length, 'duplicate blueprint ids');
+  for (const id of ['ai-rag-analytics', 'edge-observability', 'autonomous-coding-agent', 'zero-trust-microservices']) {
+    check(bpIds.includes(id), `original template ${id} missing from library`);
+  }
+
+  let seedTotal = 0;
+  for (const b of bps) {
+    const labels = new Set(b.roles.map(r => r.label));
+    check(labels.size === b.roles.length, `${b.id}: duplicate role labels`);
+    for (const r of b.roles) {
+      check(['storage', 'ai', 'backend', 'frontend', 'devtools', 'security'].includes(r.category),
+        `${b.id}/${r.label}: unknown category ${r.category}`);
+      for (const s of (r.seeds || [])) {
+        seedTotal++;
+        check(repoSet.has(s), `${b.id}/${r.label}: seed ${s} not in packed catalog`);
+      }
+      if (r.requiredSubsystem) {
+        check(subSet.has(r.requiredSubsystem), `${b.id}/${r.label}: unknown subsystem ${r.requiredSubsystem}`);
+      }
+    }
+    for (const [a, c] of (b.edges || [])) {
+      check(labels.has(a) && labels.has(c), `${b.id}: edge endpoint is not a role label`);
+    }
+  }
+
+  // Engine (the exact module the UI imports) — determinism, seed-first, honest gaps.
+  const { mulberry32, hashSeed, selectBlueprint, completeStack } =
+    await import('./src/blueprint-engine.mjs');
+  check(Number.isInteger(hashSeed('x')) && hashSeed('x') === hashSeed('x'), 'hashSeed not stable');
+  const r1 = mulberry32('a'), r2 = mulberry32('a'), r3 = mulberry32('b');
+  check(r1() === r2() && r1() !== r3(), 'mulberry32 not reproducible per seed');
+
+  const buckets = {
+    storage: unpacked.filter(r => r.domain === 'Databases & Storage'),
+    ai: unpacked.filter(r => r.domain === 'AI & Machine Learning'),
+    backend: unpacked.filter(r => r.domain === 'Web Platforms & Frameworks' || r.domain === 'Networking & Distributed Systems'),
+    frontend: unpacked.filter(r => r.language === 'TypeScript' || r.language === 'JavaScript'),
+    devtools: unpacked.filter(r => r.domain === 'Developer Tooling & Compilers' || r.domain === 'Cloud & Infrastructure'),
+    security: unpacked.filter(r => r.domain === 'Security & Cryptography'),
+  };
+  for (const [k, v] of Object.entries(buckets)) check(v.length > 0, `engine bucket ${k} empty`);
+  const lookup = new Map(unpacked.map(r => [`${r.owner}/${r.name}`, r]));
+
+  const bp0 = bps[0];
+  const s1 = completeStack(bp0, buckets, lookup, mulberry32('same'));
+  const s2 = completeStack(bp0, buckets, lookup, mulberry32('same'));
+  check(JSON.stringify(s1) === JSON.stringify(s2), 'completeStack not reproducible for same seed');
+  check(s1.missing.length === 0 && s1.components.every(c => c.repo),
+    `blueprint ${bp0.id} failed to fill every slot: ${JSON.stringify(s1.missing)}`);
+  for (const comp of s1.components) {
+    const role = bp0.roles.find(r => r.label === comp.role);
+    if (comp.via === 'seed') {
+      check((role.seeds || []).includes(`${comp.repo.owner}/${comp.repo.name}`),
+        `${comp.role}: via=seed but ${comp.repo.owner}/${comp.repo.name} not in role seeds`);
+    } else {
+      check(comp.repo.domain || comp.repo.stars >= 500, `${comp.role}: via=${comp.via} repo lacks identity`);
+    }
+  }
+  const pickSys = selectBlueprint(bps, 'systems', mulberry32('g'));
+  check(pickSys && pickSys.goal === 'systems', 'selectBlueprint did not honour goal filter');
+  check(!!selectBlueprint(bps, 'all', mulberry32('g2')), 'selectBlueprint(all) empty');
+
+  console.log(`blueprints: ${bps.length} (goals ${[...new Set(bps.map(b => b.goal))].sort().join(',')}) | ` +
+    `seeds ${seedTotal} verified | engine: ${s1.components.length} slots filled, reproducible`);
+}
+
 console.log(fail.length ? `\nFAILED (${fail.length}):\n  ` + fail.slice(0, 10).join('\n  ')
   : `\nOK: packed decode, ranked search, edges, facets, Tier-2 merge, and fallback index consistent for ${rows.length.toLocaleString()} repos.`);
 process.exit(fail.length ? 1 : 0);

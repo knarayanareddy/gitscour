@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "note": "Curated stack blueprints (W4 §3.6). Every `seeds` entry MUST exist in web/public/catalog-packed.json (>=500 stars) — pinned by tests/test_blueprints.py. `requiredSubsystem` must be one of the 51 packed subsystem labels (exactly). Goals: ai | systems | security. Categories: storage | ai | backend | frontend | devtools | security (the InspirationGenerator pool buckets).",
+  "blueprints": [
+    {
+      "id": "ai-rag-analytics",
+      "goal": "ai",
+      "title": "Self-Hosted Multi-Modal RAG & Real-Time Semantic Engine",
+      "tagline": "Build a zero-cloud document intelligence engine that queries millions of PDFs, audio transcripts, and embeddings with sub-second vector search.",
+      "roles": [
+        { "label": "Vector & Embedding Store", "category": "storage", "requiredSubsystem": "Vector Database", "seeds": ["chroma-core/chroma", "qdrant/qdrant", "milvus-io/milvus", "pgvector/pgvector"] },
+        { "label": "Local LLM / Embeddings Runtime", "category": "ai", "requiredSubsystem": "LLM Inference & Serving", "seeds": ["vllm-project/vllm", "ollama/ollama", "ggml-org/llama.cpp"] },
+        { "label": "High-Throughput Async Backend", "category": "backend", "requiredSubsystem": "API Architecture (GraphQL/gRPC)", "seeds": ["fastapi/fastapi", "actix/actix-web", "tokio-rs/axum"] },
+        { "label": "Reactive Dashboard & Canvas UI", "category": "frontend", "requiredSubsystem": "Full-Stack & SSR Frameworks", "seeds": ["sveltejs/kit"] },
+        { "label": "Telemetry & Pipeline Orchestration", "category": "devtools", "requiredSubsystem": "Observability & Tracing", "seeds": ["open-telemetry/opentelemetry-collector", "apache/airflow"] }
+      ],
+      "edges": [
+        ["Vector & Embedding Store", "Local LLM / Embeddings Runtime", "embeddings io"],
+        ["Local LLM / Embeddings Runtime", "High-Throughput Async Backend", "inference api"],
+        ["High-Throughput Async Backend", "Reactive Dashboard & Canvas UI", "streaming responses"],
+        ["Telemetry & Pipeline Orchestration", "High-Throughput Async Backend", "traces"]
+      ],
+      "whyItWorks": "Bypasses recurring OpenAI token fees and eliminates cloud data privacy risks by running quantised models locally on Apple Silicon or CUDA, backed by an in-memory vector index.",
+      "tradeoffs": "Requires dedicated GPU memory for high concurrency; initial cold starts during model checkpoint loading.",
+      "starterCli": "npm create modern-rag@latest --template fullstack"
+    },
+    {
+      "id": "edge-observability",
+      "goal": "systems",
+      "title": "Edge-First Vectorized Telemetry & Distributed Tracing Engine",
+      "tagline": "Ingest and visualize 100M+ structured events and HTTP trace spans per second on a single commodity VPS.",
+      "roles": [
+        { "label": "Vectorized Columnar OLAP Engine", "category": "storage", "requiredSubsystem": "Analytical & Columnar (OLAP)", "seeds": ["duckdb/duckdb", "ClickHouse/ClickHouse"] },
+        { "label": "High-Speed Async Proxy / Ingestion", "category": "backend", "requiredSubsystem": "Event Streaming & Message Broker", "seeds": ["apache/kafka", "nats-io/nats-server"] },
+        { "label": "Zero-Copy Serialization Protocol", "category": "devtools", "requiredSubsystem": "Low-Level Protocols & Transports", "seeds": [] },
+        { "label": "WebGL Real-Time Flamegraph UI", "category": "frontend", "requiredSubsystem": "Observability & Tracing", "seeds": ["grafana/grafana"] },
+        { "label": "Secrets Vault & Node Attestation", "category": "security", "requiredSubsystem": "Secrets & Key Management", "seeds": ["hashicorp/vault"] }
+      ],
+      "edges": [
+        ["High-Speed Async Proxy / Ingestion", "Vectorized Columnar OLAP Engine", "append pipeline"],
+        ["Zero-Copy Serialization Protocol", "High-Speed Async Proxy / Ingestion", "wire format"],
+        ["Vectorized Columnar OLAP Engine", "WebGL Real-Time Flamegraph UI", "aggregate feed"],
+        ["Secrets Vault & Node Attestation", "High-Speed Async Proxy / Ingestion", "node identity"]
+      ],
+      "whyItWorks": "Columnar compression (Parquet/Arrow) achieves up to 10:1 compression ratio over raw JSON logs while enabling SIMD-accelerated aggregations across millions of rows in milliseconds.",
+      "tradeoffs": "High-throughput append buffering means trace spans have a 500ms micro-batching visibility window.",
+      "starterCli": "curl -fsSL https://get.gitscour.dev/telemetry | sh"
+    },
+    {
+      "id": "autonomous-coding-agent",
+      "goal": "ai",
+      "title": "Autonomous Developer Swarm & Continuous AST Refactoring Engine",
+      "tagline": "Deploy a team of collaborative AI workers that ingest git issues, reproduce bugs via Docker sandboxes, and synthesize green PRs.",
+      "roles": [
+        { "label": "Agentic Tool Orchestration & Multi-Turn", "category": "ai", "requiredSubsystem": "Autonomous Agents & Workflows", "seeds": ["langchain-ai/langchain", "run-llama/llama_index"] },
+        { "label": "Hyper-Fast Linter & AST Transformer", "category": "devtools", "requiredSubsystem": "Linters & Code Quality", "seeds": [] },
+        { "label": "Ephemeral Sandbox & Container Manager", "category": "devtools", "requiredSubsystem": "Container Orchestration & Runtime", "seeds": ["kubernetes/kubernetes"] },
+        { "label": "Developer Kanban & Diff Inspector", "category": "frontend", "requiredSubsystem": "UI Component Architecture", "seeds": [] },
+        { "label": "Static Code Vulnerability Scanner", "category": "security", "requiredSubsystem": "Vulnerability & Static Analysis", "seeds": [] }
+      ],
+      "edges": [
+        ["Agentic Tool Orchestration & Multi-Turn", "Hyper-Fast Linter & AST Transformer", "diagnostic loop"],
+        ["Ephemeral Sandbox & Container Manager", "Agentic Tool Orchestration & Multi-Turn", "tool sandbox"],
+        ["Static Code Vulnerability Scanner", "Hyper-Fast Linter & AST Transformer", "shared ast"],
+        ["Developer Kanban & Diff Inspector", "Agentic Tool Orchestration & Multi-Turn", "pr review"]
+      ],
+      "whyItWorks": "Pairs tree-sitter AST parsing with iterative LLM generation. When the syntax parser detects a semantic error, it loops back to the agent with exact line errors without burning human engineer time.",
+      "tradeoffs": "Non-deterministic PR generation requires strict automated test suites before running auto-merge.",
+      "starterCli": "npx agent-swarm-init --preset refactor"
+    },
+    {
+      "id": "zero-trust-microservices",
+      "goal": "security",
+      "title": "Zero-Trust Mesh & Declarative Distributed Microservices",
+      "tagline": "Deploy modern multi-cloud microservices with automated mTLS identity certificates and eBPF wire-speed routing.",
+      "roles": [
+        { "label": "Dynamic Cloud Gateway / Envoy Mesh", "category": "backend", "requiredSubsystem": "Service Mesh & API Gateway", "seeds": ["istio/istio", "linkerd/linkerd2"] },
+        { "label": "Distributed Consensus / KV State", "category": "storage", "requiredSubsystem": "Key-Value & In-Memory Store", "seeds": ["redis/redis"] },
+        { "label": "mTLS Identity & Certificate Authority", "category": "security", "requiredSubsystem": "Zero Trust & Identity/Auth", "seeds": ["spiffe/spire", "keycloak/keycloak"] },
+        { "label": "Declarative Infrastructure as Code", "category": "devtools", "requiredSubsystem": "Infrastructure as Code (IaC)", "seeds": ["hashicorp/terraform", "pulumi/pulumi"] },
+        { "label": "Cluster Observability Dashboard", "category": "frontend", "requiredSubsystem": "Observability & Tracing", "seeds": ["grafana/grafana", "jaegertracing/jaeger"] }
+      ],
+      "edges": [
+        ["mTLS Identity & Certificate Authority", "Dynamic Cloud Gateway / Envoy Mesh", "workload identity"],
+        ["Dynamic Cloud Gateway / Envoy Mesh", "Distributed Consensus / KV State", "control plane state"],
+        ["Declarative Infrastructure as Code", "Dynamic Cloud Gateway / Envoy Mesh", "mesh config"],
+        ["Cluster Observability Dashboard", "Dynamic Cloud Gateway / Envoy Mesh", "trace viewer"]
+      ],
+      "whyItWorks": "Eliminates hardcoded secrets and manual firewall rules by relying on cryptographic SPIFFE/SPIRE IDs embedded in every mutual TLS packet.",
+      "tradeoffs": "Steeper architectural onboarding curve and small CPU overhead from ubiquitous packet encryption.",
+      "starterCli": "brew install mesh-ctl && mesh-ctl init"
+    },
+    {
+      "id": "realtime-analytics-stack",
+      "goal": "systems",
+      "title": "Streaming OLAP Metrics Warehouse with Sub-Second Dashboards",
+      "tagline": "Land events on a broker, persist them to columnar + time-series storage, and serve dashboards that answer ad-hoc questions in milliseconds.",
+      "roles": [
+        { "label": "Event Log & Stream Processor", "category": "backend", "requiredSubsystem": "Event Streaming & Message Broker", "seeds": ["apache/kafka", "nats-io/nats-server"] },
+        { "label": "Columnar Analytical Engine", "category": "storage", "requiredSubsystem": "Analytical & Columnar (OLAP)", "seeds": ["ClickHouse/ClickHouse", "duckdb/duckdb"] },
+        { "label": "Time-Series Rollup Store", "category": "storage", "requiredSubsystem": "Time-Series Database", "seeds": ["timescale/timescaledb", "grafana/mimir"] },
+        { "label": "Metrics & Tracing Plane", "category": "devtools", "requiredSubsystem": "Observability & Tracing", "seeds": ["grafana/grafana", "grafana/loki", "jaegertracing/jaeger"] },
+        { "label": "Dashboard & Explore UI", "category": "frontend", "requiredSubsystem": "Observability & Tracing", "seeds": ["grafana/grafana"] }
+      ],
+      "edges": [
+        ["Event Log & Stream Processor", "Columnar Analytical Engine", "batch ingest"],
+        ["Event Log & Stream Processor", "Time-Series Rollup Store", "rollup jobs"],
+        ["Columnar Analytical Engine", "Dashboard & Explore UI", "ad-hoc sql"],
+        ["Metrics & Tracing Plane", "Dashboard & Explore UI", "panels"]
+      ],
+      "whyItWorks": "Broker-backed ingest decouples write bursts from query load, while columnar compression keeps a year of events queryable on one box.",
+      "tradeoffs": "Two storage engines mean dual writes and eventual consistency between raw events and rollups.",
+      "starterCli": "docker compose up -d kafka clickhouse grafana"
+    },
+    {
+      "id": "local-first-sync-engine",
+      "goal": "systems",
+      "title": "Local-First SQLite App with Offline Sync & Typed APIs",
+      "tagline": "Ship a responsive offline-capable product: embedded SQLite on every device, typed query layers, and a thin sync API backend.",
+      "roles": [
+        { "label": "Embedded SQL & Sync Store", "category": "storage", "requiredSubsystem": "Distributed SQL Engine", "seeds": ["sqlite/sqlite", "prisma/orm", "drizzle-team/drizzle-orm"] },
+        { "label": "Typed Sync / REST Backend", "category": "backend", "requiredSubsystem": "API Architecture (GraphQL/gRPC)", "seeds": ["fastapi/fastapi", "django/django"] },
+        { "label": "Instant-UI Frontend Framework", "category": "frontend", "requiredSubsystem": "Full-Stack & SSR Frameworks", "seeds": ["sveltejs/kit", "sveltejs/svelte"] },
+        { "label": "Auth & Session Hardening", "category": "security", "requiredSubsystem": "Zero Trust & Identity/Auth", "seeds": ["keycloak/keycloak"] },
+        { "label": "Schema Migrations & DX", "category": "devtools", "requiredSubsystem": "General Developer Tooling", "seeds": ["prisma/orm"] }
+      ],
+      "edges": [
+        ["Embedded SQL & Sync Store", "Typed Sync / REST Backend", "delta sync"],
+        ["Instant-UI Frontend Framework", "Embedded SQL & Sync Store", "local reads"],
+        ["Auth & Session Hardening", "Typed Sync / REST Backend", "session tokens"],
+        ["Schema Migrations & DX", "Embedded SQL & Sync Store", "migration files"]
+      ],
+      "whyItWorks": "Reads hit an embedded database (no network round-trip), so UIs stay instant offline; the sync layer ships only row-level deltas.",
+      "tradeoffs": "Conflict resolution and schema migration ordering across devices add real design work.",
+      "starterCli": "npx create-svelte-offline-app@latest"
+    },
+    {
+      "id": "hardened-api-platform",
+      "goal": "security",
+      "title": "Hardened Public API Platform with SSO, Secrets & Audit",
+      "tagline": "Expose a production API behind SSO and per-route authorization, with managed secrets and a full audit trail.",
+      "roles": [
+        { "label": "API Framework & Gateway", "category": "backend", "requiredSubsystem": "API Architecture (GraphQL/gRPC)", "seeds": ["fastapi/fastapi", "actix/actix-web", "tokio-rs/axum"] },
+        { "label": "Primary OLTP Datastore", "category": "storage", "requiredSubsystem": "General Databases", "seeds": ["postgres/postgres", "redis/redis"] },
+        { "label": "SSO / Identity Provider", "category": "security", "requiredSubsystem": "Zero Trust & Identity/Auth", "seeds": ["keycloak/keycloak", "spiffe/spire"] },
+        { "label": "Secrets Management", "category": "security", "requiredSubsystem": "Secrets & Key Management", "seeds": ["hashicorp/vault"] },
+        { "label": "Deploy & Infra Definition", "category": "devtools", "requiredSubsystem": "Infrastructure as Code (IaC)", "seeds": ["hashicorp/terraform", "pulumi/pulumi"] }
+      ],
+      "edges": [
+        ["SSO / Identity Provider", "API Framework & Gateway", "jwt validation"],
+        ["Secrets Management", "API Framework & Gateway", "credential fetch"],
+        ["Primary OLTP Datastore", "API Framework & Gateway", "connection pool"],
+        ["Deploy & Infra Definition", "Secrets Management", "injected secrets"]
+      ],
+      "whyItWorks": "Identity, secrets, and infrastructure live in dedicated systems instead of environment files, so rotation and audits are mechanical.",
+      "tradeoffs": "More moving parts to bootstrap; every deploy now depends on the identity plane being up.",
+      "starterCli": "terraform init && terraform apply -var api.sso=oidc"
+    },
+    {
+      "id": "fleet-observability-mesh",
+      "goal": "systems",
+      "title": "Kubernetes Fleet Observability with Traces, Logs & Alerts",
+      "tagline": "Instrument every service with OpenTelemetry, scrape metrics, ship logs, and alert on SLO burn — all self-hosted.",
+      "roles": [
+        { "label": "Cluster Runtime", "category": "devtools", "requiredSubsystem": "Container Orchestration & Runtime", "seeds": ["kubernetes/kubernetes"] },
+        { "label": "Telemetry Collection Agent", "category": "devtools", "requiredSubsystem": "Observability & Tracing", "seeds": ["open-telemetry/opentelemetry-collector", "open-telemetry/opentelemetry-collector-contrib"] },
+        { "label": "Metrics Scraping & Alerting", "category": "backend", "requiredSubsystem": "Observability & Tracing", "seeds": ["prometheus-operator/prometheus-operator", "grafana/mimir"] },
+        { "label": "Log Aggregation Store", "category": "storage", "requiredSubsystem": "Observability & Tracing", "seeds": ["grafana/loki"] },
+        { "label": "Unified Explore Console", "category": "frontend", "requiredSubsystem": "Observability & Tracing", "seeds": ["grafana/grafana"] }
+      ],
+      "edges": [
+        ["Telemetry Collection Agent", "Metrics Scraping & Alerting", "otlp scrape"],
+        ["Telemetry Collection Agent", "Log Aggregation Store", "log shipping"],
+        ["Metrics Scraping & Alerting", "Unified Explore Console", "promql"],
+        ["Log Aggregation Store", "Unified Explore Console", "logql"]
+      ],
+      "whyItWorks": "One collector fans signals out to purpose-built stores, so metrics stay cheap to aggregate while logs keep full fidelity.",
+      "tradeoffs": "Three storage backends to operate; cardinality discipline is required or the metrics bill explodes.",
+      "starterCli": "kubectl apply -f otel-collector.yaml"
+    }
+  ]
+}

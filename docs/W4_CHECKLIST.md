@@ -113,12 +113,18 @@ Standing rule: **zero LLM calls at runtime** — everything deterministic, rule-
 
 ## F. §3.6 Stack Blueprints
 
-- [ ] `web/src/blueprints.json`: grow the 4 hardcoded templates into a curated library
-      per domain — role slots, required subsystem per slot, compat edges, seeds
-- [ ] Build-time validation test: every `owner/name` named in a blueprint exists in
-      the packed catalog (pytest against `web/public/catalog-packed.json`)
-- [ ] Rule engine completes stacks from candidates matching slot constraints
-      (deterministic, zero-LLM)
+- [x] `web/src/blueprints.json`: grew the 4 hardcoded templates to **8 blueprints**
+      (original ids/copy preserved + 4 new across ai/systems/security, >=2 per goal)
+      — role slots with exact packed `requiredSubsystem` labels, 4 compat edges
+      each, **67 seeds**, all verified present
+- [x] Build-time validation: `tests/test_blueprints.py` (7 tests) pins every seed
+      `owner/name` + subsystem label against `web/public/catalog-packed.json`,
+      goal/category vocabulary, unique ids, edge endpoints, and the original 4 ids;
+      smoke §13 repeats the data invariants over the real dist artifacts
+- [x] Rule engine `web/src/blueprint-engine.mjs` (pure module shared by UI + smoke):
+      slot fill = curated seeds > exact-subsystem match > category fallback, ranked
+      by stars with top-3 sampling via seeded RNG — deterministic, zero-LLM, honest
+      `repo:null` gap card when a slot truly has no candidate
 
 ## G. §3.8 Synergy normalization (`InspirationGenerator.jsx`)
 

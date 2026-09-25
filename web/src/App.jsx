@@ -38,6 +38,7 @@ export default function App() {
       primitive: params.get('primitive') || 'all',
       topic: params.get('topic') || 'all',
       license: params.get('license') || 'all',
+      seed: params.get('seed') || '',
       minStars: Number(params.get('minStars')) || 500,
       inspect: params.get('inspect') || null
     };
@@ -46,6 +47,7 @@ export default function App() {
   const initialUrl = getInitialUrlState();
 
   const [activeTab, setActiveTab] = useState(initialUrl.tab);
+  const [inspireSeed, setInspireSeed] = useState(initialUrl.seed); // W4 §3.8 reproducible stacks
   const [searchQuery, setSearchQuery] = useState(initialUrl.q);
   const [selectedDomain, setSelectedDomain] = useState(initialUrl.domain);
   const [selectedSubsystem, setSelectedSubsystem] = useState(initialUrl.subsystem);
@@ -373,11 +375,12 @@ export default function App() {
     if (selectedTopic !== 'all') params.set('topic', selectedTopic);
     if (selectedLicenseTier !== 'all') params.set('license', selectedLicenseTier);
     if (minStars > 500) params.set('minStars', minStars);
+    if (inspireSeed) params.set('seed', inspireSeed); // W4 §3.8 — same seed => same stack
     if (activeRepoModal) params.set('inspect', `${activeRepoModal.owner}/${activeRepoModal.name}`);
 
     const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
     window.history.replaceState({}, '', newUrl);
-  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier, minStars, activeRepoModal, loading]);
+  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier, minStars, activeRepoModal, inspireSeed, loading]);
 
   const copyShareableLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -721,6 +724,8 @@ export default function App() {
           /* SYNERGETIC TECH STACK ARCHITECT & POOLING SANDBOX */
           <InspirationGenerator
             repos={repos}
+            seed={inspireSeed}
+            onSeedChange={setInspireSeed}
             onSelectRepo={(repo) => handleOpenRepoModal(repo)}
           />
         ) : activeTab === 'sql' ? (

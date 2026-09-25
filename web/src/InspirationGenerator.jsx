@@ -8,11 +8,14 @@ import {
   Gauge, Filter, Eye
 } from 'lucide-react';
 import Stack3DVisualizer from './Stack3DVisualizer.jsx';
+import blueprintsDoc from './blueprints.json';
+import { mulberry32, selectBlueprint, completeStack } from './blueprint-engine.mjs';
 
-export default function InspirationGenerator({ repos, onSelectRepo }) {
+export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeedChange }) {
   const [activeStack, setActiveStack] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [selectedGoal, setSelectedGoal] = useState('all');
+  const [genStep, setGenStep] = useState(0); // W4 §3.8 — rng step: same ?seed= => same first stack
 
   // Intelligent Progressive Cascading Filter Toggle
   const [enableGuidedCascading, setEnableGuidedCascading] = useState(true);
@@ -68,101 +71,38 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     };
   }, [repos]);
 
-  // Pre-configured Curated Blueprints
-  const ARCHITECTURE_TEMPLATES = [
-    {
-      id: "ai-rag-analytics",
-      goal: "ai",
-      title: "Self-Hosted Multi-Modal RAG & Real-Time Semantic Engine",
-      tagline: "Build a zero-cloud document intelligence engine that queries millions of PDFs, audio transcripts, and embeddings with sub-second vector search.",
-      roles: [
-        { label: "Vector & Embedding Store", category: "storage" },
-        { label: "Local LLM / Embeddings Runtime", category: "ai" },
-        { label: "High-Throughput Async Backend", category: "backend" },
-        { label: "Reactive Dashboard & Canvas UI", category: "frontend" },
-        { label: "Telemetry & Pipeline Orchestration", category: "devtools" }
-      ],
-      whyItWorks: "Bypasses recurring OpenAI token fees and eliminates cloud data privacy risks by running quantised models locally on Apple Silicon or CUDA, backed by an in-memory vector index.",
-      tradeoffs: "Requires dedicated GPU memory for high concurrency; initial cold starts during model checkpoint loading.",
-      starterCli: "npm create modern-rag@latest --template fullstack"
-    },
-    {
-      id: "edge-observability",
-      goal: "systems",
-      title: "Edge-First Vectorized Telemetry & Distributed Tracing Engine",
-      tagline: "Ingest and visualize 100M+ structured events and HTTP trace spans per second on a single commodity VPS.",
-      roles: [
-        { label: "Vectorized Columnar OLAP Engine", category: "storage" },
-        { label: "High-Speed Async Proxy / Ingestion", category: "backend" },
-        { label: "Zero-Copy Serialization Protocol", category: "devtools" },
-        { label: "WebGL Real-Time Flamegraph UI", category: "frontend" },
-        { label: "Secrets Vault & Node Attestation", category: "security" }
-      ],
-      whyItWorks: "Columnar compression (Parquet/Arrow) achieves up to 10:1 compression ratio over raw JSON logs while enabling SIMD-accelerated aggregations across millions of rows in milliseconds.",
-      tradeoffs: "High-throughput append buffering means trace spans have a 500ms micro-batching visibility window.",
-      starterCli: "curl -fsSL https://get.gitscour.dev/telemetry | sh"
-    },
-    {
-      id: "autonomous-coding-agent",
-      goal: "ai",
-      title: "Autonomous Developer Swarm & Continuous AST Refactoring Engine",
-      tagline: "Deploy a team of collaborative AI workers that ingest git issues, reproduce bugs via Docker sandboxes, and synthesize green PRs.",
-      roles: [
-        { label: "Agentic Tool Orchestration & Multi-Turn", category: "ai" },
-        { label: "Hyper-Fast Linter & AST Transformer", category: "devtools" },
-        { label: "Ephemeral Sandbox & Container Manager", category: "devtools" },
-        { label: "Developer Kanban & Diff Inspector", category: "frontend" },
-        { label: "Static Code Vulnerability Scanner", category: "security" }
-      ],
-      whyItWorks: "Pairs tree-sitter AST parsing with iterative LLM generation. When the syntax parser detects a semantic error, it loops back to the agent with exact line errors without burning human engineer time.",
-      tradeoffs: "Non-deterministic PR generation requires strict automated test suites before running auto-merge.",
-      starterCli: "npx agent-swarm-init --preset refactor"
-    },
-    {
-      id: "zero-trust-microservices",
-      goal: "security",
-      title: "Zero-Trust Mesh & Declarative Distributed Microservices",
-      tagline: "Deploy modern multi-cloud microservices with automated mTLS identity certificates and eBPF wire-speed routing.",
-      roles: [
-        { label: "Dynamic Cloud Gateway / Envoy Mesh", category: "backend" },
-        { label: "Distributed Consensus / KV State", category: "storage" },
-        { label: "mTLS Identity & Certificate Authority", category: "security" },
-        { label: "Declarative Infrastructure as Code", category: "devtools" },
-        { label: "Cluster Observability Dashboard", category: "frontend" }
-      ],
-      whyItWorks: "Eliminates hardcoded secrets and manual firewall rules by relying on cryptographic SPIFFE/SPIRE IDs embedded in every mutual TLS packet.",
-      tradeoffs: "Steeper architectural onboarding curve and small CPU overhead from ubiquitous packet encryption.",
-      starterCli: "brew install mesh-ctl && mesh-ctl init"
-    }
-  ];
+  // Curated blueprint library — data lives in blueprints.json (W4 §3.6),
+  // completion rules live in blueprint-engine.mjs (deterministic, zero-LLM).
+  const BLUEPRINTS = blueprintsDoc.blueprints;
 
-  const generateRandomStack = (forcedTemplate = null) => {
-    let pool = ARCHITECTURE_TEMPLATES;
-    if (selectedGoal !== 'all') {
-      pool = ARCHITECTURE_TEMPLATES.filter(t => t.goal === selectedGoal);
-      if (pool.length === 0) pool = ARCHITECTURE_TEMPLATES;
-    }
+  // owner/name -> repo over the WHOLE catalog, so curated seeds resolve even
+  // when a v1 subsystem label filed them outside the category bucket.
+  const repoLookup = useMemo(
+    () => new Map(repos.map(r => [`${r.owner}/${r.name}`, r])),
+    [repos]
+  );
 
-    const template = forcedTemplate || pool[Math.floor(Math.random() * pool.length)];
+  // Deterministic stack generation (§3.6/§3.8): rng is a pure function of
+  // (URL ?seed=, goal, click-step). No Math.random anywhere in generation.
+  const generateRandomStack = (forcedBlueprint = null, goalOverride = null) => {
+    const goal = goalOverride ?? selectedGoal;
+    const step = genStep + 1;
+    setGenStep(step);
+    const effSeed = seed || `gs-${Date.now().toString(36)}`;
+    if (!seed && onSeedChange) onSeedChange(effSeed); // adopt into ?seed= for sharing
+    const rng = mulberry32(`${effSeed}|${goal}|${step}`);
 
-    const getRandomItem = (category, fallback) => {
-      const list = categorized[category] || [];
-      if (list.length === 0) return fallback || repos[0];
-      return list[Math.floor(Math.random() * list.length)];
-    };
+    const blueprint = forcedBlueprint || selectBlueprint(BLUEPRINTS, goal, rng);
+    if (!blueprint) return;
 
-    const components = template.roles.map(r => ({
-      role: r.label,
-      repo: getRandomItem(r.category)
-    }));
-
-    setActiveStack({ template, components });
+    const { components, missing } = completeStack(blueprint, categorized, repoLookup, rng);
+    setActiveStack({ template: blueprint, components, missing });
   };
 
   const copyBlueprint = () => {
     if (!activeStack) return;
     const text = `🚀 Project Blueprint: ${activeStack.template.title}\n${activeStack.template.tagline}\n\nArchitecture Stack:\n` +
-      activeStack.components.map(c => `• ${c.role}: ${c.repo.owner}/${c.repo.name} (${c.repo.url})`).join('\n') +
+      activeStack.components.map(c => c.repo ? `• ${c.role}: ${c.repo.owner}/${c.repo.name} (${c.repo.url})` : `• ${c.role}: — no candidate in this catalog build`).join('\n') +
       `\n\nWhy this stack works:\n${activeStack.template.whyItWorks}\n\nArchitectural Tradeoffs:\n${activeStack.template.tradeoffs}`;
     navigator.clipboard.writeText(text);
     setCopiedIndex(true);
@@ -395,9 +335,12 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     return scoredCandidates.slice(0, 45);
   };
 
-  if (!activeStack && repos.length > 0) {
-    generateRandomStack();
-  }
+  // First auto-stack once the catalog loads. (Render-phase setState must not
+  // leak the adopted seed up to App, so this runs as an effect — §3.8.)
+  useEffect(() => {
+    if (!activeStack && repos.length > 0) generateRandomStack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repos.length]);
 
   return (
     <div className="space-y-8">
@@ -757,8 +700,8 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                     key={g}
                     onClick={() => {
                       setSelectedGoal(g);
-                      const matching = ARCHITECTURE_TEMPLATES.find(t => g === 'all' || t.goal === g);
-                      if (matching) generateRandomStack(matching);
+                      // §3.6: regenerate from the chosen goal's blueprint pool
+                      generateRandomStack(null, g);
                     }}
                     className={`px-2.5 py-1 rounded-lg capitalize font-medium transition-colors ${
                       selectedGoal === g ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
@@ -798,7 +741,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
 
           {/* 5-Layer Complementary Pipeline Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
-            {activeStack.components.map((comp, idx) => (
+            {activeStack.components.map((comp, idx) => comp.repo ? (
               <div
                 key={idx}
                 className="bg-obs-surface hover:bg-obs-raised border border-white/[0.07] hover:border-white/25 rounded-xl p-4 transition-all flex flex-col justify-between group relative shadow-md"
@@ -827,6 +770,12 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                   <span className="font-mono text-signal-star font-medium">{comp.repo.stars.toLocaleString()}★</span>
                   <span className="text-zinc-400 bg-white/[0.05] px-1.5 py-0.5 rounded text-[10px]">{comp.repo.language}</span>
                 </div>
+              </div>
+            ) : (
+              <div key={idx} className="bg-obs-surface border border-dashed border-white/[0.14] rounded-xl p-4 flex flex-col justify-center items-center text-center min-h-[160px]">
+                <AlertTriangle className="w-4 h-4 text-zinc-500 mb-2" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block mb-1">{comp.role}</span>
+                <span className="text-[11px] text-zinc-500 leading-relaxed">No catalog candidate for this slot in the current build — left empty rather than guessed.</span>
               </div>
             ))}
           </div>
