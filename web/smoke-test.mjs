@@ -236,6 +236,70 @@ check(unpacked.every((r) => idxIds.has(r.id)), 'fallback index is missing packed
 check(index.every((r) => r.url && r.shard && (r.hook || r.description)), 'fallback record lacks url/shard/hook');
 console.log(`\nfallback index: ${index.length.toLocaleString()} records (matches packed: ${index.length === unpacked.length})`);
 
+// 9. W4 §3.1 — SQL Studio: shipped helpers + sql.js executing the README demo
+const { isReadOnlySql, resultsToCsv, SQL_COLUMNS, repoToSqlValues } =
+  await import('./src/sql-utils.mjs');
+check(isReadOnlySql("SELECT name FROM repos LIMIT 5;"), 'SELECT rejected by read-only guard');
+check(isReadOnlySql("WITH x AS (SELECT 1) SELECT * FROM x;"), 'WITH rejected by read-only guard');
+check(!isReadOnlySql("INSERT INTO repos VALUES (1);"), 'INSERT accepted by read-only guard');
+check(!isReadOnlySql("DROP TABLE repos;"), 'DROP accepted by read-only guard');
+
+{
+  const { default: initSqlJs } = await import('sql.js');
+  const SQL = await initSqlJs({ locateFile: (f) => join('node_modules/sql.js/dist', f) });
+  const db = new SQL.Database();
+  db.run(`CREATE TABLE repos (${SQL_COLUMNS.map((c) =>
+    `${c} ${['id', 'stars', 'forks'].includes(c) ? 'INTEGER' : 'TEXT'}`).join(', ')})`);
+  const stmt = db.prepare(`INSERT INTO repos VALUES (${SQL_COLUMNS.map(() => '?').join(',')})`);
+  db.run('BEGIN');
+  const sample = unpacked.slice(0, 5000);
+  for (const r of sample) stmt.run(repoToSqlValues(r));
+  db.run('COMMIT');
+  stmt.free();
+
+  const demo = "SELECT name, stars, language, domain, subsystem\nFROM repos\nWHERE domain = 'Databases & Storage' AND stars >= 20000\nORDER BY stars DESC;";
+  const res = db.exec(demo);
+  check(res.length === 1 && res[0].values.length >= 3,
+    `demo query returned ${res.length ? res[0].values.length : 0} rows (want >= 3 from the 5k sample)`);
+  if (res.length === 1) {
+    const { columns, values } = res[0];
+    check(columns.join(',') === 'name,stars,language,domain,subsystem', `unexpected columns: ${columns}`);
+    let desc = true;
+    for (let i = 1; i < values.length; i++) if (values[i][1] > values[i - 1][1]) desc = false;
+    check(desc, 'demo query results are not ordered by stars DESC');
+    check(values.every((r) => r[1] >= 20000 && r[3] === 'Databases & Storage'),
+      'demo query WHERE clause not honoured');
+    // CSV round-trip on the shipped serializer
+    const csv = resultsToCsv(columns, values);
+    const lines = csv.split('\n');
+    check(lines.length === values.length + 1, 'CSV line count mismatch');
+    check(lines[0] === 'name,stars,language,domain,subsystem', 'CSV header mismatch');
+    // re-parse with a minimal RFC4180 reader and compare
+    const parseCsv = (text) => {
+      const rows = []; let row = [], field = '', inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQ) {
+          if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+          else if (ch === '"') inQ = false;
+          else field += ch;
+        } else if (ch === '"') inQ = true;
+        else if (ch === ',') { row.push(field); field = ''; }
+        else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+        else if (ch !== '\r') field += ch;
+      }
+      if (field.length || row.length) { row.push(field); rows.push(row); }
+      return rows;
+    };
+    const back = parseCsv(csv);
+    check(back.length === lines.length, 'CSV re-parse line count mismatch');
+    check(back[1][0] === String(values[0][0]), 'CSV re-parse first cell mismatch');
+    console.log(`\nSQL Studio: demo query -> ${values.length} rows from a ${sample.length.toLocaleString()}-row sample, ` +
+      `top = ${values[0][0]} (${values[0][1].toLocaleString()}★) | CSV round-trip ${csv.length} bytes`);
+  }
+  db.close();
+}
+
 console.log(fail.length ? `\nFAILED (${fail.length}):\n  ` + fail.slice(0, 10).join('\n  ')
   : `\nOK: packed decode, ranked search, edges, facets, Tier-2 merge, and fallback index consistent for ${rows.length.toLocaleString()} repos.`);
 process.exit(fail.length ? 1 : 0);

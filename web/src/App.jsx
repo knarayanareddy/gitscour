@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Search, Star, GitFork, ExternalLink, Filter, Terminal, 
   Layers, Code2, ShieldAlert, Cpu, Sparkles, Database, Globe,
@@ -9,6 +9,9 @@ import {
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
 import { rankQuery } from './search-core.mjs';
+// W4 §3.1: asset URL only — the WASM binary is fetched on first engine init.
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
+import { isReadOnlySql, resultsToCsv, SQL_COLUMNS, repoToSqlValues, RESULT_PREVIEW_LIMIT } from './sql-utils.mjs';
 import InspirationGenerator from './InspirationGenerator.jsx';
 
 export default function App() {
@@ -78,6 +81,80 @@ export default function App() {
   );
   const [sqlResults, setSqlResults] = useState(null);
   const [sqlError, setSqlError] = useState(null);
+  // W4 §3.1: lazy WASM engine — nothing loads until the SQL tab runs a query.
+  const sqlDbRef = useRef(null);
+  const [sqlPhase, setSqlPhase] = useState('idle'); // idle | engine | table | ready
+  const [sqlProgress, setSqlProgress] = useState(0);
+
+  const ensureSqlDb = useCallback(async () => {
+    if (sqlDbRef.current) return sqlDbRef.current;
+    setSqlPhase('engine');
+    const { default: initSqlJs } = await import('sql.js');
+    const SQL = await initSqlJs({ locateFile: (f) => sqlWasmUrl });
+    const db = new SQL.Database();
+    db.run(`CREATE TABLE repos (${SQL_COLUMNS.map((c) =>
+      `${c} ${['id', 'stars', 'forks'].includes(c) ? 'INTEGER' : 'TEXT'}`).join(', ')})`);
+    setSqlPhase('table');
+    setSqlProgress(0);
+    const stmt = db.prepare(`INSERT INTO repos VALUES (${SQL_COLUMNS.map(() => '?').join(',')})`);
+    db.run('BEGIN');
+    const CHUNK = 8000;
+    for (let i = 0; i < repos.length; i++) {
+      stmt.run(repoToSqlValues(repos[i]));
+      if (i > 0 && i % CHUNK === 0) {
+        setSqlProgress(Math.round((i / repos.length) * 100));
+        await new Promise((r) => setTimeout(r, 0)); // let the UI paint progress
+      }
+    }
+    db.run('COMMIT');
+    stmt.free();
+    sqlDbRef.current = db;
+    setSqlPhase('ready');
+    setSqlProgress(100);
+    return db;
+  }, [repos]);
+
+  const runSqlQuery = useCallback(async () => {
+    const sql = (sqlQuery || '').trim();
+    if (!sql) return;
+    if (!isReadOnlySql(sql)) {
+      setSqlError('SQL Studio is read-only — statements must start with SELECT or WITH.');
+      setSqlResults(null);
+      return;
+    }
+    try {
+      const db = await ensureSqlDb();
+      const res = db.exec(sql);
+      if (!res.length || !res[0]) {
+        setSqlResults({ columns: [], values: [], rowCount: 0 });
+        setSqlError(null);
+        return;
+      }
+      setSqlResults({
+        columns: res[0].columns,
+        values: res[0].values,
+        rowCount: res[0].values.length,
+      });
+      setSqlError(null);
+    } catch (e) {
+      setSqlError(e && e.message ? e.message : String(e));
+      setSqlResults(null);
+    }
+  }, [sqlQuery, ensureSqlDb]);
+
+  const exportSqlCsv = useCallback(() => {
+    if (!sqlResults || !sqlResults.columns.length) return;
+    const blob = new Blob([resultsToCsv(sqlResults.columns, sqlResults.values)],
+      { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gitscour-sql-results.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }, [sqlResults]);
 
   // Quick Inspiration Discovery Pills
   const DISCOVERY_PILLS = [
@@ -471,6 +548,17 @@ export default function App() {
               <Compass className="w-3.5 h-3.5" />
               <span>3D Galaxy</span>
             </button>
+            <button
+              onClick={() => setActiveTab('sql')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                activeTab === 'sql'
+                  ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>SQL Studio</span>
+            </button>
 
             {/* Share Link Button */}
             <button
@@ -517,6 +605,123 @@ export default function App() {
             repos={repos}
             onSelectRepo={(repo) => handleOpenRepoModal(repo)}
           />
+        ) : activeTab === 'sql' ? (
+          /* W4 §3.1 — SQL STUDIO (read-only WebAssembly SQLite over Tier-1) */
+          <div className="space-y-4">
+            <div className="bg-obs-surface border border-white/[0.07] rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-signal-ok" />
+                    SQL Studio
+                  </h2>
+                  <p className="text-[11px] text-zinc-400 mt-1">
+                    WebAssembly SQLite over all {repos.length.toLocaleString()} rows — documented subset:{' '}
+                    <code className="text-signal-ok">SELECT</code> / <code className="text-signal-ok">WHERE</code> /{' '}
+                    <code className="text-signal-ok">ORDER BY</code> / <code className="text-signal-ok">LIMIT</code>.
+                    Read-only; runs entirely in your browser.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={runSqlQuery}
+                    disabled={sqlPhase === 'engine' || sqlPhase === 'table'}
+                    className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {(sqlPhase === 'engine' || sqlPhase === 'table') ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Play className="w-3.5 h-3.5" />
+                    )}
+                    {(sqlPhase === 'engine' || sqlPhase === 'table') ? 'Preparing…' : 'Run Query'}
+                  </button>
+                  <button
+                    onClick={exportSqlCsv}
+                    disabled={!sqlResults || !sqlResults.columns.length}
+                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+              <textarea
+                value={sqlQuery}
+                onChange={(e) => setSqlQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    runSqlQuery();
+                  }
+                }}
+                spellCheck={false}
+                rows={5}
+                className="w-full bg-obs-inset border border-white/[0.08] rounded-lg p-3 font-mono text-xs text-signal-ok leading-relaxed focus:outline-none focus:border-white/25"
+              />
+              {sqlPhase !== 'idle' && sqlPhase !== 'ready' && (
+                <div className="text-[11px] text-zinc-400 font-mono flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  {sqlPhase === 'engine' ? 'Loading WebAssembly engine…'
+                    : `Building repos table… ${sqlProgress}%`}
+                </div>
+              )}
+              {sqlError && (
+                <div className="text-[11px] text-signal-warn bg-signal-warn/[0.08] border border-signal-warn/30 rounded-lg px-3 py-2 font-mono">
+                  {sqlError}
+                </div>
+              )}
+            </div>
+
+            {sqlResults && (
+              <div className="bg-obs-surface border border-white/[0.07] rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-white/[0.07] flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-300 font-semibold">
+                    {sqlResults.rowCount.toLocaleString()} row{sqlResults.rowCount === 1 ? '' : 's'}
+                    {sqlResults.rowCount > RESULT_PREVIEW_LIMIT
+                      ? ` (showing first ${RESULT_PREVIEW_LIMIT.toLocaleString()}; CSV export includes all)`
+                      : ''}
+                  </span>
+                  <span className="text-zinc-500 font-mono">in-memory · deterministic</span>
+                </div>
+                {sqlResults.columns.length > 0 && (
+                  <div className="overflow-x-auto max-h-[540px] overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 bg-obs-raised">
+                        <tr>
+                          {sqlResults.columns.map((c) => (
+                            <th key={c} className="text-left px-3 py-2 text-[10px] uppercase tracking-wider text-zinc-400 font-semibold border-b border-white/[0.07]">
+                              {c}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sqlResults.values.slice(0, RESULT_PREVIEW_LIMIT).map((row, i) => (
+                          <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.03]">
+                            {row.map((v, j) => (
+                              <td key={j} className="px-3 py-1.5 text-zinc-300 font-mono whitespace-nowrap max-w-[340px] truncate">
+                                {v === null || v === undefined ? <span className="text-zinc-600">NULL</span> : String(v)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {sqlResults.columns.length === 0 && (
+                  <div className="p-4 text-[11px] text-zinc-500">Query returned no columns.</div>
+                )}
+              </div>
+            )}
+
+            {!sqlResults && !sqlError && sqlPhase === 'idle' && (
+              <div className="bg-obs-inset border border-white/[0.07] rounded-xl p-4 text-[11px] text-zinc-500 space-y-1.5">
+                <p>The engine loads lazily on your first Run — Explorer users never download it.</p>
+                <p>Examples: <code className="text-zinc-300">SELECT name, stars FROM repos WHERE language = 'Rust' ORDER BY stars DESC LIMIT 20;</code></p>
+                <p><code className="text-zinc-300">SELECT domain, COUNT(*) AS n FROM repos GROUP BY domain ORDER BY n DESC;</code></p>
+              </div>
+            )}
+          </div>
         ) : activeTab === 'graph3d' ? (
           /* 3D GRAPH EXPLORER VIEW */
           <div className="space-y-4">
