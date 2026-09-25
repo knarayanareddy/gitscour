@@ -58,6 +58,8 @@ export default function App() {
   const [searchIndex, setSearchIndex] = useState(null);
   // W3 §2.4: pack-time kNN edge list for the graph + Similar-repositories tab.
   const [edgeList, setEdgeList] = useState(null);
+  // W3 §2.8: pack-time facet counts for chips with live numbers.
+  const [facets, setFacets] = useState(null);
 
   // Inspector Modal / Drawer
   const [activeRepoModal, setActiveRepoModal] = useState(null);
@@ -99,7 +101,8 @@ export default function App() {
     return (text || "other-general").toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   };
 
-  // 1. Fetch & Unpack Packed Index (123,153 repositories in ~7.8MB gzip)
+  // 1. Fetch & Unpack Packed Index (123,153 repositories; measured transfer:
+  // packed 7.98 MB gzip + search-index 3.79 MB + edges 1.26 MB + facets 0.02 MB)
   useEffect(() => {
     // W3 §2.1 — pack-time inverted index (state lands before/after unpack; the
     // ranked path in `filteredRepos` activates as soon as both are ready).
@@ -112,6 +115,12 @@ export default function App() {
     fetch('./edges.json')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => { if (data && Array.isArray(data.edges)) setEdgeList(data.edges); })
+      .catch(() => {});
+
+    // W3 §2.8 — exact facet counts (chips show real numbers, no guessing).
+    fetch('./facets.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data && Array.isArray(data.domains)) setFacets(data); })
       .catch(() => {});
     fetch('./catalog-packed.json')
       .then((res) => {
@@ -148,6 +157,8 @@ export default function App() {
             shard: slugify(domName),
             // W3 §2.6: [status, pushed_epoch] aligned with rows (null = no data)
             activity: act && act[0] ? { status: act[0], pushedAt: act[1] } : null,
+            // W3 §2.7: interned tier parallel to rows (permissive|copyleft|...)
+            licenseTier: Array.isArray(data.license_tiers) ? data.license_tiers[rowIdx] : null,
             // W3 §2.3: memoized search corpus — built ONCE per unpack instead of
             // per keystroke; §2.2: includes primitives/license/compatibility/topics.
             searchCorpus: [
@@ -320,7 +331,7 @@ export default function App() {
       if (selectedArtifact !== 'all' && repo.artifact !== selectedArtifact) return false;
       if (selectedLanguage !== 'all' && repo.language !== selectedLanguage) return false;
       if (selectedPrimitive !== 'all' && !(repo.primitives || []).includes(selectedPrimitive)) return false;
-      if (selectedLicenseTier !== 'all' && repo.license !== selectedLicenseTier) return false;
+      if (selectedLicenseTier !== 'all' && repo.licenseTier !== selectedLicenseTier) return false;
       return true;
     };
 
@@ -419,7 +430,7 @@ export default function App() {
                   {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : '123k+ DB'}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-signal-ok/[0.08] text-signal-ok border border-signal-ok/20 font-mono hidden sm:inline">
-                  Packed &bull; 3.2MB Gzip
+                  Packed &bull; 7.98MB Gzip
                 </span>
               </div>
               <p className="text-xs text-zinc-400 hidden sm:block">Deep Architectural Taxonomy &amp; 3D Knowledge Galaxy across 123,000+ Repositories</p>
@@ -691,6 +702,27 @@ export default function App() {
                   </select>
                 </div>
 
+                {/* W3 §2.7: license tier filter (permissive-only = Permissive) */}
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                    License Tier
+                  </label>
+                  <select
+                    value={selectedLicenseTier}
+                    onChange={(e) => {
+                      setSelectedLicenseTier(e.target.value);
+                      setVisibleCount(36);
+                    }}
+                    className="w-full bg-obs-inset border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/25"
+                  >
+                    <option value="all">All Licenses</option>
+                    <option value="permissive">Permissive only</option>
+                    <option value="copyleft">Copyleft</option>
+                    <option value="source-available">Source-Available</option>
+                    <option value="unknown">Unknown / Unspecified</option>
+                  </select>
+                </div>
+
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
@@ -751,6 +783,54 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {/* W3 §2.8: facet chips with pack-time exact counts */}
+            {facets && (
+              <div className="space-y-2 px-1">
+                <div className="flex flex-wrap gap-1.5">
+                  {facets.domains.map((d) => (
+                    <button
+                      key={d.name}
+                      onClick={() => {
+                        setSelectedDomain((prev) => (prev === d.name ? 'all' : d.name));
+                        setSelectedSubsystem('all');
+                        setVisibleCount(36);
+                      }}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                        selectedDomain === d.name
+                          ? 'bg-white/[0.12] border-white/30 text-white font-semibold'
+                          : 'bg-white/[0.04] border-white/[0.1] text-zinc-400 hover:text-zinc-200 hover:border-white/20'
+                      }`}
+                    >
+                      {d.name} ({d.count.toLocaleString()})
+                    </button>
+                  ))}
+                </div>
+                {selectedDomain !== 'all' && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {facets.subsystems
+                      .filter((s) => s.domain === selectedDomain)
+                      .slice(0, 14)
+                      .map((s) => (
+                        <button
+                          key={s.name}
+                          onClick={() => {
+                            setSelectedSubsystem((prev) => (prev === s.name ? 'all' : s.name));
+                            setVisibleCount(36);
+                          }}
+                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                            selectedSubsystem === s.name
+                              ? 'bg-signal-ok/[0.12] border-signal-ok/40 text-signal-ok font-semibold'
+                              : 'bg-white/[0.03] border-white/[0.08] text-zinc-500 hover:text-zinc-300'
+                          }`}
+                        >
+                          {s.name} ({s.count.toLocaleString()})
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Stats Summary */}
             <div className="flex items-center justify-between text-xs text-zinc-400 px-1">

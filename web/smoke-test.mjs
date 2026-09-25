@@ -158,6 +158,28 @@ check(recount.size === facets.domains.length, 'facet domain list does not cover 
 console.log(`facets: ${facets.domains.length} domains verified against row recount ` +
   `(${facets.domains.slice(0, 3).map((f) => `${f.name} (${f.count})`).join(', ')}, ...)`);
 
+// 6a. W3 §2.7 — junk licenses normalized away, tier array well-formed
+const junkLicenses = new Set(['NOASSERTION', 'Open Source', 'noassertion']);
+const junkRows = rows.filter((r) => junkLicenses.has(r[9]));
+check(junkRows.length === 0, `${junkRows.length} rows still carry a junk license value`);
+check(rows.every((r) => r[9] && r[9].length > 0), 'a row has an empty license');
+if (packed.license_tiers !== undefined) {
+  check(packed.license_tiers.length === rows.length,
+    `license_tiers length ${packed.license_tiers.length} != rows ${rows.length}`);
+  const validTiers = new Set(['permissive', 'copyleft', 'source-available', 'unknown']);
+  const badTiers = packed.license_tiers.filter((t) => !validTiers.has(t));
+  check(badTiers.length === 0, `${badTiers.length} rows have an invalid license tier`);
+}
+if (facets.license_tiers !== undefined) {
+  const tierSum = facets.license_tiers.reduce((a, b) => a + b.count, 0);
+  check(tierSum === rows.length, `license tier facet counts sum ${tierSum} != rows ${rows.length}`);
+}
+console.log(`licenses: junk rows ${junkRows.length} | tiers ` +
+  (packed.license_tiers
+    ? Object.entries(packed.license_tiers.reduce((m, t) => ({ ...m, [t]: (m[t] || 0) + 1 }), {}))
+        .map(([k, v]) => `${k} ${v}`).join(', ')
+    : 'n/a'));
+
 // 6. W3 §2.6 — activity array aligned with rows, statuses well-formed
 if (packed.activity !== undefined) {
   check(packed.activity.length === rows.length, `activity length ${packed.activity.length} != rows ${rows.length}`);

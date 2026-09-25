@@ -50,6 +50,8 @@ from facets import write_facets  # noqa: E402
 from neighbors import write_edges  # noqa: E402
 from search_index import write_search_index  # noqa: E402
 from taxonomy_engine import (  # noqa: E402
+    license_tier,
+    normalize_license,
     classify_maturity,
     enrich_repository_record,
     generate_beginner_context,
@@ -495,7 +497,7 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
             "stars": r["stars"],
             "forks": r.get("forks", 0),
             "language": r.get("language") or "Other",
-            "license": r.get("license") or "Unknown",
+            "license": normalize_license(r.get("license")),
             "artifact": r.get("artifact") or "Application / Service",
             "domain": r.get("domain") or "Other / General",
             "subsystem": r.get("subsystem") or "General Components",
@@ -533,7 +535,7 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
             intern(domain_map, r.get("domain")),
             intern(subsystem_map, r.get("subsystem")),
             intern(artifact_map, r.get("artifact")),
-            r.get("license") or "Open Source",
+            normalize_license(r.get("license")),
             (r.get("primitives") or [])[:6],
             (r.get("hook") or r.get("description") or "")[:90],
             # W2 §1.1: confidence margin, schema becomes 12-or-13 fields
@@ -553,6 +555,8 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
         # W3 §2.6: activity aligned with rows (sort/filter/badges stay off the
         # row schema, so 12..15-field arity and index ordinals are unchanged)
         "activity": build_activity(records, int(time.time())),
+        # W3 §2.7: interned license tier per row for the license filter/chips
+        "license_tiers": [license_tier(r.get("license")) for r in records],
     }
     packed_out = os.path.join(base_dir, "catalog-packed.json")
     with open(packed_out, "w", encoding="utf-8") as fh:

@@ -89,3 +89,23 @@ class ActivityTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LicenseTest(unittest.TestCase):
+    def test_normalize_junk_to_unknown(self):
+        from taxonomy_engine import normalize_license
+        for junk in ("NOASSERTION", "Open Source", "Unknown", "other", "", None, "n/a"):
+            self.assertEqual(normalize_license(junk), "Unknown", junk)
+
+    def test_normalize_keeps_real_licenses(self):
+        from taxonomy_engine import normalize_license
+        self.assertEqual(normalize_license("MIT License"), "MIT License")
+        self.assertEqual(normalize_license(" Apache-2.0 "), "Apache-2.0")
+
+    def test_license_tier_mapping(self):
+        from taxonomy_engine import license_tier
+        self.assertEqual(license_tier("MIT License"), "permissive")
+        self.assertEqual(license_tier("GPL-3.0"), "copyleft")
+        self.assertEqual(license_tier("SSPL-1.0"), "source-available")
+        self.assertEqual(license_tier("NOASSERTION"), "unknown")
+        self.assertEqual(license_tier(None), "unknown")

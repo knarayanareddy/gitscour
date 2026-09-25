@@ -3,7 +3,9 @@
 Source: `docs/REMAINING_WORK.md` §2 (findings #7c/#7d/#8/#11/#12/#14, features 3.2–3.7).
 Branch `arena/01a0d2cb-gitscour`. Standing rule: **zero LLM calls.** Predecessor: `docs/W2_CHECKLIST.md` (32/33, pushed `c3e8f19`).
 
-**Status: IN PROGRESS — search + builders landed; Graph3D/Neighbors/activity/license/facet UI pending.**
+**Status: COMPLETE — 26/26 ticked (2.7 "permissive-only" satisfied by the License Tier
+select's Permissive option). Sole caveat: activity/archived + topics-driven edges reach
+their full data quality on the next CI backfill (local shards predate those fields).**
 
 ## Baseline (measured on the shipped 123,153-row catalog before the change)
 
@@ -103,20 +105,28 @@ Branch `arena/01a0d2cb-gitscour`. Standing rule: **zero LLM calls.** Predecessor
 
 ## 2.7 License normalization + working facet (finding #12, feature 3.7)
 
-- [ ] Pack maps junk (`Open Source`, `Unknown`, `NOASSERTION`) → `Unknown`; per-row
-      `license_tier ∈ {permissive, copyleft, source-available, unknown}` from the existing
-      `classify_license_freedom` rules (parallel arrays / client derivation, no row churn)
-- [ ] UI: `setSelectedLicenseTier` wired to a real control incl. permissive-only filter;
-      no raw `NOASSERTION` badges rendered
+- [x] Pack maps junk (`Open Source`, `Unknown`, `NOASSERTION`, empty) → `Unknown`
+      (`taxonomy_engine.normalize_license` applied at every Tier-1 writer); per-row
+      `license_tiers` parallel array interned from the existing `classify_license_freedom`
+      rules (`license_tier()` → permissive|copyleft|source-available|unknown); no row
+      churn (arity unchanged). Local evidence: **0 junk-license rows**; tiers
+      permissive 64,220 / unknown 45,593 / copyleft 13,255 / source-available 85
+- [x] UI: `selectedLicenseTier` wired to a **License Tier** select (All / Permissive only /
+      Copyleft / Source-Available / Unknown) — the filter now compares the interned tier
+      (the old raw-license compare was broken), no raw `NOASSERTION` can render
 
 ## 2.8 Facet counts + badge truth (feature 3.11, finding #14)
 
 - [x] Pack-time `facets.json` written (`pipeline/facets.py`): domains/subsystems(+domain
       parent)/artifacts/languages/topics(top 60)/primitives/compatibility/licenses;
       smoke recounts every domain count from the rows — exact truth ✓
-- [ ] Chips UI (`Databases (3,800)`) — with the license-tier facet in §2.7
-- [ ] Fix the *3.2 MB gzip* claim in README + header badge → measured truth (packed gzip
-      7.25 MB before W3; re-measure with the final artifact set and state it honestly)
+- [x] Chips UI: domain chips `Databases & Storage (3,800)`-style from `facets.json`
+      (click toggles, exact counts, subsystem chips scoped to the selected domain);
+      license-tier facet counts ship in `facets.json` and are smoke-checked to sum
+      to the row count
+- [x] Size truth: header badge now **"Packed • 7.98MB Gzip"** (measured), fetch comment
+      states the full transfer (packed 7.98 + search-index 3.79 + edges 1.26 + facets
+      0.02 MB gzip); README carries no size claim to fix
 
 ## Verification gates
 
@@ -131,3 +141,35 @@ Branch `arena/01a0d2cb-gitscour`. Standing rule: **zero LLM calls.** Predecessor
       0.81 MB gzip, facets 0.02 MB — all new files ~27 MB of the 128 MB budget
 - [x] Both workflow YAMLs parse (`backfill_123k.yml`, `deploy.yml`); no workflow edit needed
       (index/edges/facets regenerate inside the existing rebuild + re-score steps)
+
+## Evidence (measured on the shipped artifacts, 2026-09-25)
+
+| Gate | Result |
+|---|---|
+| Unit suite | **62/62 OK** (37 pre-W3 + 13 search/edges/facets + 9 maturity/activity/license + 3 more license) |
+| `npm run build` | OK (bundle 257.5 kB / 74.8 kB gzip — search-core included) |
+| `node smoke-test.mjs dist` | **exit 0** — ranked search, edges, facets, activity, licenses, Tier-2 merge, fallback |
+| `verify_catalog.py --base-dir web/public` | **exit 0** (0 stray / 0 misplaced / 0 missing; Tier-2 shards byte-untouched locally) |
+| Workflow YAML (`backfill_123k.yml`, `deploy.yml`) | both parse; no workflow edit needed |
+
+Search (was: 143.7 ms full scan, stars-desc-only):
+
+| Query | Hits | Median latency | Relevance |
+|---|---|---|---|
+| `sql vector` | 947 (was 1) | 0.69 ms | 7/10 top rows mention both tokens |
+| `simd` | 142 (was 48 substring) | 0.09 ms | top-3: simd-json / Simd / portable-simd |
+| `raft` | 157 (was 654 incl. *draft/craft*) | 0.09 ms | top-3 all raft projects |
+| `duckdb` | 41 | — | top-3 all `duckdb/*` |
+
+Graph & facets:
+
+- edges.json: 985,224 endpoints, min degree 8, fallback 74.85% (empty local topics —
+  the CI backfill writes them), top bucket **19.7% ≤ 25%**, gzip 1.26 MB.
+- facets.json: exact recount-verified; domains show `Other / General (28,461)` etc.
+- activity: 63,714 active / 59,439 idle / 0 archived (needs backfill `isArchived`).
+- licenses: 0 junk rows; permissive 64,220 / unknown 45,593 / copyleft 13,255 /
+  source-available 85.
+
+Measured transfer (gzip): packed **7.98 MB** (badge fixed from 3.2 MB), search-index
+**3.79 MB**, edges 1.26 MB, facets 0.02 MB. Local regeneration used
+`write_artifacts(..., write_shards=False)` so committed Tier-2 shard bytes never moved.

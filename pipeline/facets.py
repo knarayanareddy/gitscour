@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import os
 from collections import Counter
+
+from taxonomy_engine import license_tier, normalize_license
 from typing import List
 
 
@@ -34,7 +36,8 @@ def build_facets(records: List[dict]) -> dict:
     topics: Counter = Counter()
     primitives: Counter = Counter()
     compatibility: Counter = Counter()
-    licenses = Counter(r.get("license") or "Unknown" for r in records)
+    licenses = Counter(normalize_license(r.get("license")) for r in records)
+    license_tiers = Counter(license_tier(r.get("license")) for r in records)
     for r in records:
         topics.update(r.get("topics") or [])
         primitives.update(r.get("primitives") or [])
@@ -52,6 +55,7 @@ def build_facets(records: List[dict]) -> dict:
         "primitives": _pairs(primitives, "primitive"),
         "compatibility": _pairs(compatibility, "compatibility"),
         "licenses": _pairs(licenses, "license", limit=40),
+        "license_tiers": _pairs(license_tiers, "license_tier"),
     }
 
 

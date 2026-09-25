@@ -156,6 +156,31 @@ USECASE_RULES = {
     "Zero Trust & Compliance": [r"\bzero trust\b", r"\bcompliance\b", r"\bsbom\b", r"\baudit\b", r"\bvulnerability\b"]
 }
 
+# W3 §2.7: GitHub-API junk license values that must never reach a badge.
+JUNK_LICENSES = {"", "unknown", "open source", "noassertion", "other", "n/a",
+                 "none", "unspecified", "not specified"}
+
+
+def normalize_license(license_str) -> str:
+    """Map junk license labels (NOASSERTION / Open Source / Unknown / ...) to
+    'Unknown'; keep real SPDX-ish values as-is. Deterministic."""
+    v = (license_str or "").strip()
+    if v.lower() in JUNK_LICENSES:
+        return "Unknown"
+    return v or "Unknown"
+
+
+def license_tier(license_str) -> str:
+    """Interned tier for filters/facets: permissive | copyleft |
+    source-available | unknown (rule-based, same lexicon as the risk cards)."""
+    tier = classify_license_freedom(normalize_license(license_str))["tier"]
+    return {
+        "Permissive": "permissive",
+        "Copyleft": "copyleft",
+        "Fair-Core / Source-Available": "source-available",
+    }.get(tier, "unknown")
+
+
 def classify_license_freedom(license_str: str) -> Dict[str, str]:
     """Classifies license risk and commercial usability."""
     lic = (license_str or "").upper()
