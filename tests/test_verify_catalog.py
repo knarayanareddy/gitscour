@@ -98,7 +98,7 @@ class TestVerifyCatalog(unittest.TestCase):
         write_fixture(self.tmp, arity=11)
         proc = run(self.tmp)
         self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
-        self.assertIn("expected 12 or 13", proc.stdout)
+        self.assertIn("expected 12..15", proc.stdout)
 
     def test_bad_margin_fails(self):
         write_fixture(self.tmp, row13=True, margin=15)

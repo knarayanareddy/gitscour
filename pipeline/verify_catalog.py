@@ -15,7 +15,8 @@ Checks performed
   4. per-domain shard membership: every deep record must live in the shard
      file named by its row's domain slug (`misplaced` actually fails now);
   5. every hook fits the 90-character UI bound;
-  6. row arity is 12 (pre-W2) or 13 (W2+), and a 13th field `domain_margin`
+  6. row arity is 12 (pre-W2), 13 (W2+), or 15 (W3+: margin, topics,
+     compatibility), and a 13th field `domain_margin`
      is an integer inside 0..9.
 
 Usage: python3 pipeline/verify_catalog.py [--base-dir web/public] [--min-stars 500] [--skip-shards]
@@ -72,22 +73,32 @@ def main() -> int:
     oob = 0
     bad_arity = 0
     bad_margin = 0
+    bad_tail = 0
     long_hooks = 0
     id_shard: dict = {}  # rid -> expected shard slug from its domain
     domain_sizes: dict[str, int] = {}
     for i, row in enumerate(rows):
-        # W2 §1.7: 12-field rows (pre-W2) and 13-field rows (W2+) are both valid;
-        # anything else means a writer is out of sync with the schema.
-        if not isinstance(row, list) or len(row) not in (12, 13):
+        # W2 §1.7: 12-field rows (pre-W2), 13-field rows (W2+ margin@12), and
+        # 15-field rows (W3+ margin@12, topics@13, compatibility@14) are all
+        # valid; anything else means a writer is out of sync with the schema.
+        if not isinstance(row, list) or len(row) not in (12, 13, 14, 15):
             bad_arity += 1
             errors.append(f"row {i} has {len(row) if isinstance(row, list) else '?'} fields, "
-                          f"expected 12 or 13")
+                          f"expected 12..15")
             break
         rid, name, owner, stars, forks, lang, dom, sub, art, license_, primitives, hook = row[:12]
-        if len(row) == 13:
+        if len(row) > 12:
             margin = row[12]
             if isinstance(margin, bool) or not isinstance(margin, int) or not 0 <= margin <= 9:
                 bad_margin += 1
+        # W3 tail: topics (index 13) and compatibility (index 14) must be string
+        # lists when present — these power ranked search and the edges builder.
+        for tail_idx in (13, 14):
+            if len(row) > tail_idx:
+                tail = row[tail_idx]
+                if (isinstance(tail, bool) or not isinstance(tail, list)
+                        or any(not isinstance(t, str) for t in tail)):
+                    bad_tail += 1
         if rid in ids:
             dupes += 1
         ids.add(rid)
@@ -121,6 +132,8 @@ def main() -> int:
         errors.append(f"{oob} dictionary-encoded references outside their map")
     if bad_margin:
         errors.append(f"{bad_margin} rows carry a domain_margin outside 0..9")
+    if bad_tail:
+        errors.append(f"{bad_tail} rows have malformed topics/compatibility tail fields")
     if long_hooks:
         errors.append(f"{long_hooks} rows have hooks longer than 90 characters")
 

@@ -44,6 +44,9 @@ import sys
 from collections import Counter, defaultdict
 
 sys.path.append(os.path.dirname(__file__))
+from facets import write_facets  # noqa: E402
+from neighbors import write_edges  # noqa: E402
+from search_index import write_search_index  # noqa: E402
 from taxonomy_engine import (  # noqa: E402
     classify_maturity,
     enrich_repository_record,
@@ -122,6 +125,8 @@ def load_packed(path: str) -> dict:
         head = row[:12]
         repo_id, name, owner, stars, forks, lang_id, dom_id, sub_id, art_id, license_, primitives, hook = head
         margin = row[12] if len(row) > 12 else 0
+        topics_row = row[13] if len(row) > 13 and isinstance(row[13], list) else []
+        compat_row = row[14] if len(row) > 14 and isinstance(row[14], list) else []
         key = f"{owner}/{name}".lower()
         records[key] = {
             "id": repo_id,
@@ -138,8 +143,8 @@ def load_packed(path: str) -> dict:
             "primitives": primitives or [],
             "hook": hook or "",
             "description": hook or "",
-            "topics": [],
-            "compatibility": [],
+            "topics": topics_row,
+            "compatibility": compat_row,
             "keywords": [],
             "beginner_intel": {},
             "license_intel": {},
@@ -373,8 +378,14 @@ def default_beginner_intel(hook: str, subsystem) -> dict:
     }
 
 
-def write_artifacts(records: list, base_dir: str) -> dict:
-    """Write Tier-2 shards, Tier-1 fallback index, and the packed index."""
+def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> dict:
+    """Write Tier-2 shards, Tier-1 fallback index, and the packed index.
+
+    `write_shards=False` regenerates only the Tier-1 artifacts (packed rows,
+    search index, edges, facets) — used for local W3 regenerations where the
+    Tier-2 shard bytes must stay byte-identical to the committed backfill
+    output (CI owns those files).
+    """
     details_dir = os.path.join(base_dir, "data", "details")
 
     # ---------------- Tier 2: deep detail shards ----------------
@@ -410,7 +421,11 @@ def write_artifacts(records: list, base_dir: str) -> dict:
 
     os.makedirs(details_dir, exist_ok=True)
     shard_bytes = 0
+    if not write_shards:
+        print(f"  [skip] Tier-2 shard rewrite (local regen; {len(shards)} shards untouched)")
     for slug, recs in sorted(shards.items(), key=lambda kv: -len(kv[1])):
+        if not write_shards:
+            continue
         path = os.path.join(details_dir, f"{slug}.json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(recs, fh, separators=(",", ":"))
@@ -476,6 +491,11 @@ def write_artifacts(records: list, base_dir: str) -> dict:
             (r.get("hook") or r.get("description") or "")[:90],
             # W2 §1.1: confidence margin, schema becomes 12-or-13 fields
             int(r.get("domain_margin") or 0),
+            # W3 §2.2/2.4: search + similarity evidence. Omitted when both are
+            # empty so rows without evidence keep the compact 13-field shape
+            # (legacy 12/13 and full 15-field rows both parse everywhere).
+            *(([ (r.get("topics") or [])[:8], (r.get("compatibility") or [])[:MAX_COMPAT] ]
+               if (r.get("topics") or r.get("compatibility")) else [])),
         ])
     payload = {
         "domains": {v: k for k, v in domain_map.items()},
@@ -489,7 +509,16 @@ def write_artifacts(records: list, base_dir: str) -> dict:
         json.dump(payload, fh, separators=(",", ":"))
     print(f"Packed index:  {packed_out} ({len(rows)} repos, {os.path.getsize(packed_out)/1e6:.2f} MB)")
 
-    return {"shard_bytes": shard_bytes, "packed_bytes": os.path.getsize(packed_out)}
+    # W3 §2.1: ranked-search index (ordinals == rows[] positions)
+    search_bytes = write_search_index(records, base_dir)
+    # W3 §2.4: kNN edge list for the graph + "Similar repositories" tab
+    edges_stats = write_edges(records, base_dir)
+    # W3 §2.8: exact facet counts for filter chips
+    facets_bytes = write_facets(records, base_dir)
+
+    return {"shard_bytes": shard_bytes, "packed_bytes": os.path.getsize(packed_out),
+            "search_index_bytes": search_bytes, "edges": edges_stats,
+            "facets_bytes": facets_bytes}
 
 
 def print_domain_histogram(records: list) -> None:

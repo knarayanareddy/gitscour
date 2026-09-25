@@ -8,6 +8,7 @@ import {
   ChevronDown, SlidersHorizontal, Sliders
 } from 'lucide-react';
 import Graph3DExplorer from './Graph3DExplorer.jsx';
+import { rankQuery } from './search-core.mjs';
 import InspirationGenerator from './InspirationGenerator.jsx';
 
 export default function App() {
@@ -49,6 +50,9 @@ export default function App() {
   const [selectedPrimitive, setSelectedPrimitive] = useState(initialUrl.primitive);
   const [selectedLicenseTier, setSelectedLicenseTier] = useState(initialUrl.license);
   const [minStars, setMinStars] = useState(initialUrl.minStars);
+  // W3 §2.1: pack-time inverted index for ranked search (fetched alongside the
+  // packed rows; the memoized substring corpus remains the fallback).
+  const [searchIndex, setSearchIndex] = useState(null);
 
   // Inspector Modal / Drawer
   const [activeRepoModal, setActiveRepoModal] = useState(null);
@@ -92,6 +96,12 @@ export default function App() {
 
   // 1. Fetch & Unpack Packed Index (123,153 repositories in ~7.8MB gzip)
   useEffect(() => {
+    // W3 §2.1 — pack-time inverted index (state lands before/after unpack; the
+    // ranked path in `filteredRepos` activates as soon as both are ready).
+    fetch('./search-index.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((idx) => { if (idx && Array.isArray(idx.t)) setSearchIndex(idx); })
+      .catch(() => {});
     fetch('./catalog-packed.json')
       .then((res) => {
         if (!res.ok) throw new Error('Packed index not found, falling back');
@@ -119,8 +129,19 @@ export default function App() {
             // null on legacy 12-field rows and on the fallback index path, so
             // "no margin data" never renders as "margin 0 = low confidence".
             domainMargin: r.length > 12 && typeof r[12] === 'number' ? r[12] : null,
+            // W3 §2.2/2.4: search + similarity evidence (absent on legacy rows).
+            topics: Array.isArray(r[13]) ? r[13] : [],
+            compatibility: Array.isArray(r[14]) ? r[14] : [],
             url: `https://github.com/${r[2]}/${r[1]}`,
-            shard: slugify(domName)
+            shard: slugify(domName),
+            // W3 §2.3: memoized search corpus — built ONCE per unpack instead of
+            // per keystroke; §2.2: includes primitives/license/compatibility/topics.
+            searchCorpus: [
+              r[1], r[2], r[11] || '', languages[r[5]] || '', domName,
+              subsystems[r[7]] || '', ...(r[10] || []), r[9] || '',
+              ...(Array.isArray(r[14]) ? r[14] : []),
+              ...(Array.isArray(r[13]) ? r[13] : []),
+            ].join(' ').toLowerCase()
           };
         });
 
@@ -264,11 +285,21 @@ export default function App() {
     return ['all', ...Array.from(set).sort()];
   }, [repos]);
 
-  // Tokenized Search Engine (Sub-5ms across 123,000+ records)
-  const filteredRepos = useMemo(() => {
-    const queryTokens = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  // W3 §2.3: debounce keystrokes so ranking/filtering runs at most every 120ms
+  // instead of on every character (URL sync below stays on the raw query).
+  const [debouncedQuery, setDebouncedQuery] = useState(initialUrl.q);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 120);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-    return repos.filter((repo) => {
+  const starsByOrdinal = useMemo(() => repos.map((r) => r.stars || 0), [repos]);
+
+  // W3 §2.1/2.2: ranked search — field-weighted BM25-lite over the pack-time
+  // inverted index (top-N relevance ordering replaces stars-desc-only), falling
+  // back to substring matching over the memoized corpus when the index is absent.
+  const filteredRepos = useMemo(() => {
+    const facetOk = (repo) => {
       if (repo.stars < minStars) return false;
       if (selectedDomain !== 'all' && repo.domain !== selectedDomain) return false;
       if (selectedSubsystem !== 'all' && repo.subsystem !== selectedSubsystem) return false;
@@ -276,17 +307,30 @@ export default function App() {
       if (selectedLanguage !== 'all' && repo.language !== selectedLanguage) return false;
       if (selectedPrimitive !== 'all' && !(repo.primitives || []).includes(selectedPrimitive)) return false;
       if (selectedLicenseTier !== 'all' && repo.license !== selectedLicenseTier) return false;
+      return true;
+    };
 
-      if (queryTokens.length > 0) {
-        const corpus = `${repo.name} ${repo.owner} ${repo.hook || ''} ${repo.language} ${repo.domain} ${repo.subsystem}`.toLowerCase();
-        for (const token of queryTokens) {
-          if (!corpus.includes(token)) return false;
-        }
+    const q = debouncedQuery.trim();
+    if (q && searchIndex) {
+      const ranked = rankQuery(searchIndex, q, starsByOrdinal);
+      const out = [];
+      for (const [ord] of ranked) {
+        const repo = repos[ord];
+        if (repo && facetOk(repo)) out.push(repo);
       }
+      return out;
+    }
 
+    const queryTokens = q ? q.toLowerCase().split(/\s+/).filter(Boolean) : [];
+    return repos.filter((repo) => {
+      if (!facetOk(repo)) return false;
+      for (const token of queryTokens) {
+        if (!repo.searchCorpus.includes(token)) return false;
+      }
       return true;
     });
-  }, [repos, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars]);
+  }, [repos, debouncedQuery, searchIndex, starsByOrdinal, selectedDomain, selectedSubsystem,
+      selectedArtifact, selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars]);
 
   const visibleRepos = useMemo(() => {
     return filteredRepos.slice(0, visibleCount);

@@ -132,11 +132,15 @@ class TestReclassify(unittest.TestCase):
 
         packed = self.packed_rows()
         doms = {int(k): v for k, v in packed["domains"].items()}
-        # 13-field rows carrying margin
+        # 13-field rows (margin only) or 15-field rows (margin + topics +
+        # compatibility — W3 §2.2 when the fixture carries topics)
         for row in packed["rows"]:
-            self.assertEqual(len(row), 13)
+            self.assertIn(len(row), (13, 15))
             self.assertGreaterEqual(row[12], 0)
             self.assertLessEqual(row[12], 9)
+            if len(row) == 15:
+                self.assertIsInstance(row[13], list)
+                self.assertIsInstance(row[14], list)
         # mover: OS -> Web Platforms & Frameworks
         mover = next(r for r in packed["rows"] if r[1] == "webby")
         self.assertEqual(doms[mover[6]], "Web Platforms & Frameworks")
