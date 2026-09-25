@@ -376,6 +376,28 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
     'minSignal filter failed');
   const sigMean = packed.signal.reduce((a, b) => a + b, 0) / packed.signal.length;
 
+  // W4 §3.5: topic facet through the same core. Real rows carry no topics
+  // until the backfill, so pin the rule on a synthetic projection too.
+  const synRows = [
+    { id: 1, stars: 10, language: 'Python', domain: 'D', subsystem: 'S', artifact: 'A',
+      licenseTier: 'permissive', signal: 50, primitives: [], topics: ['llm', 'rag'],
+      compatibility: [], activity: null, searchCorpus: 'x' },
+    { id: 2, stars: 20, language: 'Go', domain: 'D', subsystem: 'S', artifact: 'A',
+      licenseTier: 'permissive', signal: 50, primitives: [], topics: ['web'],
+      compatibility: [], activity: null, searchCorpus: 'y' },
+  ];
+  const synBase = { q: '', domain: 'all', subsystem: 'all', artifact: 'all', language: 'all',
+    primitive: 'all', licenseTier: 'all', minStars: 0, minSignal: 0, hideDormant: false, sortBy: 'stars' };
+  check(filterOrdinals(synRows, null, { ...synBase, topic: 'llm' }, undefined).length === 1,
+    'topic filter kept the wrong synthetic row');
+  check(filterOrdinals(synRows, null, { ...synBase, topic: 'nope' }, undefined).length === 0,
+    'topic filter matched a topic no row has');
+  check(filterOrdinals(synRows, null, { ...synBase, topic: 'all' }, undefined).length === 2,
+    'topic=all did not return every row');
+  const realTopic = filterOrdinals(light, searchIndex, { ...base, topic: 'llm' }, stats.majorsSet);
+  check(realTopic.every((o) => (light[o].topics || []).includes('llm')),
+    'topic filter leaked a row without the topic');
+
   console.log(`\nfilter-core: identity ${identity.length.toLocaleString()} rows in ${tEmpty.toFixed(1)}ms | ` +
     `ranked 'sql vector' ${ranked.length} in ${tQuery.toFixed(1)}ms | tail ${tailCount} rows / ${stats.tail.length} langs | ` +
     `hideDormant ${active.length.toLocaleString()} | signal mean ${sigMean.toFixed(1)}, ≥60: ${sigFiltered.length.toLocaleString()}`);
@@ -414,6 +436,49 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   console.log(`changelog: ${snaps.length} snapshot(s), generated ${cl.generated}, ` +
     `${cl.top_movers.length} movers, +${cl.added_count}/-${cl.removed_count}` +
     (cl.period ? ` | ${cl.period.from} -> ${cl.period.to}` : ' (baseline)'));
+}
+
+// 12. W4 §3.5 — topic-map integrity + per-domain topic counts
+{
+  const tmPath = join(dir, 'topic-map.json');
+  check(existsSync(tmPath), 'topic-map.json missing from dist');
+  const tm = JSON.parse(readFileSync(tmPath, 'utf8'));
+  check(Number.isInteger(tm.min_count) && tm.min_count > 0, 'topic-map min_count invalid');
+  check(Number.isInteger(tm.min_pair) && tm.min_pair > 0, 'topic-map min_pair invalid');
+  check(Array.isArray(tm.topics), 'topic-map.topics not an array');
+  const df = new Map(tm.topics.map((t) => [t.name, t.count]));
+  let countsDesc = true;
+  for (let i = 1; i < tm.topics.length; i++) {
+    if (tm.topics[i].count > tm.topics[i - 1].count) countsDesc = false;
+  }
+  check(countsDesc, 'topic-map topics are not count-descending');
+  for (const t of tm.topics) {
+    check(t.count >= tm.min_count, `topic ${t.name} below min_count`);
+    check(t.edges.length <= 10, `topic ${t.name} has more than 10 edges`);
+    let eDesc = true;
+    for (let i = 1; i < t.edges.length; i++) if (t.edges[i][1] > t.edges[i - 1][1]) eDesc = false;
+    check(eDesc, `edges for ${t.name} are not count-descending`);
+    for (const [other, c] of t.edges) {
+      check(df.has(other), `edge ${t.name} -> ${other} references a topic not in the map`);
+      check(c >= tm.min_pair, `edge ${t.name}/${other} below min_pair`);
+      check(c <= Math.min(t.count, df.get(other)),
+        `edge count ${c} exceeds df for ${t.name}/${other}`);
+    }
+  }
+  // per-domain topic counts must never exceed the global count
+  const globalT = new Map((facets.topics || []).map((t) => [t.name, t.count]));
+  const tbd = facets.topics_by_domain || {};
+  for (const [dom, list] of Object.entries(tbd)) {
+    for (const e of list) {
+      if (globalT.size) {
+        check(e.count <= (globalT.get(e.name) ?? 0),
+          `topics_by_domain[${dom}] ${e.name} exceeds its global count`);
+      }
+      check(e.count > 0, `zero count in topics_by_domain[${dom}]`);
+    }
+  }
+  console.log(`topic map: ${tm.topics.length} topics / ${tm.pairs_considered} pairs considered | ` +
+    `per-domain keys ${Object.keys(tbd).length} | min df ${tm.min_count}, min pair ${tm.min_pair}`);
 }
 
 console.log(fail.length ? `\nFAILED (${fail.length}):\n  ` + fail.slice(0, 10).join('\n  ')

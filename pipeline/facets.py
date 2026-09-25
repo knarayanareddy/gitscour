@@ -12,7 +12,7 @@ import os
 from collections import Counter
 
 from taxonomy_engine import license_tier, normalize_license
-from typing import List
+from typing import Dict, List
 
 
 def _pairs(counter: Counter, key: str, limit: int = 0, extra=None) -> List[dict]:
@@ -34,12 +34,18 @@ def build_facets(records: List[dict]) -> dict:
     artifacts = Counter(r.get("artifact") or "Application / Service" for r in records)
     languages = Counter(r.get("language") or "Other" for r in records)
     topics: Counter = Counter()
+    topics_by_domain: Dict[str, Counter] = {}
     primitives: Counter = Counter()
     compatibility: Counter = Counter()
     licenses = Counter(normalize_license(r.get("license")) for r in records)
     license_tiers = Counter(license_tier(r.get("license")) for r in records)
     for r in records:
-        topics.update(r.get("topics") or [])
+        dom = r.get("domain") or "Other / General"
+        rec_topics = r.get("topics") or []
+        topics.update(rec_topics)
+        if rec_topics:
+            bucket = topics_by_domain.setdefault(dom, Counter())
+            bucket.update(rec_topics)
         primitives.update(r.get("primitives") or [])
         compatibility.update(r.get("compatibility") or [])
     return {
@@ -52,6 +58,11 @@ def build_facets(records: List[dict]) -> dict:
         "artifacts": _pairs(artifacts, "artifact"),
         "languages": _pairs(languages, "language"),
         "topics": _pairs(topics, "topic", limit=60),
+        # W4 §3.5: per-domain topic cloud source (top 20 per domain)
+        "topics_by_domain": {
+            dom: _pairs(cnt, "topic", limit=20)
+            for dom, cnt in sorted(topics_by_domain.items())
+        },
         "primitives": _pairs(primitives, "primitive"),
         "compatibility": _pairs(compatibility, "compatibility"),
         "licenses": _pairs(licenses, "license", limit=40),

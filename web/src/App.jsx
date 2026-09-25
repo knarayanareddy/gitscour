@@ -36,6 +36,7 @@ export default function App() {
       artifact: params.get('artifact') || 'all',
       language: params.get('language') || 'all',
       primitive: params.get('primitive') || 'all',
+      topic: params.get('topic') || 'all',
       license: params.get('license') || 'all',
       minStars: Number(params.get('minStars')) || 500,
       inspect: params.get('inspect') || null
@@ -51,11 +52,15 @@ export default function App() {
   const [selectedArtifact, setSelectedArtifact] = useState(initialUrl.artifact);
   const [selectedLanguage, setSelectedLanguage] = useState(initialUrl.language);
   const [selectedPrimitive, setSelectedPrimitive] = useState(initialUrl.primitive);
+  // W4 §3.5: topic facet (cloud + Ecosystems tab set this too)
+  const [selectedTopic, setSelectedTopic] = useState(initialUrl.topic);
   const [selectedLicenseTier, setSelectedLicenseTier] = useState(initialUrl.license);
   const [minStars, setMinStars] = useState(initialUrl.minStars);
   // W3 §2.6: activity intelligence — dormant filter + recently-pushed sort
   const [hideDormant, setHideDormant] = useState(false);
   const [sortBy, setSortBy] = useState('stars'); // 'stars' | 'recent'
+  // W4 §3.5: Ecosystems canvas pan offset (pointer/touch, §B pattern)
+  const [ecoPan, setEcoPan] = useState({ x: 0, y: 0 });
   // W3 §2.1: pack-time inverted index for ranked search (fetched alongside the
   // packed rows; the memoized substring corpus remains the fallback).
   const [searchIndex, setSearchIndex] = useState(null);
@@ -65,6 +70,8 @@ export default function App() {
   const [facets, setFacets] = useState(null);
   // W4 §3.3: pack-time star-delta changelog (Rising shelf + Changelog tab).
   const [changelog, setChangelog] = useState(null);
+  // W4 §3.5: pack-time topic co-occurrence map (Ecosystems tab).
+  const [topicMap, setTopicMap] = useState(null);
 
   // Inspector Modal / Drawer
   const [activeRepoModal, setActiveRepoModal] = useState(null);
@@ -176,6 +183,7 @@ export default function App() {
     setSelectedArtifact('all');
     setSelectedLanguage(pill.language || 'all');
     setSelectedPrimitive(pill.primitive || 'all');
+    setSelectedTopic('all');
     setSelectedLicenseTier('all');
     setSearchQuery(pill.q || '');
     setDebouncedQuery(pill.q || '');
@@ -214,6 +222,12 @@ export default function App() {
     fetch('./changelog.json')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => { if (data && typeof data === 'object') setChangelog(data); })
+      .catch(() => {});
+    // W4 §3.5: topic co-occurrence map for the Ecosystems tab (empty map
+    // locally — Tier-2 topics land with the next backfill).
+    fetch('./topic-map.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data && Array.isArray(data.topics)) setTopicMap(data); })
       .catch(() => {});
     fetch('./catalog-packed.json')
       .then((res) => {
@@ -356,13 +370,14 @@ export default function App() {
     if (selectedArtifact !== 'all') params.set('artifact', selectedArtifact);
     if (selectedLanguage !== 'all') params.set('language', selectedLanguage);
     if (selectedPrimitive !== 'all') params.set('primitive', selectedPrimitive);
+    if (selectedTopic !== 'all') params.set('topic', selectedTopic);
     if (selectedLicenseTier !== 'all') params.set('license', selectedLicenseTier);
     if (minStars > 500) params.set('minStars', minStars);
     if (activeRepoModal) params.set('inspect', `${activeRepoModal.owner}/${activeRepoModal.name}`);
 
     const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
     window.history.replaceState({}, '', newUrl);
-  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars, activeRepoModal, loading]);
+  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier, minStars, activeRepoModal, loading]);
 
   const copyShareableLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -427,6 +442,8 @@ export default function App() {
   const filterWorkerRef = useRef(null);
   const reqSeqRef = useRef(0);
   const lastAcceptedReqRef = useRef(0);
+  const ecoDragRef = useRef(null);
+  const ecoMovedRef = useRef(false);
   const packedForWorkerRef = useRef(null);
   const [filterResult, setFilterResult] = useState(null); // {key, ordinals} | null
   const [workerFailed, setWorkerFailed] = useState(false);
@@ -465,13 +482,14 @@ export default function App() {
     artifact: selectedArtifact,
     language: selectedLanguage,
     primitive: selectedPrimitive,
+    topic: selectedTopic,
     licenseTier: selectedLicenseTier,
     minStars,
     hideDormant,
     sortBy,
   }), [debouncedQuery, selectedDomain, selectedSubsystem, selectedArtifact,
-      selectedLanguage, selectedPrimitive, selectedLicenseTier, minStars,
-      hideDormant, sortBy]);
+      selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier,
+      minStars, hideDormant, sortBy]);
   const optsKey = useMemo(() => JSON.stringify(filterOpts), [filterOpts]);
 
   // hand the parsed packed payload to the worker once (structured clone)
@@ -647,6 +665,17 @@ export default function App() {
             >
               <TrendingUp className="w-3.5 h-3.5" />
               <span>Rising</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('ecosystems')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                activeTab === 'ecosystems'
+                  ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]'
+              }`}
+            >
+              <Network className="w-3.5 h-3.5" />
+              <span>Ecosystems</span>
             </button>
 
             {/* Share Link Button */}
@@ -944,6 +973,142 @@ export default function App() {
               </div>
             )}
           </div>
+        ) : activeTab === 'ecosystems' ? (
+          /* W4 §3.5 — Ecosystems: pack-time topic co-occurrence graph */
+          <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Network className="w-4 h-4 text-signal-ok" />
+                  Ecosystems
+                </h2>
+                <p className="text-xs text-zinc-400">
+                  Topic co-occurrence from the pack-time map
+                  {topicMap && Array.isArray(topicMap.topics) && topicMap.topics.length > 0
+                    ? ` — ${topicMap.topics.length} topics, df ≥ ${topicMap.min_count}, edge ≥ ${topicMap.min_pair} shared repos`
+                    : ''}
+                </p>
+              </div>
+              {selectedTopic !== 'all' && (
+                <button
+                  onClick={() => { setSelectedTopic('all'); setActiveTab('explorer'); }}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] text-zinc-200 transition-colors"
+                >
+                  Clear topic filter ({selectedTopic})
+                </button>
+              )}
+            </div>
+
+            {topicMap && Array.isArray(topicMap.topics) && topicMap.topics.length > 0 ? (
+              (() => {
+                const nodes = topicMap.topics.slice(0, 48);
+                const cx = 380, cy = 230;
+                const golden = Math.PI * (3 - Math.sqrt(5));
+                const pos = new Map();
+                nodes.forEach((t, i) => {
+                  const r = 26 + Math.sqrt(i / Math.max(1, nodes.length)) * 165;
+                  const a = i * golden;
+                  pos.set(t.name, { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a), t, i });
+                });
+                const seen = new Set();
+                const links = [];
+                nodes.forEach((t) => {
+                  for (const [other, c] of (t.edges || []).slice(0, 5)) {
+                    if (!pos.has(other)) continue;
+                    const key = t.name < other ? `${t.name}|${other}` : `${other}|${t.name}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    links.push({ a: pos.get(t.name), b: pos.get(other), c });
+                  }
+                });
+                const maxCount = nodes[0].count || 1;
+                const maxPair = links.reduce((m, l) => Math.max(m, l.c), 1);
+                return (
+                  <svg
+                    viewBox="0 0 760 460"
+                    className="w-full bg-obs-inset border border-white/[0.07] rounded-xl select-none"
+                    style={{ touchAction: 'none' }}
+                    onPointerDown={(e) => {
+                      ecoMovedRef.current = false;
+                      ecoDragRef.current = { sx: e.clientX, sy: e.clientY, ox: ecoPan.x, oy: ecoPan.y };
+                      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+                    }}
+                    onPointerMove={(e) => {
+                      const d = ecoDragRef.current;
+                      if (!d) return;
+                      const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+                      if (Math.abs(dx) + Math.abs(dy) > 5) ecoMovedRef.current = true;
+                      setEcoPan({ x: d.ox + dx, y: d.oy + dy });
+                    }}
+                    onPointerUp={(e) => {
+                      ecoDragRef.current = null;
+                      try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+                    }}
+                  >
+                    <g transform={`translate(${ecoPan.x},${ecoPan.y})`}>
+                      {links.map((l, i) => (
+                        <line
+                          key={i}
+                          x1={l.a.x} y1={l.a.y} x2={l.b.x} y2={l.b.y}
+                          stroke="#7dd3fc"
+                          strokeOpacity={(0.12 + 0.5 * (l.c / maxPair)).toFixed(3)}
+                          strokeWidth={(0.6 + 1.8 * (l.c / maxPair)).toFixed(2)}
+                        />
+                      ))}
+                      {nodes.map((t) => {
+                        const p = pos.get(t.name);
+                        const r = 4 + 11 * Math.sqrt(t.count / maxCount);
+                        const active = selectedTopic === t.name;
+                        return (
+                          <g
+                            key={t.name}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => {
+                              if (ecoMovedRef.current) return; // pan, not a tap
+                              setSelectedTopic(active ? 'all' : t.name);
+                              setVisibleCount(36);
+                              setActiveTab('explorer');
+                            }}
+                          >
+                            <circle
+                              cx={p.x} cy={p.y} r={r}
+                              fill={active ? '#fbbf24' : '#34d399'}
+                              fillOpacity={active ? 0.95 : 0.75}
+                              stroke={active ? '#fff' : '#0f766e'}
+                              strokeWidth={active ? 1.5 : 0.6}
+                            />
+                            <title>{`${t.name} — ${t.count} repos`}</title>
+                            {p.i < 28 && (
+                              <text
+                                x={p.x + r + 3} y={p.y + 3}
+                                fontSize="9" fill="#a1a1aa"
+                              >
+                                {t.name}
+                              </text>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </g>
+                    <text x="12" y="446" fontSize="9" fill="#52525b">
+                      Drag to pan • tap a topic to filter the catalog
+                    </text>
+                  </svg>
+                );
+              })()
+            ) : (
+              <div className="bg-obs-inset border border-dashed border-white/[0.12] rounded-xl p-8 text-center space-y-2">
+                <Network className="w-6 h-6 text-zinc-500 mx-auto" />
+                <p className="text-sm text-zinc-300">No topic data in this build yet.</p>
+                <p className="text-xs text-zinc-500 max-w-xl mx-auto">
+                  Tier-2 topics are written by the next backfill run (the reclassify
+                  pipeline is already proven by the 202-fixture golden set). This map
+                  populates automatically from <code>topic-map.json</code> the moment
+                  real topics land — nothing is invented here.
+                </p>
+              </div>
+            )}
+          </div>
         ) : activeTab === 'graph3d' ? (
           /* 3D GRAPH EXPLORER VIEW */
           <div className="space-y-4">
@@ -1084,6 +1249,28 @@ export default function App() {
                     {primitives.map((p) => (
                       <option key={p} value={p}>
                         {p === 'all' ? 'All Primitives' : p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* W4 §3.5: topic facet (Tier-2 topics; empty until backfill) */}
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
+                    Topic
+                  </label>
+                  <select
+                    value={selectedTopic}
+                    onChange={(e) => {
+                      setSelectedTopic(e.target.value);
+                      setVisibleCount(36);
+                    }}
+                    className="w-full bg-obs-inset border border-white/[0.10] rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
+                  >
+                    <option value="all">All Topics</option>
+                    {(facets && facets.topics ? facets.topics : []).map((t) => (
+                      <option key={t.name} value={t.name}>
+                        {t.name} ({t.count})
                       </option>
                     ))}
                   </select>
@@ -1281,6 +1468,61 @@ export default function App() {
                       ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* W4 §3.5: topic cloud — per-domain counts when a domain is set */}
+            {facets && (
+              <div className="px-1 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                    Topic cloud
+                  </span>
+                  <span className="text-[10px] text-zinc-500">
+                    {selectedDomain !== 'all' ? selectedDomain : 'all domains'}
+                  </span>
+                </div>
+                {(() => {
+                  const list = selectedDomain !== 'all' && facets.topics_by_domain
+                    ? (facets.topics_by_domain[selectedDomain] || [])
+                    : (facets.topics || []);
+                  if (!list.length) {
+                    return (
+                      <p className="text-[11px] text-zinc-500 bg-obs-inset border border-white/[0.06] rounded-lg px-3 py-2">
+                        Topic cloud is empty in this build — Tier-2 topics arrive
+                        with the next backfill run (the pipeline is proven by the
+                        202-fixture golden set).
+                      </p>
+                    );
+                  }
+                  const max = list[0].count || 1;
+                  return (
+                    <div className="flex flex-wrap gap-1.5 items-baseline">
+                      {list.map((t) => {
+                        const weight = t.count / max;
+                        const active = selectedTopic === t.name;
+                        return (
+                          <button
+                            key={t.name}
+                            title={`${t.count} repositories`}
+                            onClick={() => {
+                              setSelectedTopic(active ? 'all' : t.name);
+                              setVisibleCount(36);
+                            }}
+                            className={`px-2 py-1 rounded-lg border transition-colors ${
+                              active
+                                ? 'bg-white/[0.12] border-white/30 text-white font-semibold'
+                                : 'bg-white/[0.04] border-white/[0.08] text-zinc-400 hover:text-zinc-200 hover:border-white/20'
+                            }`}
+                            style={{ fontSize: `${(10 + weight * 4).toFixed(1)}px` }}
+                          >
+                            {t.name} <span className="opacity-60">({t.count})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

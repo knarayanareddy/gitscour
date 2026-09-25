@@ -97,6 +97,7 @@ export function filterOrdinals(rows, index, opts, majorsSet) {
     artifact = 'all',
     language = 'all',
     primitive = 'all',
+    topic = 'all',
     licenseTier = 'all',
     minStars = 500,
     minSignal = 0,
@@ -115,6 +116,8 @@ export function filterOrdinals(rows, index, opts, majorsSet) {
       } else if (repo.language !== language) return false;
     }
     if (primitive !== 'all' && !(repo.primitives || []).includes(primitive)) return false;
+    // W4 §3.5: topic facet (Tier-2 topics; empty until the CI backfill fills them)
+    if (topic !== 'all' && !(repo.topics || []).includes(topic)) return false;
     if (licenseTier !== 'all' && repo.licenseTier !== licenseTier) return false;
     // W4 §3.4: minimum pack-time Signal (0 = off)
     if (minSignal && (repo.signal || 0) < minSignal) return false;

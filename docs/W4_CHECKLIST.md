@@ -97,13 +97,19 @@ Standing rule: **zero LLM calls at runtime** — everything deterministic, rule-
 
 ## E. §3.5 Topic facets + Ecosystems
 
-- [ ] Topic facet select + per-domain **topic cloud** (from `facets.json` topics)
-- [ ] Pack-time **topic co-occurrence map** (`topic-map.json`: pair → count, top edges
-      per topic) → new **Ecosystems** tab: topic nodes + co-occurrence links,
-      click = filtered catalog
-- [ ] Touch/pointer handling shared with galaxy (§B)
-- [ ] Honest empty states locally (Tier-2 topics land via CI backfill; golden fixtures
-      already prove the pipeline)
+- [x] Topic facet select (+ URL `?topic=`, worker/sync parity via filter-core) +
+      per-domain **topic cloud** in Explorer from `facets.topics_by_domain` (global
+      cloud when no domain is set; click toggles the filter; honest empty-state copy)
+- [x] Pack-time **topic co-occurrence map** (`pipeline/topicmap.py` →
+      `web/public/topic-map.json`: df ≥ 25, pair ≥ 10, top-10 edges per topic,
+      fully sorted/deterministic) → new **Ecosystems** tab: 48-node deterministic
+      spiral, count-weighted links, drag-to-pan, tap a topic = filter + jump to
+      Explorer — smoke asserts edge ↔ df invariants and per-domain ≤ global counts
+- [x] Touch/pointer handling shared with galaxy (§B): pointerdown/move/up +
+      `setPointerCapture` + `touch-action: none`, moved-flag guards tap-vs-pan
+- [x] Honest empty states locally (0 topics / 0 pairs today — UI says the backfill
+      writes them and cites the 202-fixture golden proof; 8 unit tests pin the
+      builder on fixtures)
 
 ## F. §3.6 Stack Blueprints
 

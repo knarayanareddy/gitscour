@@ -47,6 +47,7 @@ from collections import Counter, defaultdict
 
 sys.path.append(os.path.dirname(__file__))
 from facets import write_facets  # noqa: E402
+from topicmap import write_topic_map  # noqa: E402
 from neighbors import write_edges  # noqa: E402
 from search_index import write_search_index  # noqa: E402
 from signals import build_signals  # noqa: E402
@@ -575,10 +576,12 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
     edges_stats = write_edges(records, base_dir)
     # W3 §2.8: exact facet counts for filter chips
     facets_bytes = write_facets(records, base_dir)
+    # W4 §3.5: topic co-occurrence map for the Ecosystems tab
+    topic_map_bytes = write_topic_map(records, base_dir)
 
     return {"shard_bytes": shard_bytes, "packed_bytes": os.path.getsize(packed_out),
             "search_index_bytes": search_bytes, "edges": edges_stats,
-            "facets_bytes": facets_bytes}
+            "facets_bytes": facets_bytes, "topic_map_bytes": topic_map_bytes}
 
 
 def print_domain_histogram(records: list) -> None:
