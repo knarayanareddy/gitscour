@@ -62,11 +62,17 @@ so documentation quotes final, measured behavior.
 
 ## B. O.2 — Surface `stats.json` in the backfill PR body
 
-- [ ] PR body gains `## Harvest coverage`: windows done/planned, **failed**, **truncated**,
-      universe estimate, elapsed — parsed from `harvest/stats.json` by the same
-      heredoc+python pattern as the existing `Star movers` section
-- [ ] Missing `stats.json` (manual/aborted runs) ⇒ honest one-liner, never a broken body;
-      YAML + heredoc dedent verified by parse before push
+- [x] PR body gains `## Harvest coverage`: windows done/planned, failed,
+      truncated, universe estimate, elapsed — parsed from `harvest/stats.json`
+      by a heredoc+python block mirroring the `Star movers` section (inserted
+      between the body and movers)
+- [x] Missing `stats.json` ⇒ honest one-liner (`_Harvest stats unavailable…_`);
+      **verified against the real post-YAML script**: extracted the step's `run`
+      via js-yaml, sliced the body-assembly segment, executed it under
+      `set -euo pipefail` with three fixtures — full-coverage (123/123 line +
+      sweep verdict), warning (1 failed/1 truncated ⇒ Warning line), and
+      no-stats (fallback line). Heredoc terminators land at col 0 after YAML
+      dedent; both workflow YAMLs parse
 - *Accept:* every backfill PR shows coverage numbers even when the run is green; a run with
   `windows_failed > 0` is impossible to ship anyway (harvester exits non-zero) — the PR makes
   truncation/coverage *visible*, not just gated.

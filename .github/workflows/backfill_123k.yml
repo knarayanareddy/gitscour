@@ -149,6 +149,34 @@ jobs:
 
           Merging deploys the refreshed catalog via \`deploy.yml\`.
           EOF
+          # W5 O.2: surface the harvester's own stats so coverage (windows
+          # done/planned, failed, truncated, universe estimate) is visible in
+          # the PR even when the run is green.
+          if [ -f harvest/stats.json ]; then
+            python3 - >> pr_body.md <<'PY'
+          import json
+          st = json.load(open("harvest/stats.json"))
+          failed = int(st.get("windows_failed", 0))
+          truncated = int(st.get("windows_truncated", 0))
+          done = int(st.get("windows_done", 0))
+          planned = int(st.get("windows_planned", 0))
+          universe = int(st.get("universe_estimate", 0))
+          elapsed = st.get("elapsed_s", 0)
+          print()
+          print("## Harvest coverage")
+          print(f"- Windows completed: **{done} / {planned}** "
+                f"({failed} failed, {truncated} truncated by the 1,000-result cap)")
+          print(f"- Universe estimate (sum of window probes): **{universe:,}** repos "
+                f"across {planned} windows in {elapsed}s")
+          if failed or truncated:
+              print(f"- Warning: coverage has holes ({failed} failed / "
+                    f"{truncated} truncated) — see the job log for the affected clauses.")
+          else:
+              print("- No failed or truncated windows: full-coverage sweep.")
+          PY
+          else
+            printf '\n## Harvest coverage\n\n_Harvest stats unavailable for this run (no harvest/stats.json) — coverage numbers were not recorded._\n' >> pr_body.md
+          fi
           # W4 §3.3: append the top star movers (diff of the last two history
           # snapshots) so the reviewer sees the trend without opening the files.
           if [ -f web/public/changelog.json ]; then
