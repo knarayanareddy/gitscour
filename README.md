@@ -100,7 +100,7 @@ python3 pipeline/generate_seed.py
 Enriches 16 curated seed records through the real taxonomy engine and writes them
 to `pipeline/seed_demo.json` (gitignored). This is a self-contained demo — it
 **never writes into `web/public/`**, so running it cannot clobber the live
-catalog artifacts (`repos.json`, `catalog-index.json`, the shards) the way an
+catalog artifacts (`catalog-index.json`, the shards) the way an
 older version of this script did.
 
 ### 3. Fetch Repositories via GitHub GraphQL API
@@ -151,7 +151,7 @@ completeness guarantees (partial-window detection, probe-failure abort,
 | Script | Role |
 | --- | --- |
 | `harvest_enumerate.py` | Window-partitioned GraphQL sweep; the only harvester that can exceed 1,000 records per query |
-| `rebuild_catalog.py` | Single consolidation point for all four artefacts (`catalog-packed.json`, `catalog-index.json`, `repos.json`, `data/details/*.json`) |
+| `rebuild_catalog.py` | Single consolidation point for all three artefacts (`catalog-packed.json`, `catalog-index.json`, `data/details/*.json`) |
 | `verify_catalog.py` | Cross-artefact integrity gate (ids, encodings, star floor, shard coverage) |
 | `reconcile_stale_rows.py` | Live re-validation of rows missing from the current universe |
 | `harvest_scale.py`, `backfill_worker.py`, `scale_50k.py` | Earlier samplers, capped at ~1k records per window; retained as reference |

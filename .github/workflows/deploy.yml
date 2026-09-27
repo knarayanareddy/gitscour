@@ -46,6 +46,8 @@ jobs:
       # the catalog, so a scheduled deploy silently shrank the deployed shards
       # and emptied their deep-intel fields. Live ingestion now belongs to the
       # backfill workflow, which commits its output instead of mutating a build.
+      # (The `repos.json` twin itself was removed in W5 O.4 — `catalog-index.json`
+      # is the sole fallback index and the parity check covers it alone.)
       - name: Verify Catalog Integrity
         run: python3 pipeline/verify_catalog.py
 

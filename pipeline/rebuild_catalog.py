@@ -7,11 +7,12 @@ packed index from `catalog-index.json`.  That coupling is why the checked-in
 `catalog-packed.json` (51,192 records).
 
 Here the *union* of the live catalog and the new harvest is the single source of
-truth, and all four artefacts are written from it in one pass:
+truth, and all three artefacts are written from it in one pass:
 
   * `web/public/catalog-packed.json`        Tier 1, dictionary-encoded rows (primary)
   * `web/public/catalog-index.json`         Tier 1, readable fallback list
-  * `web/public/repos.json`                 legacy alias of the above
+    (the byte-identical `repos.json` twin was removed in W5 O.4 — 63 MB/run  # twin-name-ok
+    of duplicated git churn with zero distinct readers)
   * `web/public/data/details/<domain>.json` Tier 2 deep-intel shards keyed by repo id
 
 Identity rules
@@ -511,7 +512,7 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
             "url": r.get("url") or f"https://github.com/{r['owner']}/{r['name']}",
             "shard": r["shard"],
         })
-    for name in ("catalog-index.json", "repos.json"):
+    for name in ("catalog-index.json",):
         path = os.path.join(base_dir, name)
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(tier1, fh, separators=(",", ":"))
@@ -637,7 +638,8 @@ def main() -> int:
 
     sizes = write_artifacts(records, args.base_dir)
 
-    total = sizes["shard_bytes"] + sizes["packed_bytes"] + 2 * os.path.getsize(os.path.join(args.base_dir, "repos.json"))
+    # W5 O.4: the repos.json twin is gone; count the fallback index once.  # twin-name-ok
+    total = sizes["shard_bytes"] + sizes["packed_bytes"] + os.path.getsize(os.path.join(args.base_dir, "catalog-index.json"))
     print("\n=== SUMMARY ===")
     print(f"repositories       : {len(records):,}  (was {stats['existing']:,})")
     print(f"new / refreshed    : {stats['new']:,} / {stats['refreshed']:,}")

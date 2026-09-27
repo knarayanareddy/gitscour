@@ -106,14 +106,26 @@ so documentation quotes final, measured behavior.
 
 ## D. O.4 — Drop the `repos.json` 63 MB twin
 
-- [ ] Writer: remove `repos.json` from the `rebuild_catalog` emit loop (line 514) + size
-      stat (line 640); delete `web/public/repos.json`
-- [ ] Reader: drop from `verify_catalog` parity loop (line 140) + docstring item 2;
-      README table row (line 158) and `generate_seed` guard text updated to say the alias is
-      gone; `--help`/warnings no longer name it as a live file
-- [ ] Regression: unittest asserts the file is absent and parity still passes over
-      `catalog-index.json` alone; no code path outside `legacy/` references it (grep-pinned)
-- *Accept:* −63 MB per backfill run immediately; `verify_catalog` exit 0; deploy smoke green.
+- [x] Writer: emit loop now writes `catalog-index.json` only (docs say "three
+      artefacts"); size stat counts the fallback index **once** (was `2 *` the
+      twin); `git rm web/public/repos.json` — deleted blob measured **63.4 MB**
+      (byte-identical to the index, `cmp` at baseline) ⇒ −63 MB every backfill run
+- [x] Reader: `verify_catalog` parity loop covers `catalog-index.json` alone
+      (`Tier-1 fallback catalog-index.json: 123,153 records, ids identical vs
+      packed`), docstrings updated ("three interdependent files"); README
+      runbook + artefact table no longer list the twin; `generate_seed` refusal
+      text names `(catalog-index.json / shards)` and its guard comment keeps the
+      review-#6 history without the removed path; `deploy.yml` historical comment
+      notes the W5 O.4 removal
+- [x] Regression: `tests/test_repos_alias.py` — 4 pins: file absent;
+      `verify_catalog` subprocess exit 0 over `catalog-index.json` alone; grep-pin
+      over `pipeline/ + web/src/ + tests/` code finds no reference outside the
+      5 legacy-bound files (allowlist == actual mentions, so W5 F must empty it);
+      suppression is a **visible `# twin-name-ok` marker** on explanatory lines +
+      self-exemption for the pin test itself; `test_verify_catalog` fixture stops
+      writing the removed twin (it is not part of the contract)
+- *Accept:* **−63 MB/run**; `verify_catalog` exit 0; build 2.91s + smoke exit 0;
+      suite **133/133**; both YAMLs parse; zero-LLM scanner still clean.
 
 ## E. O.3 — Line-oriented serialization for the big JSONs
 

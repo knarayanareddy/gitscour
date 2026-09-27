@@ -39,9 +39,9 @@ def write_fixture(base_dir, *, row13=True, hook="short", misplaced=False,
         {"id": 1, "name": "webby", "owner": "acme"},
         {"id": 2, "name": "clouder", "owner": "acme"},
     ]
-    for fname in ("catalog-index.json", "repos.json"):
-        with open(os.path.join(base_dir, fname), "w") as fh:
-            json.dump(index, fh)
+    # W5 O.4: the removed twin is not part of the contract any more.
+    with open(os.path.join(base_dir, "catalog-index.json"), "w") as fh:
+        json.dump(index, fh)
 
     web_recs = {"1": {"id": 1, "name": "webby", "owner": "acme"}}
     cloud_recs = {"2": {"id": 2, "name": "clouder", "owner": "acme"}}

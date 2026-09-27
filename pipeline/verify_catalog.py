@@ -1,6 +1,6 @@
 """Consistency gate for the generated GitScour catalog artefacts.
 
-The pipeline writes four interdependent files, and nothing in CI previously
+The pipeline writes three interdependent files, and nothing in CI previously
 checked that they agreed with each other -- which is how `catalog-index.json`
 ended up holding 1,276 records while `catalog-packed.json` held 51,192.
 
@@ -8,8 +8,9 @@ Checks performed
 ----------------
   1. every Tier-1 row decodes against its dictionary maps, ids are unique,
      and no row falls below the star threshold;
-  2. the readable fallback index (`catalog-index.json`) and its legacy alias
-     (`repos.json`) cover exactly the same ids as the packed index;
+  2. the readable fallback index (`catalog-index.json`) covers exactly the
+     same ids as the packed index (the `repos.json` twin was removed in  # twin-name-ok
+     W5 O.4);
   3. every Tier-2 shard parses, is keyed by repo id, and its ids are a subset
      of the catalog; the union of all shards covers the whole catalog;
   4. per-domain shard membership: every deep record must live in the shard
@@ -137,7 +138,7 @@ def main() -> int:
     if long_hooks:
         errors.append(f"{long_hooks} rows have hooks longer than 90 characters")
 
-    for fname in ("catalog-index.json", "repos.json"):
+    for fname in ("catalog-index.json",):
         path = os.path.join(base, fname)
         if not os.path.exists(path):
             errors.append(f"missing {path}")

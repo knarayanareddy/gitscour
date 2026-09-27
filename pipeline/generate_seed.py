@@ -404,10 +404,11 @@ SEEDS = [
 def generate_dataset(output_path: str | None = None) -> str:
     enriched = [enrich_repository_record(r) for r in SEEDS]
     if output_path is None:
-        # NEVER default to web/public/repos.json: that is a live 63 MB catalog
-        # artifact (byte-identical alias of catalog-index.json), and overwriting
-        # it with ~16 demo rows broke verify_catalog.py and the deploy gate —
-        # README quick-start step 2 used to do exactly that (review finding #6).
+        # NEVER default into web/public: a 63 MB live catalog artifact (the
+        # byte-identical index twin, since removed in W5 O.4) once got
+        # overwritten with ~16 demo rows here, which broke verify_catalog.py
+        # and the deploy gate — README quick-start step 2 used to do exactly
+        # that (review finding #6). The web/public refusal below still guards.
         output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed_demo.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(enriched, f, indent=2)
@@ -428,7 +429,7 @@ if __name__ == "__main__":
         if resolved.startswith(public_dir + os.sep):
             parser.error(
                 f"refusing to write into {public_dir}: it holds the live catalog "
-                "(catalog-index.json / repos.json / shards). "
+                "(catalog-index.json / shards). "
                 "Use --output with a path outside web/public."
             )
     generate_dataset(args.output)
