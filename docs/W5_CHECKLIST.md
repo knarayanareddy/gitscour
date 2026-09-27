@@ -108,7 +108,7 @@ so documentation quotes final, measured behavior.
 
 - [x] Writer: emit loop now writes `catalog-index.json` only (docs say "three
       artefacts"); size stat counts the fallback index **once** (was `2 *` the
-      twin); `git rm web/public/repos.json` — deleted blob measured **63.4 MB**
+      twin); `git rm web/public/repos.json` — deleted blob measured **65.3 MB (63 MiB)**
       (byte-identical to the index, `cmp` at baseline) ⇒ −63 MB every backfill run
 - [x] Reader: `verify_catalog` parity loop covers `catalog-index.json` alone
       (`Tier-1 fallback catalog-index.json: 123,153 records, ids identical vs
