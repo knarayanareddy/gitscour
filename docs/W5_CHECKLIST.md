@@ -41,17 +41,24 @@ so documentation quotes final, measured behavior.
 
 ## A. O.1 — Checkpoint manifest keyed by clause only
 
-- [ ] Manifest identity = **clause only** (`star_lo/star_hi/fork_lo/fork_hi`): drop `count`
-      (and any other volatile probe output) from the comparison key; `complete()` writes the
-      clause-keyed line; loader accepts **legacy full-dict lines** (re-key on read) so an
-      interrupted CI run resumes across the upgrade
-- [ ] `Checkpoint.seen` populated at startup by streaming the output JSONL once
-      (owner/name keys, same `key()` the writer dedupes on) → crash-resume never re-appends
-- [ ] `tests/test_checkpoint.py`: interrupted run resumes exactly with a *changed* probe
-      count; duplicate records across instances dedupe; legacy manifest lines still match;
-      failed windows stay pending (never checkpointed)
-- *Accept:* same clause + new count ⇒ zero re-harvest of completed windows; re-running over
-  an existing output appends **0** duplicate `owner/name` lines.
+- [x] Manifest identity = **clause only**: new `clause_key()`/`CLAUSE_KEYS`
+      (`star_lo/star_hi/fork_lo/fork_hi`) — `complete()` writes the clause-keyed
+      line, `pending` compares clause keys, loader JSON-parses every line and
+      **re-keys legacy full-dict lines** (unparseable lines skipped: can only
+      re-harvest, never lose); `count`/`truncated` no longer part of identity
+- [x] `Checkpoint.seen` populated at startup by streaming the output JSONL once
+      through the same `key()` the writer dedupes with (malformed lines skipped);
+      a re-delivered window's records append **0** duplicates
+- [x] `tests/test_checkpoint.py` — **13 tests**: drifted count (987→1000 +
+      `truncated`) resumes with only the unfinished clause pending; legacy,
+      clause-only, and mixed manifest lines dedupe to one `done`; unfinished
+      window still pending after restart; corrupt manifest/output lines
+      survive; `complete()` line carries exactly the 4 clause fields (no
+      `count`/`truncated`); case-insensitive cross-instance dedupe; flush
+      guarantees. Suite → **115/115 OK**
+- *Accept:* verified live: same clause + new count ⇒ only the never-completed
+  window re-harvested; restart over existing output appended **0** duplicate
+  `owner/name` lines.
 
 ## B. O.2 — Surface `stats.json` in the backfill PR body
 

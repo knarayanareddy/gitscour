@@ -22,7 +22,10 @@ sampling it:
    point per request against this token's ~8100 point/minute budget, so the
    binding constraint is latency rather than quota.
 3. Everything is appended to a resumable JSONL checkpoint, so an interrupted
-   run continues where it left off instead of re-fetching.
+   run continues where it left off instead of re-fetching: the manifest keys
+   completed windows by **search clause only** (volatile probe counts are not
+   part of the identity) and the record-dedupe set is reloaded from the output
+   file at startup, so a resume never re-harvests or re-appends (W5 O.1).
 
 Output: one raw record per line (JSON) in ``--output``, shaped exactly like the
 ``raw`` dict inside ``backfill_worker.py`` so ``taxonomy_engine`` can consume it
@@ -181,6 +184,20 @@ def window_clause(star_lo: int, star_hi: int, fork_lo: int | None, fork_hi: int 
     return f"{stars}{forks} sort:stars-desc"
 
 
+CLAUSE_KEYS = ("star_lo", "star_hi", "fork_lo", "fork_hi")
+
+
+def clause_key(window: dict) -> str:
+    """Stable identity of a harvest window: its search-clause coordinates.
+
+    The planner's probe ``count`` and its ``truncated`` verdict are volatile
+    across runs, so keying the manifest on the whole window dict silently
+    defeated cross-run resume whenever a count drifted (W5 O.1).  Legacy
+    full-dict manifest lines re-key through this same function on load.
+    """
+    return json.dumps({k: window.get(k) for k in CLAUSE_KEYS}, sort_keys=True)
+
+
 def probe_count(gh: GitHub, clause: str, retries: int = 8) -> int | None:
     """repositoryCount for a clause, or None if the probe failed.
 
@@ -255,7 +272,13 @@ def plan_windows(gh: GitHub, star_lo: int, star_hi: int, concurrency: int, log) 
 
 
 class Checkpoint:
-    """Append-only JSONL sink + set of completed windows, safe across threads."""
+    """Append-only JSONL sink + set of completed windows, safe across threads.
+
+    ``done`` holds *clause keys* only (legacy full-dict manifest lines are
+    re-keyed on load), and ``seen`` is populated by streaming the output file
+    once at startup — so an interrupted run resumes without re-harvesting
+    finished windows and without re-appending records already on disk (W5 O.1).
+    """
 
     def __init__(self, path: str, manifest_path: str):
         self.path = path
@@ -266,11 +289,30 @@ class Checkpoint:
             with open(manifest_path, "r", encoding="utf-8") as fh:
                 for line in fh:
                     line = line.strip()
-                    if line:
-                        self.done.add(line)
+                    if not line:
+                        continue
+                    try:
+                        window = json.loads(line)
+                    except ValueError:
+                        # A line without a parseable clause can only cause a
+                        # harmless re-harvest, never a lost window.
+                        continue
+                    self.done.add(clause_key(window))
+        self.seen = set()
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        self.seen.add(self.key(json.loads(line)))
+                    except (ValueError, KeyError, TypeError):
+                        # Malformed output lines are skipped by the dedupe
+                        # scan; downstream merge still validates records.
+                        continue
         self.fh = open(path, "a", encoding="utf-8")
         self.mh = open(manifest_path, "a", encoding="utf-8")
-        self.seen = set()
 
     def key(self, rec: dict) -> str:
         return f"{rec['owner']}/{rec['name']}".lower()
@@ -290,10 +332,11 @@ class Checkpoint:
             os.fsync(self.fh.fileno())
 
     def complete(self, window: dict):
+        ck = clause_key(window)
         with self.lock:
-            self.mh.write(json.dumps(window, sort_keys=True) + "\n")
+            self.mh.write(ck + "\n")
             self.mh.flush()
-            self.done.add(json.dumps(window, sort_keys=True))
+            self.done.add(ck)
 
 
 def harvest_window(gh: GitHub, window: dict) -> tuple[dict, list[dict], int]:
@@ -396,7 +439,7 @@ def main() -> int:
             print(json.dumps(w))
         return 0
 
-    pending = [w for w in windows if json.dumps(w, sort_keys=True) not in ckpt.done]
+    pending = [w for w in windows if clause_key(w) not in ckpt.done]
     log(f"{len(windows) - len(pending)} windows already checkpointed, {len(pending)} to harvest")
 
     done_lock = threading.Lock()
