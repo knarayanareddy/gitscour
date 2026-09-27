@@ -79,18 +79,30 @@ so documentation quotes final, measured behavior.
 
 ## C. O.5 verified + §5 — Zero-LLM guardrail in CI
 
-- [ ] O.5 evidence tick: both workflows run `pytest tests/ -q` (R0 `05a7ef9`), covering
-      R0.3 harvest suite + golden-set (`test_taxonomy_golden.py`); last green runs recorded
-      below — no new job needed
-- [ ] `pipeline/check_zero_llm.py`: stdlib scanner over `pipeline/ + web/src/ + tests/`
-      (`*.py,*.js,*.jsx,*.mjs`) for SDK **call/import** patterns —
-      `import openai|from openai|anthropic|api.openai.com|api.anthropic.com|generativelanguage|google.generativeai|llm_api(|OpenAI(` etc.;
-      static lexicons/comments/data are out of scope *by pattern design* (baseline grep
-      today = empty, lexicon strings do not match)
-- [ ] Wired as a step in **both** workflows beside `verify_catalog` + covered by
-      `tests/test_zero_llm.py` (scanner finds its own planted fixture, clean tree passes)
-- *Accept:* adding `import openai` to any pipeline file fails CI in both workflows — the
-  constraint is *enforced*, not just documented.
+- [x] O.5 evidence: both workflows run `pytest tests/ -q` (R0 `05a7ef9`, deploy.yml
+      lines 36-40) covering R0.3 harvest suite + golden-set — recent runs all
+      **success**: `36348153753` (W5 B), `36347432988` (W5 A), `36182965801`
+      (W5 spin-up). No new job needed; the suite itself now also carries the
+      §5 scanner (next items)
+- [x] `pipeline/check_zero_llm.py`: stdlib scanner over `pipeline/ + web/src/ + tests/`
+      (`*.py,*.js,*.jsx,*.mjs`, skips `__pycache__/legacy/…`) with **4 call-form
+      rules** — SDK import/require lines (`openai|anthropic|langchain|
+      google.generativeai`), `OpenAI(`/`Anthropic(` constructors, `llm_api(`,
+      provider sites (`api.openai.com`, `api.anthropic.com`,
+      `generativelanguage.`, `generativeai.googleapis.com`). Lexicons pass **by
+      pattern design**: measured baseline — `openai`/`gpt`/`langchain` occur only
+      as data (taxonomy, compat rules, golden fixtures) and never match call
+      forms; bare-word rules (`anthropic`, `gpt`) were deliberately not used
+      because lexicons may legitimately name them. Self-scan clean (51 files)
+- [x] Wired as a `Zero-LLM guardrail` step in **both** workflows directly after
+      `verify_catalog` (deploy.yml:54, backfill_123k.yml:104) + covered by
+      `tests/test_zero_llm.py` — **14 tests**: clean-tree + default-CLI pass,
+      planted fixture detected (`sdk-import`/`constructor`/`site`/`require`,
+      correct line numbers, commented-out calls flagged on purpose),
+      lexicon-label/prose/regex fixtures pass, subprocess exit codes 1/0
+- *Accept:* verified live — `pipeline/check_zero_llm.py` on a planted
+      `import openai` file exits **1** with `[…sdk-import]` in the report; clean
+      tree exits **0**; suite **129/129**; both workflow YAMLs parse.
 
 ## D. O.4 — Drop the `repos.json` 63 MB twin
 

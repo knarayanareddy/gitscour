@@ -99,6 +99,11 @@ jobs:
       - name: Verify catalog integrity
         run: python3 pipeline/verify_catalog.py --min-stars "$MIN_STARS"
 
+      # W5 §5: zero-LLM guardrail beside verify — SDK call/import/site forms
+      # fail the run; lexicon strings that merely name providers do not.
+      - name: Zero-LLM guardrail
+        run: python3 pipeline/check_zero_llm.py
+
       # Same contract gate as deploy.yml: this workflow opens a PR that ships
       # regenerated artefacts, so catch a broken Tier-1 decode / Tier-2 lazy-merge
       # contract before the PR exists (review finding #14: the smoke test was in

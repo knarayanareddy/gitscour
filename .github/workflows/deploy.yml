@@ -49,6 +49,11 @@ jobs:
       - name: Verify Catalog Integrity
         run: python3 pipeline/verify_catalog.py
 
+      # W5 §5: the zero-LLM constraint is enforced, not just documented —
+      # call/import/site forms only, so static lexicons naming providers pass.
+      - name: Zero-LLM guardrail
+        run: python3 pipeline/check_zero_llm.py
+
       # W2 §1.8 (finding #6b): the 16 hand-written SEEDS ELI5 cards finally
       # reach the deployed bundle. Idempotent — once the backfill PR commits
       # the merged shards this becomes a no-op that still guards against drift.
