@@ -35,6 +35,12 @@ GitScour eliminates traditional backend database costs by combining static pre-i
      branch after `verify_catalog.py` passes. It no longer harvests during the build:
      regenerating shards from a partial index during deploy is how the deployed Tier-2
      data could drift away from the repository.
+   * Both workflows run the same gate lane before deploying/harvesting: deterministic
+     unit tests, `verify_catalog.py`, the repo-wide **zero-LLM guardrail**
+     (`pipeline/check_zero_llm.py` — the build fails if any scanned source wires up an
+     LLM provider SDK, import, or call form; every feature ships deterministic and
+     rule-based with zero model calls), then the artefact smoke test
+     (`web/smoke-test.mjs`).
 
 4. **Signal score (pack-time, auditable):** one 0–100 integer per repository written
    to `catalog-packed.json` as the parallel `signal` array and used by the Explorer's

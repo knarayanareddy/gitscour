@@ -225,14 +225,35 @@ so documentation quotes final, measured behavior.
 
 ## Verification gates
 
-- [ ] `python3 -m unittest discover -s tests -p "test_*.py" -q` green (W4 = 102; +checkpoint,
-      zero-LLM scanner, line-oriented writer, repos-removal pins)
-- [ ] `npm run build` + `node smoke-test.mjs dist` exit 0 (incl. new search-time assertion;
-      readers of the line-oriented JSONs parse identically)
-- [ ] `verify_catalog.py --base-dir web/public` exit 0 **after D/E** (no `repos.json`);
-      Tier-2 content preserved — regens keep `write_shards=False` unless E deliberately
-      rewrites shard *format* with byte-roundtrip proof
-- [ ] Both workflow YAMLs parse (js-yaml): `backfill_123k.yml` + `deploy.yml` with the new
-      stats-PR-body, zero-LLM-guard steps; `pytest` lane evidence recorded
-- [ ] README (+ AI blueprint) updated where behavior/documentation changed: reconcile runbook,
-      legacy table, measured search numbers, zero-LLM enforcement note
+- [x] Unittest green: **153/153** locally (`Ran 153 tests ... OK`) = W4's 102
+      + 51 pins added across A–G (checkpoint manifest, zero-LLM scanner,
+      repos-removal ×4, line-oriented writer ×15, legacy archive ×5, …);
+      the CI `pytest` lane (deploy.yml:40) is green on the same tree — runs
+      36390293040 (E), 36411327773 (F), 36411992148 (G)
+- [x] `npm run build` (4.50 s) + `node smoke-test.mjs dist` **exit 0**, incl.
+      the new search-time assertion (medians 0.09–0.77 ms, ceiling line
+      printed). Readers parse the line-oriented JSONs identically — proven by
+      re-encoding all 5 E targets (14 files) into a temp copy with
+      `pipeline/linejson.py` (byte-roundtrip parse equality per file;
+      `catalog-index.json` = 123,155 lines = one per row + brackets) and
+      running both readers against it: `verify --base-dir` **exit 0** and full
+      smoke **exit 0** on the line-oriented set (vs the old-format originals
+      also exit 0) — live artifacts untouched, per the migration decision
+- [x] `verify_catalog.py --base-dir web/public` **exit 0** after D/E
+      (`OK: catalog artefacts are internally consistent (123,153 repositories)`),
+      no `repos.json` present or referenced; Tier-2 content preserved — no local
+      regen happened outside `/tmp` fixtures, so the `write_shards=False` policy
+      is intact (the only shard rewrite path exercised was E's line-format
+      migration, and only in temp copies with parse-equality asserted)
+- [x] Both YAMLs parse (js-yaml): `backfill_123k.yml` + `deploy.yml` ✓.
+      Pytest-lane evidence recorded — Deploy run **36411992148** (G) steps:
+      Install Test Runner / **Unit Tests (no network)** / **Verify Catalog
+      Integrity** / **Zero-LLM guardrail** / **Smoke Test Built Artefacts** all
+      `success` (same lane green in E-run 36390293040 and F-run 36411327773)
+- [x] README + blueprint docs match shipped behavior: reconcile runbook now
+      states the monthly CI ordering ("runs automatically in the monthly
+      backfill CI … before rebuild_catalog"), artefact table rows point at
+      `legacy/` + `legacy/README.md`, search numbers measured + smoke-cited
+      (0.1–3.8 ms, README + blueprint), and a new README CI bullet documents
+      the zero-LLM enforcement lane (`check_zero_llm` fails the build) alongside
+      the blueprint's §1.2 standing-constraint bullet + §4 blockquote
