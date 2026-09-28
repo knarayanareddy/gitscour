@@ -26,6 +26,7 @@ Design (deterministic, zero LLM, gzip-friendly JSON):
 from __future__ import annotations
 
 import json
+import linejson
 import math
 import os
 import re
@@ -176,8 +177,7 @@ def write_search_index(records: List[dict], base_dir: str) -> int:
     """Build + write `search-index.json`; returns bytes written."""
     index = build_search_index(records)
     path = os.path.join(base_dir, "search-index.json")
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(index, fh, separators=(",", ":"))
+    linejson.write(path, index)  # W5 O.3: one token/postings line per entry
     size = os.path.getsize(path)
     print(f"Search index: {path} ({len(index['t'])} tokens, "
           f"{sum(len(p) // 2 for p in index['p']):,} postings, {size / 1e6:.2f} MB)")

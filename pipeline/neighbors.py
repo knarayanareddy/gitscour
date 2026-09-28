@@ -26,6 +26,7 @@ Reason strings are derived at render time from the shared sets — not stored.
 from __future__ import annotations
 
 import json
+import linejson
 import os
 from collections import Counter, defaultdict
 from typing import Dict, List, Set, Tuple
@@ -181,8 +182,7 @@ def build_edges(records: List[dict]) -> dict:
 def write_edges(records: List[dict], base_dir: str) -> dict:
     data = build_edges(records)
     path = os.path.join(base_dir, "edges.json")
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump({"k": data["k"], "edges": data["edges"]}, fh, separators=(",", ":"))
+    linejson.write(path, {"k": data["k"], "edges": data["edges"]})  # W5 O.3
     size = os.path.getsize(path)
     r = data["report"]
     print(f"Edges: {path} ({r['total_edges']:,} edges, min degree {r['min_degree']}, "

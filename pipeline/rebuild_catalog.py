@@ -51,6 +51,7 @@ from facets import write_facets  # noqa: E402
 from topicmap import write_topic_map  # noqa: E402
 from neighbors import write_edges  # noqa: E402
 from search_index import write_search_index  # noqa: E402
+import linejson  # noqa: E402
 from signals import build_signals  # noqa: E402
 from history import write_history  # noqa: E402
 from taxonomy_engine import (  # noqa: E402
@@ -480,8 +481,7 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
         if not write_shards:
             continue
         path = os.path.join(details_dir, f"{slug}.json")
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, separators=(",", ":"))
+        linejson.write(path, recs)  # W5 O.3: one deep record per line
         size = os.path.getsize(path)
         shard_bytes += size
         print(f"  shard [{slug:38s}] {len(recs):7d} deep records  {size/1e6:6.2f} MB")
@@ -514,8 +514,7 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
         })
     for name in ("catalog-index.json",):
         path = os.path.join(base_dir, name)
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(tier1, fh, separators=(",", ":"))
+        linejson.write(path, tier1)  # W5 O.3: one Tier-1 row per line
         print(f"Tier 1 fallback: {path} ({len(tier1)} repos, {os.path.getsize(path)/1e6:.2f} MB)")
 
     # ---------------- Tier 1: dictionary-encoded packed index ----------------
@@ -567,8 +566,9 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
     # W4 §3.2/§3.3: stars snapshot + changelog diff (seeded on the first run)
     write_history(base_dir, records)
     packed_out = os.path.join(base_dir, "catalog-packed.json")
-    with open(packed_out, "w", encoding="utf-8") as fh:
-        json.dump(payload, fh, separators=(",", ":"))
+    # W5 O.3: line-oriented — rows/signal/activity one element per line,
+    # label maps inline; parses identically, diffs at row granularity.
+    linejson.write(packed_out, payload)
     print(f"Packed index:  {packed_out} ({len(rows)} repos, {os.path.getsize(packed_out)/1e6:.2f} MB)")
 
     # W3 §2.1: ranked-search index (ordinals == rows[] positions)

@@ -129,18 +129,34 @@ so documentation quotes final, measured behavior.
 
 ## E. O.3 — Line-oriented serialization for the big JSONs
 
-- [ ] Writers emit **one row/posting/record per line** while staying valid JSON and
-      byte-deterministic (same input ⇒ identical bytes; `json.load`/`JSON.parse` readers
-      untouched): `catalog-index.json` (per-row), `catalog-packed.json` (per-row in `rows`
-      + per-line parallel arrays as needed), `search-index.json`, `edges.json`, Tier-2
-      `data/details/*.json` (per-record)
-- [ ] Delta evidence: synthetic 1-row change → `git diff --numstat` line count vs the
-      single-line baseline recorded in this checklist (expect: touched-row lines only)
-- [ ] Unit pins: round-trip parse equality vs current content, determinism (double-write
-      byte-identical), arity guards preserved (12..15 fields)
-- *Accept:* re-run writer twice ⇒ byte-identical; readers/smoke/verify unchanged-green;
-  monthly rewrites now diff at row granularity (plus −63 MB from D) instead of ~341 MB of
-  un-diffable blobs.
+- [x] New `pipeline/linejson.py` (`dumps`/`write`, stdlib-only): top-level
+      arrays → one compact element per line; top-level objects → one
+      `"key": value` entry per line, list values one element per line, other
+      values inline; same compact separators + ASCII escaping as the old
+      `json.dump(separators=(",",":"))`, plus trailing newline. Wired into all
+      five targets: `catalog-index` (per-row), `catalog-packed` `rows` +
+      `activity`/`license_tiers`/`signal` (per-element; label maps inline),
+      `search-index` (per token/postings line), `edges` (per neighbor list),
+      Tier-2 shards (per-record, **int keys stringified like `json.dump`
+      does** — caught by the reclassify apply suite, now pinned). Existing
+      files stay old-format until the next CI backfill (which rewrites them
+      anyway), so both formats coexist parse-cleanly; readers untouched
+- [x] Delta evidence, measured on a 5,000-row fixture: one-row change ⇒
+      `git diff -U0` = **295 B** (0.1% of file) vs legacy **927,941 B**
+      (~200% of file — the whole blob twice) ⇒ **3,146× smaller**; the
+      line-oriented diff contains exactly the one changed row (1 add/1 del),
+      unit-asserted
+- [x] `tests/test_linejson.py` — **15 pins**: round-trip equality for all five
+      layouts (vs legacy writer too), int-key shards, byte-determinism across
+      writes, trailing newline, one-record-per-line (50 rows ⇒ 52 lines),
+      one-row-change touches exactly one line, 12/13/15-field arity, and the
+      git-accept trio (line-oriented diff = the row only; legacy diff ≈ whole
+      file; ≥20× ratio). Integration: `reclassify --allow-churn` apply round-trips
+      real shard writes through the new writer and every shard re-parses
+- *Accept:* double-write byte-identical ✓ (unit); readers unchanged ✓ (verify
+  0, smoke exit 0 over the still-old-format artifacts, 148/148 tests); monthly
+  rewrites diff at row granularity once CI emits the new format, on top of
+  D's −63 MB
 
 ## F. O.6 — Legacy harvester archive
 
