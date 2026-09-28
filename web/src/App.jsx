@@ -58,9 +58,13 @@ export default function App() {
   const [selectedTopic, setSelectedTopic] = useState(initialUrl.topic);
   const [selectedLicenseTier, setSelectedLicenseTier] = useState(initialUrl.license);
   const [minStars, setMinStars] = useState(initialUrl.minStars);
+  // W4 §3.4: pack-time composite Signal floor (0 = off). Declared here because
+  // the Min Signal slider reads it — it was previously referenced but never
+  // declared, which threw ReferenceError and blanked the whole app.
+  const [minSignal, setMinSignal] = useState(0);
   // W3 §2.6: activity intelligence — dormant filter + recently-pushed sort
   const [hideDormant, setHideDormant] = useState(false);
-  const [sortBy, setSortBy] = useState('stars'); // 'stars' | 'recent'
+  const [sortBy, setSortBy] = useState('stars'); // 'stars' | 'recent' | 'signal'
   // W4 §3.5: Ecosystems canvas pan offset (pointer/touch, §B pattern)
   const [ecoPan, setEcoPan] = useState({ x: 0, y: 0 });
   // W3 §2.1: pack-time inverted index for ranked search (fetched alongside the
@@ -236,8 +240,8 @@ export default function App() {
         if (!res.ok) throw new Error('Packed index not found, falling back');
         return res.json();
       })
-      .then((packed) => {
-        const { domains, subsystems, languages, artifacts, rows } = packed;
+      .then((data) => {
+        const { domains, subsystems, languages, artifacts, rows } = data;
         const unpacked = rows.map((r, rowIdx) => {
           const domName = domains[r[6]] || "Other / General";
           const act = Array.isArray(data.activity) ? data.activity[rowIdx] : null;
@@ -268,6 +272,9 @@ export default function App() {
             activity: act && act[0] ? { status: act[0], pushedAt: act[1] } : null,
             // W3 §2.7: interned tier parallel to rows (permissive|copyleft|...)
             licenseTier: Array.isArray(data.license_tiers) ? data.license_tiers[rowIdx] : null,
+            // W4 §3.4: composite Signal aligned with rows (0 when absent on
+            // legacy artefacts, so the slider degrades to "off", never NaN).
+            signal: Array.isArray(data.signal) ? (data.signal[rowIdx] || 0) : 0,
             // W3 §2.3: memoized search corpus — built ONCE per unpack instead of
             // per keystroke; §2.2: includes primitives/license/compatibility/topics.
             searchCorpus: [
@@ -488,11 +495,14 @@ export default function App() {
     topic: selectedTopic,
     licenseTier: selectedLicenseTier,
     minStars,
+    // W4 §3.4: was computed by the slider but never forwarded, so the control
+    // moved without affecting the result set.
+    minSignal,
     hideDormant,
     sortBy,
   }), [debouncedQuery, selectedDomain, selectedSubsystem, selectedArtifact,
       selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier,
-      minStars, hideDormant, sortBy]);
+      minStars, minSignal, hideDormant, sortBy]);
   const optsKey = useMemo(() => JSON.stringify(filterOpts), [filterOpts]);
 
   // hand the parsed packed payload to the worker once (structured clone)
@@ -1405,6 +1415,7 @@ export default function App() {
                     >
                       <option value="stars">Most stars</option>
                       <option value="recent">Recently pushed</option>
+                      <option value="signal">Highest signal</option>
                     </select>
                   </div>
                   <div>

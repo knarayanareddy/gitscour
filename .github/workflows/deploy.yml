@@ -73,6 +73,15 @@ jobs:
         working-directory: web
         run: npm ci
 
+      # Undeclared-identifier guard (`no-undef`). Both runtime-breaking bugs
+      # this repo shipped were undeclared identifiers in App.jsx (`data` in the
+      # packed-index unpack, `minSignal` in the Min Signal slider). `vite build`
+      # only parses, and the smoke test cannot reach them because it
+      # re-implements App's decode rather than importing it.
+      - name: Lint (no-undef guard)
+        working-directory: web
+        run: npm run lint
+
       - name: Build Web Explorer
         working-directory: web
         run: npm run build

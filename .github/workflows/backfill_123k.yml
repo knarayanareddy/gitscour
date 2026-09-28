@@ -112,6 +112,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: web
+        run: npm ci
+
+      # Same `no-undef` gate as deploy.yml. deploy.yml only builds `main` and
+      # `arena/*`, so without this step a JS regression could ride in on a
+      # `backfill/*` branch that no other workflow compiles.
+      - name: Lint (no-undef guard)
+        working-directory: web
+        run: npm run lint
 
       - name: Smoke test regenerated artefacts
         run: node web/smoke-test.mjs web/public
