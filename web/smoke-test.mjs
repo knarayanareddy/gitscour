@@ -76,11 +76,16 @@ const warm = rankOnce('raft');
 check(rankOnce('raft').map(([o]) => o).join(',') === warm.map(([o]) => o).join(','),
   'rankQuery is not deterministic');
 
+// Hard-fail ceiling for ranked queries (G, O.7): far above the measured
+// medians (0.1-1.3 ms in the dev sandbox, 3.1-3.8 ms on slower runners) so CI
+// variance never flakes, while still catching a real regression (orders of
+// magnitude, not percent). The medians are reported on every run.
+const RANK_CEILING_MS = 50;
 const queryGates = [
-  // [query, min hits, ms budget]
-  ['sql vector', 20, 5],
-  ['simd', 100, 5],
-  ['raft', 150, 5],   // exact-token matches only (old substring's 654 included draft/craft)
+  // [query, min hits, hard-fail ceiling]
+  ['sql vector', 20, RANK_CEILING_MS],
+  ['simd', 100, RANK_CEILING_MS],
+  ['raft', 150, RANK_CEILING_MS], // exact-token matches only (old substring's 654 included draft/craft)
 ];
 const queryReport = [];
 for (const [q, minHits, budget] of queryGates) {
@@ -114,6 +119,7 @@ const bothTokens = sv.filter(([o]) => {
 }).length;
 check(bothTokens >= 4, `sql vector top-10: only ${bothTokens}/10 rows mention both tokens`);
 console.log(`\nsearch gates: ${queryReport.join(' | ')}`);
+console.log(`  latency: per-query medians above | hard-fail ceiling ${RANK_CEILING_MS}ms/query (>=13x worst measured median)`);
 console.log(`  relevance: duckdb top-3 all duckdb ✓ | sql+vector both-token top-10: ${bothTokens}/10`);
 
 // 4. W3 §2.4 — edges invariants

@@ -193,16 +193,33 @@ so documentation quotes final, measured behavior.
 
 ## G. O.7 — README overclaims audit
 
-- [ ] Search performance: smoke **asserts a bound** on ranked queries (hard-fail ceiling far
-      above the measured 3.1–3.8 ms so CI variance never flakes; measured value reported) and
-      README states the measured numbers with the smoke citation — no unqualified "sub-5ms"
-- [ ] `README:135`: reconcile is no longer "optional" — it runs in the monthly backfill CI
-      before `rebuild_catalog` (R1.6); wording reflects the workflow
-- [ ] `docs/AI_TOOLS_METHODOLOGY_BLUEPRINT.md`: explicit cross-reference that the standing
-      zero-LLM constraint applies to any future phase built from it (feature-detect wording
-      per §4: "if that phase proceeds")
-- *Accept:* every performance/behavior claim in README is either smoke-asserted or linked to
-  the gate that keeps it true.
+- [x] `web/smoke-test.mjs`: `RANK_CEILING_MS = 50` hard-fail ceiling per ranked
+      query (~13× the worst measured 3.8 ms, ~38× the 0.1–1.3 ms seen in this
+      sandbox) — replaces the old tight `5` ms budget that could flake under CI
+      variance; per-query medians still measured (`performance.now()`, median
+      of 5, warm-up + determinism check kept) and a new output line reports
+      the ceiling next to them. README gains a **Search latency** bullet:
+      0.1–3.8 ms median per query **with the `web/smoke-test.mjs` citation**
+      (reports medians every build, hard-fails >50 ms) — no unqualified
+      "sub-5ms" anywhere in README (grep: 0); the blueprint's "Sub-5ms" target
+      is now qualified with the same measured numbers + gate link
+- [x] README reconcile paragraph rewritten: `reconcile_stale_rows.py` **runs
+      automatically in the monthly backfill CI** (`backfill_123k.yml`, step
+      "Reconcile stale rows", workflow lines 67→76) immediately **before**
+      `rebuild_catalog.py` (R1.6); local pre-pass framing kept as secondary —
+      "optional" is gone (grep: 0)
+- [x] `docs/AI_TOOLS_METHODOLOGY_BLUEPRINT.md`: (§1.2) new **Zero-LLM
+      constraint (standing)** bullet — zero model calls, deterministic,
+      enforced by `pipeline/check_zero_llm.py`, "applies to any future phase
+      built from this blueprint; **if that phase proceeds**, its agent
+      personas structure authoring only, never runtime behavior"; (§4) a
+      matching blockquote standing-constraint header directly above the five
+      personas
+- *Accept:* README performance claims are gate-linked: Search latency bullet →
+  smoke ceiling/medians ✓; faceted filtering / SQL Studio / history bullets →
+  smoke assertions ✓; zero-LLM → `check_zero_llm` CI ✓. Gates: **153/153**,
+  smoke exit 0 (with new ceiling line), zero-LLM 46 files clean, verify 0,
+  both YAMLs parse.
 
 ---
 

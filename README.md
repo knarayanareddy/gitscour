@@ -21,6 +21,7 @@ GitScour eliminates traditional backend database costs by combining static pre-i
 
 2. **Web Explorer & In-Browser SQL Studio (`web/`):**
    * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, languages, license tiers, and pack-time **topics**.
+   * **Search latency:** ranked tokenized search over the pack-time index measures **0.1–3.8 ms median per query** — `web/smoke-test.mjs` reports the medians on every build and hard-fails any ranked query above **50 ms** (a ceiling set far above measured so CI variance never flakes), so the claim is gate-asserted, not aspirational.
    * **Topic cloud & Ecosystems tab:** per-domain topic cloud from `facets.topics_by_domain`, plus a co-occurrence graph (`topic-map.json`: term frequency >= 25, pair count >= 10, top-10 edges per topic) built at pack time by `pipeline/topicmap.py` — click a node to filter the catalog.
    * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with one-click CSV export; mutation statements (`INSERT`, `UPDATE`, `DROP`, ...) are rejected — the console is read-only over Tier-1.
    * **History & Rising:** per-rebuild star snapshots (`history/<date>-stars.json`, byte-identical same-day re-runs) diffed into `changelog.json` — added/removed rows and |delta| movers feed the *Rising* tab, the Explorer shelf, and the inspector's momentum sparkline. One snapshot only = honest seeded-baseline note, never invented deltas.
@@ -136,10 +137,12 @@ python3 pipeline/rebuild_catalog.py --harvest harvest/raw_repos.jsonl
 python3 pipeline/verify_catalog.py
 ```
 
-`reconcile_stale_rows.py` is an optional pass in front of `rebuild_catalog.py`: it
-resolves catalog rows the sweep did not match, drops deleted / taken-down /
-sub-threshold repos, and collapses renames so one project is never listed twice
-under its old and new `owner/name`.
+`reconcile_stale_rows.py` runs automatically in the monthly backfill CI
+(`backfill_123k.yml`, step "Reconcile stale rows") immediately **before**
+`rebuild_catalog.py` (R1.6): it resolves catalog rows the sweep did not match,
+drops deleted / taken-down / sub-threshold repos, and collapses renames so one
+project is never listed twice under its old and new `owner/name`. It can also
+be run locally as a pass in front of `rebuild_catalog.py`.
 
 ### 5. Run the test suite
 ```bash
