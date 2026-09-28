@@ -13,7 +13,11 @@ GitScour eliminates traditional backend database costs by combining static pre-i
 
 1. **Ingestion & Classification Pipeline (`pipeline/`):**
    * Deterministic taxonomy engine classifying repositories across 4 orthogonal dimensions:
-     * **Artifact Type:** `System Engine`, `Library / SDK`, `Framework`, `Developer Tool / CLI`, `Curated List / Docs`.
+     * **Artifact Type:** `Library / SDK`, `Developer Tool / CLI`, `Framework`,
+       `System Service / Engine`, `Curated List / Docs`, `Template / Starter`, and
+       `Application / Service` — the fallback bucket when no rule fires, which is
+       why it is the largest class in the current catalogue (70.7%); narrowing it
+       below 50% on a live re-score is the last open W2 acceptance criterion.
      * **Domain / Genre:** `Databases & Storage`, `AI & Machine Learning`, `Cloud & Infrastructure`, `Security & Cryptography`, `Developer Tooling & Compilers`, `Web Platforms`.
      * **Architectural Subsystem:** `Vector Database`, `Distributed SQL Engine`, `LLM Inference & Serving`, `Service Mesh`, etc.
      * **Primary Language & Runtime**.
@@ -23,7 +27,12 @@ GitScour eliminates traditional backend database costs by combining static pre-i
    * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, languages, license tiers, and pack-time **topics**.
    * **Search latency:** ranked tokenized search over the pack-time index measures **0.1–3.8 ms median per query** — `web/smoke-test.mjs` reports the medians on every build and hard-fails any ranked query above **50 ms** (a ceiling set far above measured so CI variance never flakes), so the claim is gate-asserted, not aspirational.
    * **Topic cloud & Ecosystems tab:** per-domain topic cloud from `facets.topics_by_domain`, plus a co-occurrence graph (`topic-map.json`: term frequency >= 25, pair count >= 10, top-10 edges per topic) built at pack time by `pipeline/topicmap.py` — click a node to filter the catalog.
-   * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with one-click CSV export; mutation statements (`INSERT`, `UPDATE`, `DROP`, ...) are rejected — the console is read-only over Tier-1.
+   * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries
+     (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with one-click CSV export; mutation
+     statements (`INSERT`, `UPDATE`, `DROP`, ...) are rejected — the console is
+     read-only over Tier-1. The guard validates **every** `;`-separated statement, not
+     just the leading one: `db.exec` runs the whole script, so a prefix-only check let
+     `SELECT 1; DROP TABLE repos` through.
    * **History & Rising:** per-rebuild star snapshots (`history/<date>-stars.json`, byte-identical same-day re-runs) diffed into `changelog.json` — added/removed rows and |delta| movers feed the *Rising* tab, the Explorer shelf, and the inspector's momentum sparkline. One snapshot only = honest seeded-baseline note, never invented deltas.
    * **Inspire (blueprints):** eight curated blueprints in `web/src/blueprints.json` (seeds verified against the packed catalog) completed by the deterministic `blueprint-engine.mjs`; stack generation is reproducible from the URL `?seed=` parameter (mulberry32 — no `Math.random`). Pool synergy is the **mean over pair scores** from `synergy-core.mjs`, so 2-slot and 6-slot stacks are comparable, with a protocol matrix derived from `COMPATIBILITY_RULES` (Postgres-compatible <-> pg drivers, OpenAI-compatible <-> OpenAI clients, ...).
 
@@ -39,8 +48,15 @@ GitScour eliminates traditional backend database costs by combining static pre-i
      unit tests, `verify_catalog.py`, the repo-wide **zero-LLM guardrail**
      (`pipeline/check_zero_llm.py` — the build fails if any scanned source wires up an
      LLM provider SDK, import, or call form; every feature ships deterministic and
-     rule-based with zero model calls), then the artefact smoke test
+     rule-based with zero model calls), an **undeclared-identifier guard**
+     (`npm run lint` → ESLint `no-undef` over `web/src`), then the artefact smoke test
      (`web/smoke-test.mjs`).
+   * The lint step is the gate that matters most for the UI: `vite build` only
+     *parses*, and the smoke test exercises the decode by re-implementing it, so an
+     undeclared identifier in a component is invisible to both until a browser
+     throws. `no-undef` flagged exactly the nine sites of the two runtime-breaking
+     bugs this repo shipped (an unbound `data` in the packed-index unpack and an
+     undeclared `minSignal` in the Min Signal slider) and nothing else.
 
 4. **Signal score (pack-time, auditable):** one 0–100 integer per repository written
    to `catalog-packed.json` as the parallel `signal` array and used by the Explorer's
