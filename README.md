@@ -106,8 +106,12 @@ older version of this script did.
 ### 3. Fetch Repositories via GitHub GraphQL API
 ```bash
 export GITHUB_TOKEN="your_pat_token"
-python3 pipeline/ingest.py
+python3 pipeline/harvest_enumerate.py --min-stars 500 \
+  --output harvest/raw_repos.jsonl --manifest harvest/windows_done.jsonl
 ```
+(The single-query `ingest.py` this step used to run is archived in `legacy/`;
+it was capped by GitHub's 1,000-result search limit — step 4 explains the
+window-partitioned sweep that replaced it.)
 
 ### 4. Full backfill (enumerate every repo above a star threshold)
 
@@ -154,7 +158,7 @@ completeness guarantees (partial-window detection, probe-failure abort,
 | `rebuild_catalog.py` | Single consolidation point for all three artefacts (`catalog-packed.json`, `catalog-index.json`, `data/details/*.json`) |
 | `verify_catalog.py` | Cross-artefact integrity gate (ids, encodings, star floor, shard coverage) |
 | `reconcile_stale_rows.py` | Live re-validation of rows missing from the current universe |
-| `harvest_scale.py`, `backfill_worker.py`, `scale_50k.py` | Earlier samplers, capped at ~1k records per window; retained as reference |
-| `pack_index.py`, `shard_manager.py` | Superseded artefact writers kept for reference -- they each rebuild only *part* of the set, which is how the index and shards drifted apart |
+| `legacy/harvest_scale.py`, `legacy/backfill_worker.py`, `legacy/scale_50k.py` | Earlier samplers, capped at ~1k records per window; archived in `legacy/` (see `legacy/README.md`) |
+| `legacy/pack_index.py`, `legacy/shard_manager.py` | Superseded artefact writers, archived in `legacy/` -- they each rebuilt only *part* of the set, which is how the index and shards drifted apart |
 
 > `scale_50k.py` re-derives ids with `abs(hash(url))`. Python salts string hashing per process, so re-running it rewrites every id in the catalog and breaks Tier-2 lookups; `rebuild_catalog.py` assigns stable ids inside JavaScript's exact-integer range instead.

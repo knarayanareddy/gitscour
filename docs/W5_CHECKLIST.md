@@ -160,14 +160,36 @@ so documentation quotes final, measured behavior.
 
 ## F. O.6 — Legacy harvester archive
 
-- [ ] `git mv` the 9 reference-only files to `legacy/` + `legacy/README.md`: what each did,
-      why it is frozen, pointer to the salted-hash footgun warning in `scale_50k` (kept, not
-      deleted)
-- [ ] README runbook no longer instructs `python3 pipeline/ingest.py` (line 109) — point at
-      `pipeline/harvest_enumerate.py` (the live path); legacy table row (line 158) updated to
-      `legacy/`
-- [ ] Grep gate: no reference outside `legacy/` + docs; tests/CI unaffected (0 imports today)
-- *Accept:* `pipeline/` contains only live code; the runbook executes as written.
+- [x] `git mv` done — `legacy/` now holds exactly the nine files (`ingest`,
+      `harvest_scale`, `backfill_worker`, `scale_50k`, `pack_index`,
+      `shard_manager`, `harvest_20k`, `harvest_phase1`, `fast_harvest`) +
+      `legacy/README.md`: per-file "what it did / why frozen" table, the
+      salted-hash footgun spelled out (scale_50k's `abs(hash(url))` ids at
+      lines 29/84/107/130/155 re-salt per process and would break every
+      Tier-2 lookup — file **kept, not deleted**, warning also still in the
+      main README), and the note that the archive preserves the `raw`-dict
+      contract `harvest_enumerate` documents. `pipeline/` down to its 16 live
+      scripts; moved files untouched (pure `git mv`)
+- [x] README runbook: step 3 now runs `python3 pipeline/harvest_enumerate.py`
+      with explicit relative `--output/--manifest` (mkdirs its parent), with a
+      note pointing the old single-query `ingest.py` at `legacy/`; artefact
+      table rows (former lines 157–158) now read `legacy/…` + link
+      `legacy/README.md`. Grep: **0** `python3 pipeline/<archived>.py`
+      instructions; every `python3 pipeline/…` the runbook names (generate_seed,
+      harvest_enumerate, rebuild_catalog, verify_catalog) exists in-tree
+- [x] Grep gate = `tests/test_legacy_archive.py` (5 pins): legacy/ contents ==
+      the nine + README exactly; none of the nine under `pipeline/`; code +
+      workflow scan finds **only `legacy/<file>` pointers** (strip them ⇒ zero
+      remainder) and **zero imports** of archived modules — this forced
+      `legacy/`-prefix rewrites of 6 docstring/comment mentions
+      (harvest_enumerate ×3, rebuild_catalog ×3) + the `deploy.yml` comment;
+      README instruction + table assertions. `LEGACY_BOUND` in
+      `tests/test_repos_alias.py` emptied to `set()` in the same commit
+      (allowlist == actual == ∅, grep-pin now absolute). CI unaffected:
+      `check_zero_llm` already excludes `legacy/` (SKIP_DIRS) — 46 files clean
+- *Accept:* `pipeline/` = 16 live files, none archived ✓; runbook commands all
+  resolve to existing live scripts ✓; **153/153** tests, verify 0
+  (123,153 repos), both YAMLs parse, build 4.12s + smoke exit 0.
 
 ## G. O.7 — README overclaims audit
 

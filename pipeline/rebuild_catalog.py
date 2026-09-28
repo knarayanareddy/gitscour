@@ -1,7 +1,7 @@
 """Merge a raw harvest into the GitScour catalog and regenerate every artefact.
 
-This is the consolidation stage that the existing scripts lack: `harvest_scale.py`
-and `backfill_worker.py` write shards directly, and `pack_index.py` rebuilds the
+This is the consolidation stage that the existing scripts lack: `legacy/harvest_scale.py`
+and `legacy/backfill_worker.py` write shards directly, and `legacy/pack_index.py` rebuilds the
 packed index from `catalog-index.json`.  That coupling is why the checked-in
 `catalog-index.json` (1,276 records) had silently drifted out of sync with
 `catalog-packed.json` (51,192 records).
@@ -488,7 +488,7 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
 
     # ---------------- Tier 1: readable fallback index ----------------
     # Readable fallback for the loader path that only runs if the packed index
-    # fails to fetch, plus the input `pack_index.py` expects. Dropped from 18 to
+    # fails to fetch, plus the input `legacy/pack_index.py` expects. Dropped from 18 to
     # 16 keys: `full_name` is derivable from owner+name and `pushed_at` lives in
     # Tier 2, which together save ~18 MB per copy at this catalog size.
     tier1 = []

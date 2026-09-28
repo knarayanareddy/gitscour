@@ -29,15 +29,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "web" / "public"
 
-# Reference-only harvesters/artefact writers scheduled to move to legacy/ in
-# W5 F. After F lands, shrink this to an empty set (grep-pin becomes absolute).
-LEGACY_BOUND = {
-    "fast_harvest.py",
-    "harvest_20k.py",
-    "harvest_phase1.py",
-    "harvest_scale.py",
-    "shard_manager.py",
-}
+# W5 F moved every reference-only harvester/artefact writer to legacy/, so
+# nothing under the scanned trees mentions the twin any more; the grep-pin is
+# now absolute (kept empty deliberately — tests/test_legacy_archive.py pins the
+# archive itself).
+LEGACY_BOUND = set()
 
 TWIN_NAME = re.compile(r"(?<![A-Za-z0-9_])repos\.json\b")
 CODE_SUFFIXES = {".py", ".js", ".jsx", ".mjs"}

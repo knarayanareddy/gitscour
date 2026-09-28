@@ -40,7 +40,7 @@ jobs:
         run: python -m pytest tests/ -q
 
       # Deploys are reproducible: this workflow publishes exactly the catalog
-      # committed to the branch. It used to run `pipeline/harvest_scale.py`
+      # committed to the branch. It used to run `legacy/harvest_scale.py`
       # here, which rebuilt the Tier-1 fallback index and every Tier-2 shard
       # from `web/public/repos.json`. That file only carried a stale subset of
       # the catalog, so a scheduled deploy silently shrank the deployed shards

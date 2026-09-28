@@ -2,11 +2,11 @@
 
 Why this script exists
 ----------------------
-``backfill_worker.py`` and ``harvest_scale.py`` both drive the GraphQL *search*
+``legacy/backfill_worker.py`` and ``legacy/harvest_scale.py`` both drive the GraphQL *search*
 endpoint, which GitHub truncates at 1,000 results per query regardless of how
 deep you paginate.  Those scripts sweep a fixed list of ~12 coarse star windows,
 so a single run can capture at most ``12 x 1000 = 12,000`` records (and
-``harvest_scale.py`` only paginates 2 pages of 40, i.e. ~960 records).  They are
+``legacy/harvest_scale.py`` only paginates 2 pages of 40, i.e. ~960 records).  They are
 therefore structurally unable to close a ~72k-record gap, no matter how many
 times they are re-run.
 
@@ -28,7 +28,7 @@ sampling it:
    file at startup, so a resume never re-harvests or re-appends (W5 O.1).
 
 Output: one raw record per line (JSON) in ``--output``, shaped exactly like the
-``raw`` dict inside ``backfill_worker.py`` so ``taxonomy_engine`` can consume it
+``raw`` dict inside ``legacy/backfill_worker.py`` so ``taxonomy_engine`` can consume it
 unchanged.
 """
 
