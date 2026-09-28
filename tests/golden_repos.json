@@ -1,0 +1,3402 @@
+[
+  {
+    "owner": "ollama",
+    "name": "ollama",
+    "description": "Get up and running with Llama 3.3, Mistral, Gemma 2, and other large language models.",
+    "topics": [
+      "llm",
+      "chatbot",
+      "local-ai",
+      "llama"
+    ],
+    "language": "Go",
+    "stars": 95000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Application / Service",
+      "subsystem": "LLM Inference & Serving"
+    }
+  },
+  {
+    "owner": "nginx",
+    "name": "nginx",
+    "description": "nginx is a high performance web server, reverse proxy, load balancer and HTTP cache.",
+    "topics": [
+      "nginx",
+      "reverse-proxy",
+      "load-balancer",
+      "proxy"
+    ],
+    "language": "C",
+    "stars": 24000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "System Service / Engine",
+      "subsystem": "Service Mesh & API Gateway"
+    }
+  },
+  {
+    "owner": "microsoft",
+    "name": "vscode",
+    "description": "Visual Studio Code. Code editing. Redefined.",
+    "topics": [
+      "editor",
+      "ide",
+      "electron",
+      "typescript"
+    ],
+    "language": "TypeScript",
+    "stars": 165000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Application / Service",
+      "subsystem": "General Developer Tooling"
+    }
+  },
+  {
+    "owner": "rails",
+    "name": "rails",
+    "description": "Ruby on Rails is a web-application framework that makes it easy to write clean, practical web applications.",
+    "topics": [
+      "rails",
+      "ruby",
+      "web-framework"
+    ],
+    "language": "Ruby",
+    "stars": 55000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "spring-projects",
+    "name": "spring-boot",
+    "description": "Spring Boot makes it easy to create stand-alone, production-grade Spring based applications that you can run.",
+    "topics": [
+      "spring-boot",
+      "java",
+      "framework"
+    ],
+    "language": "Java",
+    "stars": 74000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "grafana",
+    "name": "grafana",
+    "description": "Grafana is the open and composable observability and data visualization platform.",
+    "topics": [
+      "grafana",
+      "metrics",
+      "dashboard",
+      "observability"
+    ],
+    "language": "TypeScript",
+    "stars": 66000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Observability & Tracing"
+    }
+  },
+  {
+    "owner": "prometheus",
+    "name": "prometheus",
+    "description": "The monitoring system and time series database.",
+    "topics": [
+      "prometheus",
+      "monitoring",
+      "time-series",
+      "alertmanager"
+    ],
+    "language": "Go",
+    "stars": 55000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "System Service / Engine",
+      "subsystem": "Observability & Tracing"
+    }
+  },
+  {
+    "owner": "curl",
+    "name": "curl",
+    "description": "A command line tool and library for transferring data with URLs.",
+    "topics": [
+      "curl",
+      "cli",
+      "http",
+      "command-line"
+    ],
+    "language": "C",
+    "stars": 36000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "FFmpeg",
+    "name": "FFmpeg",
+    "description": "A complete, cross-platform solution to record, convert and stream audio and video.",
+    "topics": [
+      "ffmpeg",
+      "multimedia",
+      "video",
+      "audio"
+    ],
+    "language": "C",
+    "stars": 45000,
+    "expect": {
+      "domain": "Other / General",
+      "artifact": "Application / Service",
+      "subsystem": "General Components"
+    }
+  },
+  {
+    "owner": "kubernetes",
+    "name": "kubectl",
+    "description": "A command line interface for Kubernetes.",
+    "topics": [
+      "kubernetes",
+      "cli",
+      "kubectl",
+      "go"
+    ],
+    "language": "Go",
+    "stars": 11000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "redis",
+    "name": "redis",
+    "description": "Redis is the world's fastest in-memory database and cache.",
+    "topics": [
+      "redis",
+      "database",
+      "cache",
+      "in-memory"
+    ],
+    "language": "C",
+    "stars": 67000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Key-Value & In-Memory Store"
+    }
+  },
+  {
+    "owner": "apollographql",
+    "name": "graphql-server",
+    "description": "A GraphQL API server for your data.",
+    "topics": [
+      "graphql",
+      "api",
+      "server"
+    ],
+    "language": "TypeScript",
+    "stars": 2000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "System Service / Engine",
+      "subsystem": "API Architecture (GraphQL/gRPC)"
+    }
+  },
+  {
+    "owner": "cross-toolkit",
+    "name": "repo-farm",
+    "description": "A repository farm utility",
+    "topics": [],
+    "language": "Python",
+    "stars": 800,
+    "expect": {
+      "domain": "Other / General",
+      "subsystem": "General Components"
+    }
+  },
+  {
+    "owner": "scripter",
+    "name": "themost",
+    "description": "Scripts for the most common automation tasks",
+    "topics": [],
+    "language": "Python",
+    "stars": 900,
+    "expect": {
+      "domain": "Other / General"
+    }
+  },
+  {
+    "owner": "mailer",
+    "name": "emailer",
+    "description": "Transactional email delivery helper",
+    "topics": [],
+    "language": "Ruby",
+    "stars": 1200,
+    "expect": {
+      "domain": "Other / General"
+    }
+  },
+  {
+    "owner": "rails-extras",
+    "name": "rails-assets",
+    "description": "Asset helpers for Rails applications",
+    "topics": [
+      "rails"
+    ],
+    "language": "Ruby",
+    "stars": 700,
+    "expect": {
+      "domain": "Web Platforms & Frameworks"
+    }
+  },
+  {
+    "owner": "oss-lab",
+    "name": "gpt-oss-lab",
+    "description": "Utilities for the public release",
+    "topics": [],
+    "language": "Python",
+    "stars": 600,
+    "expect": {
+      "domain": "Other / General"
+    }
+  },
+  {
+    "owner": "means",
+    "name": "email-means",
+    "description": "A minimalist mail routing gateway",
+    "topics": [],
+    "language": "Go",
+    "stars": 750,
+    "expect": {
+      "domain": "Other / General"
+    }
+  },
+  {
+    "owner": "rpi",
+    "name": "arm-rpi-toolkit",
+    "description": "GPIO toolkit for ARM single board computers",
+    "topics": [
+      "embedded",
+      "arm",
+      "raspberry-pi"
+    ],
+    "language": "C",
+    "stars": 4000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level"
+    }
+  },
+  {
+    "owner": "graphql-org",
+    "name": "graphql-reference",
+    "description": "A reference implementation of the GraphQL specification server side.",
+    "topics": [
+      "graphql",
+      "specification"
+    ],
+    "language": "TypeScript",
+    "stars": 1500,
+    "expect": {
+      "domain": "Web Platforms & Frameworks"
+    }
+  },
+  {
+    "owner": "postgres",
+    "name": "postgres",
+    "description": "Object-relational database system.",
+    "topics": [
+      "database",
+      "sql",
+      "postgresql",
+      "relational"
+    ],
+    "language": "C",
+    "stars": 16000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "General Databases"
+    }
+  },
+  {
+    "owner": "ClickHouse",
+    "name": "ClickHouse",
+    "description": "ClickHouse is a fast open-source column-oriented database management system.",
+    "topics": [
+      "clickhouse",
+      "olap",
+      "columnar",
+      "sql",
+      "analytics"
+    ],
+    "language": "C++",
+    "stars": 38000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Analytical & Columnar (OLAP)"
+    }
+  },
+  {
+    "owner": "duckdb",
+    "name": "duckdb",
+    "description": "DuckDB is an in-process SQL OLAP database management system",
+    "topics": [
+      "olap",
+      "sql",
+      "database",
+      "analytics",
+      "embedded"
+    ],
+    "language": "C++",
+    "stars": 25000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Analytical & Columnar (OLAP)"
+    }
+  },
+  {
+    "owner": "mongodb",
+    "name": "mongo",
+    "description": "The database for modern applications",
+    "topics": [
+      "database",
+      "nosql",
+      "document-database"
+    ],
+    "language": "C++",
+    "stars": 26000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Document & Graph Store"
+    }
+  },
+  {
+    "owner": "timescale",
+    "name": "timescaledb",
+    "description": "An open-source time-series database",
+    "topics": [
+      "time-series",
+      "database",
+      "postgresql",
+      "sql"
+    ],
+    "language": "C",
+    "stars": 16000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Time-Series Database"
+    }
+  },
+  {
+    "owner": "influxdata",
+    "name": "influxdb",
+    "description": "Scalable datastore for metrics, events, and real-time analytics",
+    "topics": [
+      "time-series",
+      "database",
+      "iot",
+      "metrics"
+    ],
+    "language": "Go",
+    "stars": 28000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Time-Series Database"
+    }
+  },
+  {
+    "owner": "neo4j",
+    "name": "neo4j",
+    "description": "The world's leading Graph Database",
+    "topics": [
+      "graph",
+      "database",
+      "graph-database"
+    ],
+    "language": "Java",
+    "stars": 13000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Document & Graph Store"
+    }
+  },
+  {
+    "owner": "milvus-io",
+    "name": "milvus",
+    "description": "A cloud-native vector database",
+    "topics": [
+      "vector-database",
+      "vector-search",
+      "embeddings",
+      "ai"
+    ],
+    "language": "Go",
+    "stars": 31000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Vector Database"
+    }
+  },
+  {
+    "owner": "qdrant",
+    "name": "qdrant",
+    "description": "Qdrant - High-performance, massive-scale Vector Database and Vector Search Engine written in Rust",
+    "topics": [
+      "vector-search",
+      "vector-database",
+      "embeddings",
+      "hnsw"
+    ],
+    "language": "Rust",
+    "stars": 22000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Vector Database"
+    }
+  },
+  {
+    "owner": "pgvector",
+    "name": "pgvector",
+    "description": "Open-source vector similarity extension for PostgreSQL",
+    "topics": [
+      "postgresql",
+      "vector",
+      "pgvector",
+      "similarity-search"
+    ],
+    "language": "C",
+    "stars": 13000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "Library / SDK",
+      "subsystem": "Vector Database"
+    }
+  },
+  {
+    "owner": "etcd-io",
+    "name": "etcd",
+    "description": "Distributed reliable key-value store",
+    "topics": [
+      "etcd",
+      "key-value",
+      "raft",
+      "distributed"
+    ],
+    "language": "Go",
+    "stars": 47000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Storage Engine & Consensus"
+    }
+  },
+  {
+    "owner": "valkey-io",
+    "name": "valkey",
+    "description": "A new project to resume the development of the open source Redis fork",
+    "topics": [
+      "redis",
+      "cache",
+      "key-value",
+      "in-memory"
+    ],
+    "language": "C",
+    "stars": 16000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Key-Value & In-Memory Store"
+    }
+  },
+  {
+    "owner": "elastic",
+    "name": "elasticsearch",
+    "description": "Free and open, distributed, RESTful search engine",
+    "topics": [
+      "elasticsearch",
+      "search-engine",
+      "nosql",
+      "database"
+    ],
+    "language": "Java",
+    "stars": 71000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "cassandra",
+    "description": "Apache Cassandra is a highly scalable second-generation distributed database.",
+    "topics": [
+      "database",
+      "distributed",
+      "cql"
+    ],
+    "language": "Java",
+    "stars": 8000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Distributed SQL Engine"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "spark",
+    "description": "Unified engine for large-scale data analytics",
+    "topics": [
+      "bigdata",
+      "analytics",
+      "distributed"
+    ],
+    "language": "Scala",
+    "stars": 40000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Analytical & Columnar (OLAP)"
+    }
+  },
+  {
+    "owner": "facebook",
+    "name": "rocksdb",
+    "description": "A fast and efficient key-value storage library",
+    "topics": [
+      "storage",
+      "key-value",
+      "embedded",
+      "c-plus-plus"
+    ],
+    "language": "C++",
+    "stars": 28000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "Library / SDK",
+      "subsystem": "Key-Value & In-Memory Store"
+    }
+  },
+  {
+    "owner": "vllm-project",
+    "name": "vllm",
+    "description": "A high-throughput and memory-efficient inference and serving engine for LLMs",
+    "topics": [
+      "llm",
+      "inference",
+      "vllm",
+      "gpu",
+      "serving"
+    ],
+    "language": "Python",
+    "stars": 35000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "System Service / Engine",
+      "subsystem": "LLM Inference & Serving"
+    }
+  },
+  {
+    "owner": "ggerganov",
+    "name": "llama.cpp",
+    "description": "LLM inference in C/C++ with zero dependencies",
+    "topics": [
+      "llm",
+      "llama",
+      "inference",
+      "gguf"
+    ],
+    "language": "C++",
+    "stars": 72000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "subsystem": "LLM Inference & Serving"
+    }
+  },
+  {
+    "owner": "huggingface",
+    "name": "transformers",
+    "description": "State-of-the-art Machine Learning for PyTorch, TensorFlow, and JAX",
+    "topics": [
+      "machine-learning",
+      "deep-learning",
+      "pytorch",
+      "tensorflow",
+      "nlp"
+    ],
+    "language": "Python",
+    "stars": 132000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "subsystem": "NLP & Speech Recognition"
+    }
+  },
+  {
+    "owner": "pytorch",
+    "name": "pytorch",
+    "description": "Tensors and dynamic neural networks in Python with strong GPU acceleration",
+    "topics": [
+      "pytorch",
+      "deep-learning",
+      "machine-learning",
+      "neural-networks"
+    ],
+    "language": "Python",
+    "stars": 84000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "subsystem": "General AI"
+    }
+  },
+  {
+    "owner": "openai",
+    "name": "whisper",
+    "description": "Speech to text",
+    "topics": [
+      "speech-recognition",
+      "machine-learning",
+      "audio",
+      "transcription"
+    ],
+    "language": "Python",
+    "stars": 72000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Application / Service",
+      "subsystem": "NLP & Speech Recognition"
+    }
+  },
+  {
+    "owner": "AUTOMATIC1111",
+    "name": "stable-diffusion-webui",
+    "description": "A gradio web UI for Stable Diffusion",
+    "topics": [
+      "stable-diffusion",
+      "gradio",
+      "web-ui",
+      "image-generation"
+    ],
+    "language": "Python",
+    "stars": 145000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Application / Service",
+      "subsystem": "Computer Vision & Multimodal"
+    }
+  },
+  {
+    "owner": "langchain-ai",
+    "name": "langchain",
+    "description": "Build context-aware reasoning applications with LLMs and agents",
+    "topics": [
+      "llm",
+      "agents",
+      "langchain",
+      "rag"
+    ],
+    "language": "Python",
+    "stars": 95000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Application / Service",
+      "subsystem": "Autonomous Agents & Workflows"
+    }
+  },
+  {
+    "owner": "run-llama",
+    "name": "llama_index",
+    "description": "LlamaIndex is a data framework for your LLM applications",
+    "topics": [
+      "llm",
+      "rag",
+      "agents",
+      "data-framework"
+    ],
+    "language": "Python",
+    "stars": 37000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Framework",
+      "subsystem": "Autonomous Agents & Workflows"
+    }
+  },
+  {
+    "owner": "tensorflow",
+    "name": "tensorflow",
+    "description": "An open source machine learning framework for everyone.",
+    "topics": [
+      "machine-learning",
+      "deep-learning",
+      "artificial-intelligence"
+    ],
+    "language": "C++",
+    "stars": 186000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Framework"
+    }
+  },
+  {
+    "owner": "langgenius",
+    "name": "dify",
+    "description": "Dify is an LLM app development platform.",
+    "topics": [
+      "llm",
+      "ai",
+      "rag",
+      "chatbot",
+      "agents"
+    ],
+    "language": "TypeScript",
+    "stars": 60000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Application / Service"
+    }
+  },
+  {
+    "owner": "huggingface",
+    "name": "diffusers",
+    "description": "Diffusers is the main point of entry to generate pretrained diffusion models",
+    "topics": [
+      "diffusion",
+      "stable-diffusion",
+      "image-generation",
+      "pytorch"
+    ],
+    "language": "Python",
+    "stars": 28000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "subsystem": "Computer Vision & Multimodal"
+    }
+  },
+  {
+    "owner": "keras-team",
+    "name": "keras",
+    "description": "Deep Learning for humans",
+    "topics": [
+      "deep-learning",
+      "machine-learning",
+      "neural-networks"
+    ],
+    "language": "Python",
+    "stars": 62000,
+    "expect": {
+      "domain": "AI & Machine Learning"
+    }
+  },
+  {
+    "owner": "kubernetes",
+    "name": "kubernetes",
+    "description": "Production-Grade Container Scheduling and Management",
+    "topics": [
+      "kubernetes",
+      "container-orchestration",
+      "cloud-native",
+      "go"
+    ],
+    "language": "Go",
+    "stars": 113000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "hashicorp",
+    "name": "terraform",
+    "description": "Infrastructure automation to provision, secure, connect, and run any infrastructure",
+    "topics": [
+      "iac",
+      "terraform",
+      "infrastructure",
+      "devops"
+    ],
+    "language": "Go",
+    "stars": 43000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Infrastructure as Code (IaC)"
+    }
+  },
+  {
+    "owner": "ansible",
+    "name": "ansible",
+    "description": "Ansible is a radically simple IT automation.",
+    "topics": [
+      "automation",
+      "devops",
+      "it-automation",
+      "linux"
+    ],
+    "language": "Python",
+    "stars": 63000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "subsystem": "Infrastructure as Code (IaC)"
+    }
+  },
+  {
+    "owner": "hashicorp",
+    "name": "vault",
+    "description": "Tool for managing secrets",
+    "topics": [
+      "vault",
+      "secrets",
+      "security",
+      "hashicorp"
+    ],
+    "language": "Go",
+    "stars": 31000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Application / Service",
+      "subsystem": "Secrets & Key Management"
+    }
+  },
+  {
+    "owner": "argoproj",
+    "name": "argo-cd",
+    "description": "Declarative continuous delivery for Kubernetes",
+    "topics": [
+      "kubernetes",
+      "gitops",
+      "continuous-delivery",
+      "argocd"
+    ],
+    "language": "Go",
+    "stars": 19000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Infrastructure as Code (IaC)"
+    }
+  },
+  {
+    "owner": "traefik",
+    "name": "traefik",
+    "description": "The Cloud Native Application Proxy",
+    "topics": [
+      "traefik",
+      "reverse-proxy",
+      "load-balancer",
+      "ingress"
+    ],
+    "language": "Go",
+    "stars": 52000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Service Mesh & API Gateway"
+    }
+  },
+  {
+    "owner": "caddyserver",
+    "name": "caddy",
+    "description": "Fast and extensible multi-platform HTTP web server with automatic HTTPS",
+    "topics": [
+      "web-server",
+      "http-server",
+      "go",
+      "https"
+    ],
+    "language": "Go",
+    "stars": 61000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "System Service / Engine",
+      "subsystem": "Service Mesh & API Gateway"
+    }
+  },
+  {
+    "owner": "istio",
+    "name": "istio",
+    "description": "Connect, secure, control, and observe services.",
+    "topics": [
+      "service-mesh",
+      "kubernetes",
+      "microservices"
+    ],
+    "language": "Go",
+    "stars": 36000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Service Mesh & API Gateway"
+    }
+  },
+  {
+    "owner": "envoyproxy",
+    "name": "envoy",
+    "description": "Cloud-native high performance edge and service proxy",
+    "topics": [
+      "proxy",
+      "service-mesh",
+      "envoy",
+      "cloud-native"
+    ],
+    "language": "C++",
+    "stars": 25000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "subsystem": "Service Mesh & API Gateway"
+    }
+  },
+  {
+    "owner": "docker",
+    "name": "docker",
+    "description": "Containers are isolated and secure apps and APIs.",
+    "topics": [
+      "containers",
+      "docker",
+      "cli",
+      "devops"
+    ],
+    "language": "Go",
+    "stars": 69000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "pulumi",
+    "name": "pulumi",
+    "description": "Pulumi - Infrastructure as Code",
+    "topics": [
+      "iac",
+      "infrastructure",
+      "devops",
+      "cloud"
+    ],
+    "language": "TypeScript",
+    "stars": 21000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Infrastructure as Code (IaC)"
+    }
+  },
+  {
+    "owner": "helm",
+    "name": "helm",
+    "description": "The Kubernetes Package Manager",
+    "topics": [
+      "helm",
+      "kubernetes",
+      "package-manager"
+    ],
+    "language": "Go",
+    "stars": 27000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "airflow",
+    "description": "Apache Airflow is a platform to programmatically author, schedule and monitor workflows",
+    "topics": [
+      "workflow",
+      "orchestration",
+      "data-engineering",
+      "python"
+    ],
+    "language": "Python",
+    "stars": 37000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service"
+    }
+  },
+  {
+    "owner": "minio",
+    "name": "minio",
+    "description": "High Performance, Kubernetes Native Object Storage",
+    "topics": [
+      "storage",
+      "s3",
+      "kubernetes",
+      "object-storage"
+    ],
+    "language": "Go",
+    "stars": 49000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "rancher",
+    "name": "rancher",
+    "description": "Complete container management platform",
+    "topics": [
+      "kubernetes",
+      "containers",
+      "docker",
+      "cloud-native"
+    ],
+    "language": "Go",
+    "stars": 23000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "aquasecurity",
+    "name": "trivy",
+    "description": "A vulnerability, misconfiguration and secret scanner for containers",
+    "topics": [
+      "security",
+      "vulnerability-scanner",
+      "container-security",
+      "cli"
+    ],
+    "language": "Go",
+    "stars": 24000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Vulnerability & Static Analysis"
+    }
+  },
+  {
+    "owner": "semgrep",
+    "name": "semgrep",
+    "description": "Lightweight static analysis for many languages",
+    "topics": [
+      "static-analysis",
+      "security",
+      "sast",
+      "linter"
+    ],
+    "language": "OCaml",
+    "stars": 11000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Vulnerability & Static Analysis"
+    }
+  },
+  {
+    "owner": "keycloak",
+    "name": "keycloak",
+    "description": "Open Source Identity and Access Management",
+    "topics": [
+      "sso",
+      "iam",
+      "authentication",
+      "oauth2",
+      "oidc"
+    ],
+    "language": "Java",
+    "stars": 26000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Application / Service",
+      "subsystem": "Zero Trust & Identity/Auth"
+    }
+  },
+  {
+    "owner": "nmap",
+    "name": "nmap",
+    "description": "Nmap is a free and open-source utility for network discovery and security auditing",
+    "topics": [
+      "security",
+      "port-scanner",
+      "network",
+      "cli"
+    ],
+    "language": "C++",
+    "stars": 9000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Developer Tool / CLI"
+    }
+  },
+  {
+    "owner": "torproject",
+    "name": "tor",
+    "description": "Anonymizing worldwide network",
+    "topics": [
+      "privacy",
+      "anonymity",
+      "security",
+      "encryption"
+    ],
+    "language": "C",
+    "stars": 10000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Application / Service",
+      "subsystem": "General Security"
+    }
+  },
+  {
+    "owner": "keepassxreboot",
+    "name": "keepassxc",
+    "description": "Free and open-source cross-platform password manager",
+    "topics": [
+      "password",
+      "password-manager",
+      "security",
+      "encryption"
+    ],
+    "language": "C++",
+    "stars": 22000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Application / Service"
+    }
+  },
+  {
+    "owner": "VeraCrypt",
+    "name": "VeraCrypt",
+    "description": "Free and open-source disk encryption software",
+    "topics": [
+      "encryption",
+      "security",
+      "cryptography",
+      "privacy"
+    ],
+    "language": "C",
+    "stars": 20000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Application / Service",
+      "subsystem": "Cryptography & ZK Proofs"
+    }
+  },
+  {
+    "owner": "zaproxy",
+    "name": "zaproxy",
+    "description": "The Zed Attack Proxy (ZAP) is an open-source web application security scanner",
+    "topics": [
+      "security",
+      "pentesting",
+      "owasp",
+      "scanner"
+    ],
+    "language": "Java",
+    "stars": 13000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Vulnerability & Static Analysis"
+    }
+  },
+  {
+    "owner": "OWASP",
+    "name": "wstg",
+    "description": "The Web Security Testing Guide is a comprehensive open-source web application security checklist",
+    "topics": [
+      "security",
+      "testing",
+      "checklist",
+      "owasp"
+    ],
+    "language": "Python",
+    "stars": 11000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Curated List / Docs"
+    }
+  },
+  {
+    "owner": "git",
+    "name": "git",
+    "description": "Git is free and open source software for version control.",
+    "topics": [
+      "git",
+      "version-control",
+      "devtools"
+    ],
+    "language": "C",
+    "stars": 53000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "General Developer Tooling"
+    }
+  },
+  {
+    "owner": "astral-sh",
+    "name": "ruff",
+    "description": "An extremely fast Python linter and code formatter, written in Rust.",
+    "topics": [
+      "linter",
+      "code-formatter",
+      "python",
+      "rust",
+      "static-analysis"
+    ],
+    "language": "Rust",
+    "stars": 37000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Linters & Code Quality"
+    }
+  },
+  {
+    "owner": "vitejs",
+    "name": "vite",
+    "description": "Next generation frontend tooling.",
+    "topics": [
+      "bundler",
+      "vite",
+      "esbuild",
+      "frontend",
+      "build-tool"
+    ],
+    "language": "TypeScript",
+    "stars": 70000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Bundlers & Build Systems"
+    }
+  },
+  {
+    "owner": "webpack",
+    "name": "webpack",
+    "description": "A bundler for javascript and friends.",
+    "topics": [
+      "bundler",
+      "javascript",
+      "webpack",
+      "module-bundler"
+    ],
+    "language": "JavaScript",
+    "stars": 64000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Bundlers & Build Systems"
+    }
+  },
+  {
+    "owner": "eslint",
+    "name": "eslint",
+    "description": "A fully pluggable tool for identifying and reporting on patterns in JavaScript.",
+    "topics": [
+      "linter",
+      "eslint",
+      "javascript",
+      "static-analysis"
+    ],
+    "language": "JavaScript",
+    "stars": 25000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Linters & Code Quality"
+    }
+  },
+  {
+    "owner": "llvm",
+    "name": "llvm-project",
+    "description": "The LLVM compiler infrastructure",
+    "topics": [
+      "compiler",
+      "llvm",
+      "clang",
+      "c-plus-plus"
+    ],
+    "language": "C++",
+    "stars": 28000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Compilers & Runtimes"
+    }
+  },
+  {
+    "owner": "neovim",
+    "name": "neovim",
+    "description": "Vim-fork focused on extensibility and usability",
+    "topics": [
+      "editor",
+      "vim",
+      "neovim",
+      "text-editor"
+    ],
+    "language": "Vim Script",
+    "stars": 84000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Application / Service",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "sharkdp",
+    "name": "bat",
+    "description": "A cat clone with syntax highlighting",
+    "topics": [
+      "cli",
+      "cat",
+      "syntax-highlighting",
+      "rust"
+    ],
+    "language": "Rust",
+    "stars": 50000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "BurntSushi",
+    "name": "ripgrep",
+    "description": "A next-generation line-oriented search tool",
+    "topics": [
+      "search",
+      "cli",
+      "grep",
+      "rust"
+    ],
+    "language": "Rust",
+    "stars": 49000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "tmux",
+    "name": "tmux",
+    "description": "tmux is a terminal multiplexer",
+    "topics": [
+      "terminal",
+      "multiplexer",
+      "cli"
+    ],
+    "language": "C",
+    "stars": 35000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "htop",
+    "name": "htop",
+    "description": "htop is an interactive system monitor",
+    "topics": [
+      "monitor",
+      "terminal",
+      "cli",
+      "system-monitor"
+    ],
+    "language": "C",
+    "stars": 25000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "jesseduffield",
+    "name": "lazygit",
+    "description": "A simple terminal UI for git commands",
+    "topics": [
+      "git",
+      "cli",
+      "tui",
+      "go"
+    ],
+    "language": "Go",
+    "stars": 55000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "denoland",
+    "name": "deno",
+    "description": "A modern runtime for JavaScript and TypeScript",
+    "topics": [
+      "deno",
+      "runtime",
+      "javascript",
+      "typescript"
+    ],
+    "language": "Rust",
+    "stars": 98000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "subsystem": "Compilers & Runtimes"
+    }
+  },
+  {
+    "owner": "nodejs",
+    "name": "node",
+    "description": "Node.js JavaScript runtime",
+    "topics": [
+      "nodejs",
+      "runtime",
+      "javascript"
+    ],
+    "language": "JavaScript",
+    "stars": 108000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "subsystem": "Compilers & Runtimes"
+    }
+  },
+  {
+    "owner": "alacritty",
+    "name": "alacritty",
+    "description": "A cross-platform, GPU-accelerated terminal emulator",
+    "topics": [
+      "terminal",
+      "emulator",
+      "rust",
+      "cli"
+    ],
+    "language": "Rust",
+    "stars": 55000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "facebook",
+    "name": "jest",
+    "description": "Delightful JavaScript Testing",
+    "topics": [
+      "testing",
+      "javascript",
+      "jest",
+      "framework"
+    ],
+    "language": "JavaScript",
+    "stars": 44000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "subsystem": "Testing & QA Automation"
+    }
+  },
+  {
+    "owner": "cypress-io",
+    "name": "cypress",
+    "description": "Fast, easy and reliable testing for anything that runs in a browser.",
+    "topics": [
+      "testing",
+      "e2e",
+      "javascript",
+      "cypress"
+    ],
+    "language": "JavaScript",
+    "stars": 47000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "subsystem": "Testing & QA Automation"
+    }
+  },
+  {
+    "owner": "facebook",
+    "name": "react",
+    "description": "The library for web and native user interfaces",
+    "topics": [
+      "react",
+      "ui",
+      "javascript"
+    ],
+    "language": "JavaScript",
+    "stars": 232000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Library / SDK",
+      "subsystem": "UI Component Architecture"
+    }
+  },
+  {
+    "owner": "vuejs",
+    "name": "vue",
+    "description": "This is the repo for Vue 2",
+    "topics": [
+      "vue",
+      "framework",
+      "javascript"
+    ],
+    "language": "JavaScript",
+    "stars": 208000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "UI Component Architecture"
+    }
+  },
+  {
+    "owner": "sveltejs",
+    "name": "svelte",
+    "description": "Cybernetically enhanced web apps",
+    "topics": [
+      "svelte",
+      "framework",
+      "javascript"
+    ],
+    "language": "JavaScript",
+    "stars": 80000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "General Web Platforms"
+    }
+  },
+  {
+    "owner": "angular",
+    "name": "angular",
+    "description": "Deliver web apps with confidence",
+    "topics": [
+      "angular",
+      "typescript",
+      "javascript",
+      "framework"
+    ],
+    "language": "TypeScript",
+    "stars": 97000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "General Web Platforms"
+    }
+  },
+  {
+    "owner": "django",
+    "name": "django",
+    "description": "The web framework for perfectionists with deadlines.",
+    "topics": [
+      "django",
+      "python",
+      "web-framework"
+    ],
+    "language": "Python",
+    "stars": 81000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "expressjs",
+    "name": "express",
+    "description": "Fast, unopinionated, minimalist web framework for Node.",
+    "topics": [
+      "express",
+      "nodejs",
+      "web-framework",
+      "javascript"
+    ],
+    "language": "JavaScript",
+    "stars": 65000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "nuxt",
+    "name": "nuxt",
+    "description": "The Intuitive Web Framework",
+    "topics": [
+      "vue",
+      "nuxt",
+      "framework",
+      "javascript"
+    ],
+    "language": "TypeScript",
+    "stars": 55000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "vercel",
+    "name": "next.js",
+    "description": "The React Framework for the Web",
+    "topics": [
+      "nextjs",
+      "react",
+      "framework",
+      "javascript"
+    ],
+    "language": "JavaScript",
+    "stars": 128000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "remix-run",
+    "name": "remix",
+    "description": "Build better websites with Remix",
+    "topics": [
+      "react",
+      "remix",
+      "web-framework"
+    ],
+    "language": "TypeScript",
+    "stars": 30000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "tailwindlabs",
+    "name": "tailwindcss",
+    "description": "A utility-first CSS framework",
+    "topics": [
+      "css",
+      "tailwind",
+      "design",
+      "frontend"
+    ],
+    "language": "JavaScript",
+    "stars": 84000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "UI Component Architecture"
+    }
+  },
+  {
+    "owner": "twbs",
+    "name": "bootstrap",
+    "description": "The most popular HTML, CSS, and JavaScript framework",
+    "topics": [
+      "css",
+      "frontend",
+      "ui",
+      "sass"
+    ],
+    "language": "SCSS",
+    "stars": 168000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks"
+    }
+  },
+  {
+    "owner": "fastapi",
+    "name": "fastapi",
+    "description": "FastAPI framework, high performance, easy to learn, fast to code, ready for production",
+    "topics": [
+      "fastapi",
+      "api",
+      "asyncio",
+      "rest-api"
+    ],
+    "language": "Python",
+    "stars": 79000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "API Architecture (GraphQL/gRPC)"
+    }
+  },
+  {
+    "owner": "phoenixframework",
+    "name": "phoenix",
+    "description": "A productive web framework for the Elixir programming language",
+    "topics": [
+      "elixir",
+      "phoenix",
+      "web-framework"
+    ],
+    "language": "Elixir",
+    "stars": 21000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "General Web Platforms"
+    }
+  },
+  {
+    "owner": "freeCodeCamp",
+    "name": "freeCodeCamp",
+    "description": "freeCodeCamp.org is an open source community where you learn to code for free",
+    "topics": [
+      "education",
+      "curriculum",
+      "learning",
+      "javascript"
+    ],
+    "language": "JavaScript",
+    "stars": 400000,
+    "expect": {
+      "domain": "Education & Curated Learning",
+      "artifact": "Curated List / Docs",
+      "subsystem": "General Education"
+    }
+  },
+  {
+    "owner": "public-apis",
+    "name": "public-apis",
+    "description": "A collective list of free APIs",
+    "topics": [
+      "awesome",
+      "apis",
+      "public-apis",
+      "list"
+    ],
+    "language": "Python",
+    "stars": 330000,
+    "expect": {
+      "domain": "Education & Curated Learning",
+      "artifact": "Curated List / Docs",
+      "subsystem": "Curated Resources & Awesome Lists"
+    }
+  },
+  {
+    "owner": "kamranahmedse",
+    "name": "developer-roadmap",
+    "description": "Roadmap to becoming a web developer",
+    "topics": [
+      "roadmap",
+      "developer",
+      "education"
+    ],
+    "language": "TypeScript",
+    "stars": 290000,
+    "expect": {
+      "domain": "Education & Curated Learning",
+      "artifact": "Curated List / Docs",
+      "subsystem": "Learning Roadmaps & Study Plans"
+    }
+  },
+  {
+    "owner": "TheAlgorithms",
+    "name": "Python",
+    "description": "All Algorithms implemented in Python",
+    "topics": [
+      "algorithms",
+      "python",
+      "educational"
+    ],
+    "language": "Python",
+    "stars": 190000,
+    "expect": {
+      "domain": "Education & Curated Learning",
+      "subsystem": "Interactive Tutorials & Exercises"
+    }
+  },
+  {
+    "owner": "rust-lang",
+    "name": "rust-by-example",
+    "description": "Learn Rust with examples",
+    "topics": [
+      "rust",
+      "tutorial",
+      "education",
+      "learning"
+    ],
+    "language": "Rust",
+    "stars": 10000,
+    "expect": {
+      "domain": "Education & Curated Learning",
+      "artifact": "Curated List / Docs",
+      "subsystem": "Interactive Tutorials & Exercises"
+    }
+  },
+  {
+    "owner": "jwasham",
+    "name": "coding-interview-university",
+    "description": "A complete computer science study plan to become a software engineer",
+    "topics": [
+      "interview",
+      "computer-science",
+      "study-plan"
+    ],
+    "language": "",
+    "stars": 300000,
+    "expect": {
+      "domain": "Education & Curated Learning",
+      "artifact": "Curated List / Docs",
+      "subsystem": "Learning Roadmaps & Study Plans"
+    }
+  },
+  {
+    "owner": "awesome",
+    "name": "awesome-rust",
+    "description": "A curated list of Rust code and resources",
+    "topics": [
+      "awesome",
+      "rust",
+      "curated-list"
+    ],
+    "language": "",
+    "stars": 45000,
+    "expect": {
+      "domain": "Education & Curated Learning",
+      "artifact": "Curated List / Docs",
+      "subsystem": "Curated Resources & Awesome Lists"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "kafka",
+    "description": "A distributed event streaming platform",
+    "topics": [
+      "kafka",
+      "event-streaming",
+      "messaging",
+      "distributed-systems"
+    ],
+    "language": "Java",
+    "stars": 28000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "Application / Service",
+      "subsystem": "Event Streaming & Message Broker"
+    }
+  },
+  {
+    "owner": "nats-io",
+    "name": "nats.server",
+    "description": "High-Performance messaging system",
+    "topics": [
+      "nats",
+      "messaging",
+      "pubsub",
+      "go"
+    ],
+    "language": "Go",
+    "stars": 16000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "subsystem": "Event Streaming & Message Broker"
+    }
+  },
+  {
+    "owner": "rabbitmq",
+    "name": "rabbitmq",
+    "description": "RabbitMQ is the most widely deployed open-source message broker",
+    "topics": [
+      "rabbitmq",
+      "messaging",
+      "amqp",
+      "erlang"
+    ],
+    "language": "Erlang",
+    "stars": 12000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "System Service / Engine",
+      "subsystem": "Event Streaming & Message Broker"
+    }
+  },
+  {
+    "owner": "syncthing",
+    "name": "syncthing",
+    "description": "Open-source Continuous File Synchronization",
+    "topics": [
+      "p2p",
+      "synchronization",
+      "file-sharing",
+      "go"
+    ],
+    "language": "Go",
+    "stars": 70000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "Application / Service",
+      "subsystem": "P2P & Decentralized Networking"
+    }
+  },
+  {
+    "owner": "libp2p",
+    "name": "go-libp2p",
+    "description": "the Go implementation of libp2p",
+    "topics": [
+      "libp2p",
+      "p2p",
+      "networking",
+      "go"
+    ],
+    "language": "Go",
+    "stars": 6000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "subsystem": "P2P & Decentralized Networking"
+    }
+  },
+  {
+    "owner": "eclipse-mosquitto",
+    "name": "mosquitto",
+    "description": "Eclipse Mosquitto MQTT broker",
+    "topics": [
+      "mqtt",
+      "iot",
+      "messaging"
+    ],
+    "language": "C",
+    "stars": 9000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "System Service / Engine"
+    }
+  },
+  {
+    "owner": "zerotier",
+    "name": "ZeroTierOne",
+    "description": "A smart network for devices at any distance",
+    "topics": [
+      "vpn",
+      "networking",
+      "sdn",
+      "p2p"
+    ],
+    "language": "C++",
+    "stars": 15000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "Application / Service",
+      "subsystem": "Low-Level Protocols & Transports"
+    }
+  },
+  {
+    "owner": "coturn",
+    "name": "coturn",
+    "description": "coturn TURN server project",
+    "topics": [
+      "turn",
+      "stun",
+      "webrtc",
+      "sip"
+    ],
+    "language": "C",
+    "stars": 10000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "System Service / Engine",
+      "subsystem": "Low-Level Protocols & Transports"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "pulsar",
+    "description": "Apache Pulsar - distributed pub-sub messaging system",
+    "topics": [
+      "messaging",
+      "pubsub",
+      "stream-processing"
+    ],
+    "language": "Java",
+    "stars": 14000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "subsystem": "Event Streaming & Message Broker"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "avro",
+    "description": "Apache Avro is a data serialization system",
+    "topics": [
+      "serialization",
+      "apache",
+      "rpc"
+    ],
+    "language": "Java",
+    "stars": 2000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "subsystem": "Low-Level Protocols & Transports"
+    }
+  },
+  {
+    "owner": "torvalds",
+    "name": "linux",
+    "description": "Linux kernel source tree",
+    "topics": [
+      "kernel",
+      "linux",
+      "operating-system"
+    ],
+    "language": "C",
+    "stars": 185000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "Kernel & Core OS"
+    }
+  },
+  {
+    "owner": "qemu",
+    "name": "qemu",
+    "description": "QEMU is a generic machine emulator and virtualizer",
+    "topics": [
+      "emulator",
+      "virtualization",
+      "qemu",
+      "hypervisor"
+    ],
+    "language": "C",
+    "stars": 47000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "Emulators & Hypervisors"
+    }
+  },
+  {
+    "owner": "systemd",
+    "name": "systemd",
+    "description": "systemd system and service manager",
+    "topics": [
+      "systemd",
+      "init",
+      "linux"
+    ],
+    "language": "C",
+    "stars": 13000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "General Operating Systems"
+    }
+  },
+  {
+    "owner": "rust-lang",
+    "name": "rust",
+    "description": "Empowering everyone to build reliable and efficient software.",
+    "topics": [
+      "rust",
+      "compiler",
+      "programming-language"
+    ],
+    "language": "Rust",
+    "stars": 100000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Compilers & Runtimes"
+    }
+  },
+  {
+    "owner": "microsoft",
+    "name": "WSL",
+    "description": "WSL source code",
+    "topics": [
+      "wsl",
+      "windows",
+      "linux",
+      "virtualization"
+    ],
+    "language": "C++",
+    "stars": 18000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level"
+    }
+  },
+  {
+    "owner": "haiku",
+    "name": "haiku",
+    "description": "Haiku operating system",
+    "topics": [
+      "haiku",
+      "operating-system",
+      "beos"
+    ],
+    "language": "C++",
+    "stars": 16000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "General Operating Systems"
+    }
+  },
+  {
+    "owner": "FreeBSD",
+    "name": "FreeBSD-src",
+    "description": "FreeBSD source tree",
+    "topics": [
+      "freebsd",
+      "unix",
+      "operating-system"
+    ],
+    "language": "C",
+    "stars": 7000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "General Operating Systems"
+    }
+  },
+  {
+    "owner": "espressif",
+    "name": "esp-idf",
+    "description": "Espressif IoT Development Framework",
+    "topics": [
+      "esp32",
+      "embedded",
+      "firmware",
+      "iot"
+    ],
+    "language": "C",
+    "stars": 12000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "Embedded & IoT Firmware"
+    }
+  },
+  {
+    "owner": "zephyrproject-rtos",
+    "name": "zephyr",
+    "description": "Primary Git Repository for the Zephyr Project",
+    "topics": [
+      "rtos",
+      "embedded",
+      "firmware",
+      "iot"
+    ],
+    "language": "C",
+    "stars": 11000,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "Embedded & IoT Firmware"
+    }
+  },
+  {
+    "owner": "redis",
+    "name": "redis-client",
+    "description": "A Redis client library for Node.js",
+    "topics": [
+      "redis",
+      "client",
+      "nodejs"
+    ],
+    "language": "JavaScript",
+    "stars": 4000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "Library / SDK"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "analytics-engine",
+    "description": "A query engine library for embedded analytics",
+    "topics": [
+      "analytics",
+      "sql"
+    ],
+    "language": "Rust",
+    "stars": 900,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "Library / SDK"
+    }
+  },
+  {
+    "owner": "awesome-go",
+    "name": "awesome-go",
+    "description": "A curated list of awesome Go frameworks and libraries",
+    "topics": [
+      "awesome",
+      "go",
+      "list"
+    ],
+    "language": "Go",
+    "stars": 140000,
+    "expect": {
+      "artifact": "Curated List / Docs"
+    }
+  },
+  {
+    "owner": "examples",
+    "name": "web-app-template",
+    "description": "A starter template and boilerplate for web apps",
+    "topics": [
+      "template",
+      "starter"
+    ],
+    "language": "TypeScript",
+    "stars": 1500,
+    "expect": {
+      "artifact": "Template / Starter"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "http-client",
+    "description": "An asynchronous HTTP client driver for databases",
+    "topics": [
+      "http",
+      "client"
+    ],
+    "language": "Go",
+    "stars": 2000,
+    "expect": {
+      "artifact": "Library / SDK"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "metrics-agent",
+    "description": "A daemon that ships metrics to the cloud",
+    "topics": [
+      "monitoring",
+      "agent"
+    ],
+    "language": "Go",
+    "stars": 1100,
+    "expect": {
+      "artifact": "System Service / Engine"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "grpc-tools",
+    "description": "Code generator for gRPC and protobuf definitions",
+    "topics": [
+      "grpc",
+      "protobuf",
+      "codegen"
+    ],
+    "language": "Go",
+    "stars": 1300,
+    "expect": {
+      "artifact": "Developer Tool / CLI"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "eslint-plugin-rules",
+    "description": "Custom lint rules packaged as an ESLint plugin",
+    "topics": [
+      "linter",
+      "eslint"
+    ],
+    "language": "JavaScript",
+    "stars": 700,
+    "expect": {
+      "artifact": "Developer Tool / CLI"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "dockerfile-linter",
+    "description": "A linter for Dockerfiles",
+    "topics": [
+      "linter",
+      "docker"
+    ],
+    "language": "Go",
+    "stars": 800,
+    "expect": {
+      "artifact": "Developer Tool / CLI"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "quic-transport",
+    "description": "A QUIC protocol implementation used as a library",
+    "topics": [
+      "quic",
+      "protocol"
+    ],
+    "language": "Rust",
+    "stars": 1600,
+    "expect": {
+      "artifact": "Library / SDK"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "job-scheduler",
+    "description": "A background job scheduler service with retries",
+    "topics": [
+      "scheduler",
+      "jobs"
+    ],
+    "language": "Ruby",
+    "stars": 1000,
+    "expect": {
+      "artifact": "System Service / Engine"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "web-framework-x",
+    "description": "A tiny web framework for small teams",
+    "topics": [
+      "framework",
+      "web"
+    ],
+    "language": "Python",
+    "stars": 1400,
+    "expect": {
+      "artifact": "Framework"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "cookiecutter-ml",
+    "description": "A cookiecutter template for machine learning projects",
+    "topics": [
+      "cookiecutter",
+      "template"
+    ],
+    "language": "Python",
+    "stars": 900,
+    "expect": {
+      "artifact": "Template / Starter"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "vuln-scanner",
+    "description": "Scans container images for known vulnerabilities",
+    "topics": [
+      "scanner",
+      "security"
+    ],
+    "language": "Go",
+    "stars": 1700,
+    "expect": {
+      "artifact": "Developer Tool / CLI"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "sqlite-wasm",
+    "description": "SQLite compiled to WebAssembly",
+    "topics": [
+      "sqlite",
+      "wasm",
+      "database"
+    ],
+    "language": "C",
+    "stars": 2500,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine"
+    }
+  },
+  {
+    "owner": "cockroachdb",
+    "name": "cockroach",
+    "description": "CockroachDB is a cloud-native, distributed SQL database built on top of PostgreSQL.",
+    "topics": [
+      "cockroachdb",
+      "distributed",
+      "sql",
+      "postgresql",
+      "database"
+    ],
+    "language": "Go",
+    "stars": 30000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Distributed SQL Engine"
+    }
+  },
+  {
+    "owner": "MariaDB",
+    "name": "server",
+    "description": "MariaDB Server is a community developed relational database management system.",
+    "topics": [
+      "database",
+      "sql",
+      "mariadb",
+      "mysql"
+    ],
+    "language": "C++",
+    "stars": 5500,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine"
+    }
+  },
+  {
+    "owner": "sqlite",
+    "name": "sqlite",
+    "description": "Official SQLite source tree",
+    "topics": [
+      "database",
+      "sql",
+      "embedded"
+    ],
+    "language": "C",
+    "stars": 7500,
+    "expect": {
+      "domain": "Databases & Storage",
+      "subsystem": "General Databases"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "hbase",
+    "description": "Apache HBase is a distributed, scalable, big data store",
+    "topics": [
+      "hadoop",
+      "database",
+      "bigdata"
+    ],
+    "language": "Java",
+    "stars": 5100,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Analytical & Columnar (OLAP)"
+    }
+  },
+  {
+    "owner": "tikv",
+    "name": "tikv",
+    "description": "Distributed transactional key-value database",
+    "topics": [
+      "distributed",
+      "key-value",
+      "raft",
+      "database"
+    ],
+    "language": "Rust",
+    "stars": 14500,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Key-Value & In-Memory Store"
+    }
+  },
+  {
+    "owner": "yugabyte",
+    "name": "yugabyte-db",
+    "description": "YugabyteDB is a high-performance distributed SQL database",
+    "topics": [
+      "distributed-sql",
+      "postgresql",
+      "database"
+    ],
+    "language": "C++",
+    "stars": 9200,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine",
+      "subsystem": "Distributed SQL Engine"
+    }
+  },
+  {
+    "owner": "opensearch-project",
+    "name": "OpenSearch",
+    "description": "OpenSearch is a community-driven, open-source search and analytics suite.",
+    "topics": [
+      "search",
+      "opensearch",
+      "database",
+      "elasticsearch"
+    ],
+    "language": "Java",
+    "stars": 10500,
+    "expect": {
+      "domain": "Databases & Storage",
+      "artifact": "System Service / Engine"
+    }
+  },
+  {
+    "owner": "redhat",
+    "name": "openshift",
+    "description": "OpenShift is a container application platform by Red Hat",
+    "topics": [
+      "kubernetes",
+      "containers",
+      "devops",
+      "redhat"
+    ],
+    "language": "Go",
+    "stars": 11500,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "linkerd",
+    "name": "linkerd2",
+    "description": "Ultralight, security-first service mesh for Kubernetes",
+    "topics": [
+      "service-mesh",
+      "kubernetes",
+      "rust"
+    ],
+    "language": "Rust",
+    "stars": 10500,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Service Mesh & API Gateway"
+    }
+  },
+  {
+    "owner": "hashicorp",
+    "name": "consul",
+    "description": "Consul is a service networking solution to discover, secure and configure services.",
+    "topics": [
+      "service-mesh",
+      "consul",
+      "discovery"
+    ],
+    "language": "Go",
+    "stars": 29000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Service Mesh & API Gateway"
+    }
+  },
+  {
+    "owner": "aws",
+    "name": "aws-cli",
+    "description": "Universal Command Line Interface for Amazon Web Services",
+    "topics": [
+      "aws",
+      "cli",
+      "python"
+    ],
+    "language": "Python",
+    " stars": 14500,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "General Cloud"
+    }
+  },
+  {
+    "owner": "k3s-io",
+    "name": "k3s",
+    "description": "Lightweight Kubernetes",
+    "topics": [
+      "kubernetes",
+      "rancher",
+      "lightweight"
+    ],
+    "language": "Go",
+    "stars": 28000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "kubernetes",
+    "name": "minikube",
+    "description": "Run Kubernetes locally",
+    "topics": [
+      "kubernetes",
+      "container",
+      "local"
+    ],
+    "language": "Go",
+    "stars": 30500,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "containers",
+    "name": "podman",
+    "description": "A tool for managing containers and pods",
+    "topics": [
+      "containers",
+      "docker",
+      "linux",
+      "cli"
+    ],
+    "language": "Go",
+    "stars": 25000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Container Orchestration & Runtime"
+    }
+  },
+  {
+    "owner": "fluxcd",
+    "name": "flux",
+    "description": "Open and extensible continuous delivery solution for Kubernetes",
+    "topics": [
+      "kubernetes",
+      "gitops",
+      "continuous-delivery"
+    ],
+    "language": "Go",
+    "stars": 6500,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Infrastructure as Code (IaC)"
+    }
+  },
+  {
+    "owner": "Kong",
+    "name": "kong",
+    "description": "Kong is an open-source API gateway and platform.",
+    "topics": [
+      "api-gateway",
+      "kong",
+      "microservices",
+      "lua"
+    ],
+    "language": "Lua",
+    "stars": 40000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Service Mesh & API Gateway"
+    }
+  },
+  {
+    "owner": "nextcloud",
+    "name": "server",
+    "description": "A safe home for all your data",
+    "topics": [
+      "cloud",
+      "storage",
+      "file-sharing",
+      "php"
+    ],
+    "language": "PHP",
+    "stars": 28000,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "System Service / Engine",
+      "subsystem": "General Cloud"
+    }
+  },
+  {
+    "owner": "grafana",
+    "name": "loki",
+    "description": "Like Prometheus, but for logs.",
+    "topics": [
+      "logging",
+      "observability",
+      "prometheus"
+    ],
+    "language": "Go",
+    "stars": 24500,
+    "expect": {
+      "domain": "Cloud & Infrastructure",
+      "artifact": "Application / Service",
+      "subsystem": "Observability & Tracing"
+    }
+  },
+  {
+    "owner": "getsops",
+    "name": "sops",
+    "description": "SOPS is an editor of encrypted files",
+    "topics": [
+      "encryption",
+      "secrets",
+      "gpg"
+    ],
+    "language": "Go",
+    "stars": 9000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Application / Service",
+      "subsystem": "Secrets & Key Management"
+    }
+  },
+  {
+    "owner": "rapid7",
+    "name": "metasploit-framework",
+    "description": "Metasploit Framework is the world's most used penetration testing framework.",
+    "topics": [
+      "metasploit",
+      "penetration-testing",
+      "security",
+      "ruby"
+    ],
+    "language": "Ruby",
+    "stars": 35000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Framework",
+      "subsystem": "Penetration Testing & Red Team"
+    }
+  },
+  {
+    "owner": "openwall",
+    "name": "john",
+    "description": "John the Ripper is a fast password cracker",
+    "topics": [
+      "password",
+      "cracker",
+      "security"
+    ],
+    "language": "C",
+    "stars": 10500,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "subsystem": "General Security"
+    }
+  },
+  {
+    "owner": "SonarSource",
+    "name": "sonarqube",
+    "description": "SonarQube provides continuous code quality and security inspection.",
+    "topics": [
+      "security",
+      "static-analysis",
+      "code-quality",
+      "java"
+    ],
+    "language": "Java",
+    "stars": 6000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Application / Service",
+      "subsystem": "Vulnerability & Static Analysis"
+    }
+  },
+  {
+    "owner": "NationalSecurityAgency",
+    "name": "ghidra",
+    "description": "Ghidra is a software reverse engineering framework",
+    "topics": [
+      "reverse-engineering",
+      "security",
+      "disassembler"
+    ],
+    "language": "Java",
+    "stars": 50000,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "artifact": "Framework",
+      "subsystem": "Penetration Testing & Red Team"
+    }
+  },
+  {
+    "owner": "OISF",
+    "name": "suricata",
+    "description": "Suricata is a network intrusion detection and prevention engine",
+    "topics": [
+      "ids",
+      "ips",
+      "security",
+      "network"
+    ],
+    "language": "C",
+    "stars": 5500,
+    "expect": {
+      "domain": "Security & Cryptography",
+      "subsystem": "General Security"
+    }
+  },
+  {
+    "owner": "fish-shell",
+    "name": "fish",
+    "description": "A smart and user-friendly command line shell",
+    "topics": [
+      "shell",
+      "cli",
+      "terminal",
+      "zsh"
+    ],
+    "language": "C++",
+    "stars": 27000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "vim",
+    "name": "vim",
+    "description": "Vim is a highly configurable text editor",
+    "topics": [
+      "vim",
+      "editor",
+      "text-editor"
+    ],
+    "language": "Vim Script",
+    "stars": 35000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Application / Service",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "jqlang",
+    "name": "jq",
+    "description": "Command-line JSON processor",
+    "topics": [
+      "cli",
+      "json",
+      "parser"
+    ],
+    "language": "C",
+    "stars": 30500,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "gradle",
+    "name": "gradle",
+    "description": "Gradle is a build automation tool for multi-language software development.",
+    "topics": [
+      "gradle",
+      "build-tool",
+      "java"
+    ],
+    "language": "Java",
+    "stars": 19500,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Application / Service",
+      "subsystem": "Bundlers & Build Systems"
+    }
+  },
+  {
+    "owner": "gcc-mirror",
+    "name": "gcc",
+    "description": "GNU Compiler Collection",
+    "topics": [
+      "compiler",
+      "gcc",
+      "c"
+    ],
+    "language": "C",
+    "stars": 4400,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Compilers & Runtimes"
+    }
+  },
+  {
+    "owner": "ziglang",
+    "name": "zig",
+    "description": "General-purpose programming language and toolchain",
+    "topics": [
+      "zig",
+      "compiler",
+      "programming-language"
+    ],
+    "language": "Zig",
+    "stars": 36000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Compilers & Runtimes"
+    }
+  },
+  {
+    "owner": "junegunn",
+    "name": "fzf",
+    "description": "A command-line fuzzy finder",
+    "topics": [
+      "cli",
+      "terminal",
+      "fuzzy-finder"
+    ],
+    "language": "Go",
+    "stars": 67000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "ohmyzsh",
+    "name": "ohmyzsh",
+    "description": "A community-driven framework for managing your zsh configuration",
+    "topics": [
+      "shell",
+      "cli",
+      "zsh",
+      "terminal"
+    ],
+    "language": "Shell",
+    "stars": 176000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "httpie",
+    "name": "cli",
+    "description": "🚀 httpie CLI — human-friendly HTTP client for the API era",
+    "topics": [
+      "cli",
+      "http",
+      "api",
+      "developer-tools"
+    ],
+    "language": "Python",
+    "stars": 33000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "locustio",
+    "name": "locust",
+    "description": "Scalable load testing framework written in Python",
+    "topics": [
+      "load-testing",
+      "performance",
+      "python"
+    ],
+    "language": "Python",
+    "stars": 24000,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "subsystem": "Testing & QA Automation"
+    }
+  },
+  {
+    "owner": "grafana",
+    "name": "k6",
+    "description": "A modern load testing tool, as code",
+    "topics": [
+      "load-testing",
+      "performance",
+      "cli",
+      "golang"
+    ],
+    "language": "Go",
+    "stars": 27500,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "artifact": "Developer Tool / CLI",
+      "subsystem": "Terminal & Editor Utilities"
+    }
+  },
+  {
+    "owner": "taichi-dev",
+    "name": "taichi",
+    "description": "A high performance programming language for parallel computing",
+    "topics": [
+      "compiler",
+      "gpgpu",
+      "computer-graphics"
+    ],
+    "language": "C++",
+    "stars": 44500,
+    "expect": {
+      "domain": "Developer Tooling & Compilers",
+      "subsystem": "Compilers & Runtimes"
+    }
+  },
+  {
+    "owner": "laravel",
+    "name": "laravel",
+    "description": "Laravel is a web application framework with expressive, elegant syntax.",
+    "topics": [
+      "laravel",
+      "php",
+      "web-framework"
+    ],
+    "language": "PHP",
+    "stars": 78000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "withastro",
+    "name": "astro",
+    "description": "The web framework for content-driven websites",
+    "topics": [
+      "astro",
+      "web-framework",
+      "ssr",
+      "static-site"
+    ],
+    "language": "TypeScript",
+    "stars": 48000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "jquery",
+    "name": "jquery",
+    "description": "jQuery JavaScript Library",
+    "topics": [
+      "javascript",
+      "browser",
+      "library"
+    ],
+    "language": "JavaScript",
+    "stars": 58500,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Library / SDK",
+      "subsystem": "General Web Platforms"
+    }
+  },
+  {
+    "owner": "symfony",
+    "name": "symfony",
+    "description": "The Symfony PHP framework",
+    "topics": [
+      "php",
+      "symfony",
+      "web-framework",
+      "framework"
+    ],
+    "language": "PHP",
+    "stars": 28500,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "General Web Platforms"
+    }
+  },
+  {
+    "owner": "pallets",
+    "name": "flask",
+    "description": "Flask is a lightweight WSGI web application framework in Python.",
+    "topics": [
+      "flask",
+      "python",
+      "web-framework"
+    ],
+    "language": "Python",
+    "stars": 67000,
+    "expect": {
+      "domain": "Web Platforms & Frameworks",
+      "artifact": "Framework",
+      "subsystem": "Full-Stack & SSR Frameworks"
+    }
+  },
+  {
+    "owner": "scikit-learn",
+    "name": "scikit-learn",
+    "description": "An open source machine learning library for Python.",
+    "topics": [
+      "machine-learning",
+      "python",
+      "data-science"
+    ],
+    "language": "Python",
+    "stars": 61000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Library / SDK",
+      "subsystem": "General AI"
+    }
+  },
+  {
+    "owner": "dmlc",
+    "name": "xgboost",
+    "description": "Scalable, Portable and Distributed Gradient Boosting Library",
+    "topics": [
+      "machine-learning",
+      "gradient-boosting",
+      "cpp"
+    ],
+    "language": "C++",
+    "stars": 26500,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "subsystem": "General AI"
+    }
+  },
+  {
+    "owner": "comfyanonymous",
+    "name": "ComfyUI",
+    "description": "The most powerful and modular diffusion model GUI and backend.",
+    "topics": [
+      "stable-diffusion",
+      "generative-ai",
+      "image-generation"
+    ],
+    "language": "Python",
+    "stars": 70000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Application / Service",
+      "subsystem": "Computer Vision & Multimodal"
+    }
+  },
+  {
+    "owner": "jax-ml",
+    "name": "jax",
+    "description": "Composable machine learning framework for high-performance AI.",
+    "topics": [
+      "machine-learning",
+      "jax",
+      "gpu"
+    ],
+    "language": "Python",
+    "stars": 31000,
+    "expect": {
+      "domain": "AI & Machine Learning",
+      "artifact": "Framework",
+      "subsystem": "General AI"
+    }
+  },
+  {
+    "owner": "u-boot",
+    "name": "u-boot",
+    "description": "U-Boot bootloaders for embedded boards",
+    "topics": [
+      "bootloader",
+      "embedded",
+      "arm"
+    ],
+    "language": "C",
+    "stars": 3400,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "Embedded & IoT Firmware"
+    }
+  },
+  {
+    "owner": "coreboot",
+    "name": "coreboot",
+    "description": "coreboot is an open source firmware platform",
+    "topics": [
+      "firmware",
+      "bios",
+      "embedded"
+    ],
+    "language": "C",
+    "stars": 6500,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "subsystem": "Embedded & IoT Firmware"
+    }
+  },
+  {
+    "owner": "reactos",
+    "name": "reactos",
+    "description": "A free and open-source operating system based on Windows NT design",
+    "topics": [
+      "windows",
+      "operating-system",
+      "compatibility"
+    ],
+    "language": "C",
+    "stars": 14500,
+    "expect": {
+      "domain": "Operating Systems & Low-Level",
+      "artifact": "Application / Service",
+      "subsystem": "General Operating Systems"
+    }
+  },
+  {
+    "owner": "WireGuard",
+    "name": "wireguard",
+    "description": "WireGuard is a fast, modern, secure VPN tunnel",
+    "topics": [
+      "vpn",
+      "wireguard",
+      "network",
+      "linux"
+    ],
+    "language": "C",
+    "stars": 28000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "Application / Service",
+      "subsystem": "Low-Level Protocols & Transports"
+    }
+  },
+  {
+    "owner": "tailscale",
+    "name": "tailscale",
+    "description": "The easiest, most secure way to use WireGuard and build mesh VPNs.",
+    "topics": [
+      "vpn",
+      "wireguard",
+      "zero-trust"
+    ],
+    "language": "Go",
+    "stars": 19000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "Application / Service",
+      "subsystem": "Low-Level Protocols & Transports"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "zookeeper",
+    "description": "Apache ZooKeeper is a centralized service for configuration and naming.",
+    "topics": [
+      "messaging",
+      "distributed",
+      "coordination"
+    ],
+    "language": "Java",
+    "stars": 13000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "artifact": "Application / Service",
+      "subsystem": "General Networking"
+    }
+  },
+  {
+    "owner": "apache",
+    "name": "thrift",
+    "description": "Thrift is a lightweight, language-independent software stack for services.",
+    "topics": [
+      "serialization",
+      "thrift",
+      "rpc"
+    ],
+    "language": "C++",
+    "stars": 10500,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "subsystem": "Low-Level Protocols & Transports"
+    }
+  },
+  {
+    "owner": "protocolbuffers",
+    "name": "protobuf",
+    "description": "Protocol Buffers are a language-neutral mechanism for serializing structured data.",
+    "topics": [
+      "serialization",
+      "protobuf",
+      "rpc"
+    ],
+    "language": "C++",
+    "stars": 66000,
+    "expect": {
+      "domain": "Networking & Distributed Systems",
+      "subsystem": "Low-Level Protocols & Transports"
+    }
+  },
+  {
+    "owner": "exercism",
+    "name": "exercism",
+    "description": "Download JavaScript, Python, Rust and 55 other language exercises",
+    "topics": [
+      "learning",
+      "education",
+      "coding"
+    ],
+    "language": "Ruby",
+    "stars": 4500,
+    "expect": {
+      "domain": "Education & Curated Learning",
+      "artifact": "Curated List / Docs",
+      "subsystem": "Interactive Tutorials & Exercises"
+    }
+  },
+  {
+    "owner": "launchbadge",
+    "name": "sqlx",
+    "description": "Rust SQLx: compile-time checked SQL with support for PostgreSQL, MySQL and SQLite",
+    "topics": [
+      "sql",
+      "database",
+      "rust"
+    ],
+    "language": "Rust",
+    "stars": 7000,
+    "expect": {
+      "domain": "Databases & Storage",
+      "subsystem": "General Databases"
+    }
+  },
+  {
+    "owner": "example",
+    "name": "webcache-proxy",
+    "description": "A caching reverse proxy in front of apps",
+    "topics": [],
+    "language": "Go",
+    "stars": 900,
+    "expect": {
+      "domain": "Other / General",
+      "subsystem": "General Components"
+    }
+  },
+  {
+    "owner": "rails-ci",
+    "name": "rails-ci-tooling",
+    "description": "Helpers for running tests",
+    "topics": [],
+    "language": "Ruby",
+    "stars": 700,
+    "expect": {
+      "domain": "Other / General"
+    }
+  },
+  {
+    "owner": "student",
+    "name": "ai-notes",
+    "description": "My study notes on applied mathematics",
+    "topics": [],
+    "language": "Markdown",
+    "stars": 550,
+    "expect": {
+      "domain": "Other / General"
+    }
+  },
+  {
+    "owner": "flutter",
+    "name": "flutter",
+    "description": "Flutter is Google's UI toolkit for building applications for mobile, web, and desktop.",
+    "topics": [
+      "flutter",
+      "mobile",
+      "dart"
+    ],
+    "language": "Dart",
+    "stars": 165000,
+    "expect": {
+      "domain": "Other / General"
+    }
+  }
+]

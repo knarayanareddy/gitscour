@@ -1,0 +1,127 @@
+{
+  "total": 123153,
+  "domain_changed": 92554,
+  "domain_changed_pct": 75.15,
+  "subsystem_changed": 93249,
+  "subsystem_changed_pct": 75.72,
+  "artifact_changed": 24809,
+  "artifact_changed_pct": 20.14,
+  "margin_distribution": {
+    "0": 64322,
+    "1": 44780,
+    "2": 12262,
+    "3": 1473,
+    "4": 242,
+    "5": 49,
+    "6": 20,
+    "7": 5,
+    "8": 0,
+    "9": 0
+  },
+  "per_domain": {
+    "AI & Machine Learning": {
+      "stayed": 230,
+      "out": 16970,
+      "in": 8
+    },
+    "Cloud & Infrastructure": {
+      "stayed": 217,
+      "out": 4116,
+      "in": 16
+    },
+    "Databases & Storage": {
+      "stayed": 217,
+      "out": 3583,
+      "in": 7
+    },
+    "Developer Tooling & Compilers": {
+      "stayed": 53,
+      "out": 13502,
+      "in": 0
+    },
+    "Education & Curated Learning": {
+      "stayed": 62,
+      "out": 3037,
+      "in": 47
+    },
+    "Networking & Distributed Systems": {
+      "stayed": 14,
+      "out": 1095,
+      "in": 3
+    },
+    "Operating Systems & Low-Level": {
+      "stayed": 76,
+      "out": 22605,
+      "in": 1
+    },
+    "Other / General": {
+      "stayed": 28461,
+      "out": 0,
+      "in": 92429
+    },
+    "Security & Cryptography": {
+      "stayed": 51,
+      "out": 3633,
+      "in": 2
+    },
+    "Web Platforms & Frameworks": {
+      "stayed": 1218,
+      "out": 24013,
+      "in": 41
+    }
+  },
+  "top_transitions": {
+    "domain": {
+      "Web Platforms & Frameworks -> Other / General": 24001,
+      "Operating Systems & Low-Level -> Other / General": 22584,
+      "AI & Machine Learning -> Other / General": 16944,
+      "Developer Tooling & Compilers -> Other / General": 13484,
+      "Cloud & Infrastructure -> Other / General": 4109,
+      "Security & Cryptography -> Other / General": 3609,
+      "Databases & Storage -> Other / General": 3573,
+      "Education & Curated Learning -> Other / General": 3031,
+      "Networking & Distributed Systems -> Other / General": 1094,
+      "Operating Systems & Low-Level -> Education & Curated Learning": 14,
+      "Security & Cryptography -> Web Platforms & Frameworks": 12,
+      "AI & Machine Learning -> Education & Curated Learning": 11,
+      "AI & Machine Learning -> Web Platforms & Frameworks": 8,
+      "Developer Tooling & Compilers -> Web Platforms & Frameworks": 8,
+      "Security & Cryptography -> Education & Curated Learning": 7
+    },
+    "subsystem": {
+      "General Operating Systems -> General Components": 20848,
+      "General Web Platforms -> General Components": 19315,
+      "General AI -> General Components": 10634,
+      "Terminal & Editor Utilities -> General Components": 5327,
+      "General Developer Tooling -> General Components": 3995,
+      "Compilers & Runtimes -> General Components": 3317,
+      "Autonomous Agents & Workflows -> General Components": 2381,
+      "General Databases -> General Components": 2308,
+      "Container Orchestration & Runtime -> General Components": 2157,
+      "API Architecture (GraphQL/gRPC) -> General Components": 1895,
+      "Computer Vision & Multimodal -> General Components": 1860,
+      "General Security -> General Components": 1457,
+      "General Education -> General Components": 1393,
+      "Full-Stack & SSR Frameworks -> General Components": 1318,
+      "General Cloud -> General Components": 1268
+    },
+    "artifact": {
+      "Developer Tool / CLI -> Application / Service": 3375,
+      "Application / Service -> System Service / Engine": 3222,
+      "System Service / Engine -> Application / Service": 3039,
+      "Framework -> Application / Service": 2803,
+      "Developer Tool / CLI -> Library / SDK": 2499,
+      "Application / Service -> Developer Tool / CLI": 2327,
+      "Library / SDK -> Application / Service": 2205,
+      "Application / Service -> Library / SDK": 1549,
+      "Application / Service -> Framework": 673,
+      "Curated List / Docs -> Application / Service": 416,
+      "Framework -> Library / SDK": 415,
+      "System Service / Engine -> Library / SDK": 350,
+      "System Service / Engine -> Framework": 339,
+      "Template / Starter -> Application / Service": 312,
+      "Developer Tool / CLI -> System Service / Engine": 271
+    }
+  },
+  "topics_coverage_pct": 0.0
+}

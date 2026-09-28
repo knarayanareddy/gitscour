@@ -1,6 +1,6 @@
 """Consistency gate for the generated GitScour catalog artefacts.
 
-The pipeline writes four interdependent files, and nothing in CI previously
+The pipeline writes three interdependent files, and nothing in CI previously
 checked that they agreed with each other -- which is how `catalog-index.json`
 ended up holding 1,276 records while `catalog-packed.json` held 51,192.
 
@@ -8,11 +8,17 @@ Checks performed
 ----------------
   1. every Tier-1 row decodes against its dictionary maps, ids are unique,
      and no row falls below the star threshold;
-  2. the readable fallback index (`catalog-index.json`) and its legacy alias
-     (`repos.json`) cover exactly the same ids as the packed index;
+  2. the readable fallback index (`catalog-index.json`) covers exactly the
+     same ids as the packed index (the `repos.json` twin was removed in  # twin-name-ok
+     W5 O.4);
   3. every Tier-2 shard parses, is keyed by repo id, and its ids are a subset
      of the catalog; the union of all shards covers the whole catalog;
-  4. per-domain shard membership matches each row's `shard` slug.
+  4. per-domain shard membership: every deep record must live in the shard
+     file named by its row's domain slug (`misplaced` actually fails now);
+  5. every hook fits the 90-character UI bound;
+  6. row arity is 12 (pre-W2), 13 (W2+), or 15 (W3+: margin, topics,
+     compatibility), and a 13th field `domain_margin`
+     is an integer inside 0..9.
 
 Usage: python3 pipeline/verify_catalog.py [--base-dir web/public] [--min-stars 500] [--skip-shards]
 """
@@ -66,12 +72,34 @@ def main() -> int:
     dupes = 0
     below = 0
     oob = 0
+    bad_arity = 0
+    bad_margin = 0
+    bad_tail = 0
+    long_hooks = 0
+    id_shard: dict = {}  # rid -> expected shard slug from its domain
     domain_sizes: dict[str, int] = {}
     for i, row in enumerate(rows):
-        if len(row) != 12:
-            errors.append(f"row {i} has {len(row)} fields, expected 12")
+        # W2 §1.7: 12-field rows (pre-W2), 13-field rows (W2+ margin@12), and
+        # 15-field rows (W3+ margin@12, topics@13, compatibility@14) are all
+        # valid; anything else means a writer is out of sync with the schema.
+        if not isinstance(row, list) or len(row) not in (12, 13, 14, 15):
+            bad_arity += 1
+            errors.append(f"row {i} has {len(row) if isinstance(row, list) else '?'} fields, "
+                          f"expected 12..15")
             break
-        rid, name, owner, stars, forks, lang, dom, sub, art, license_, primitives, hook = row
+        rid, name, owner, stars, forks, lang, dom, sub, art, license_, primitives, hook = row[:12]
+        if len(row) > 12:
+            margin = row[12]
+            if isinstance(margin, bool) or not isinstance(margin, int) or not 0 <= margin <= 9:
+                bad_margin += 1
+        # W3 tail: topics (index 13) and compatibility (index 14) must be string
+        # lists when present — these power ranked search and the edges builder.
+        for tail_idx in (13, 14):
+            if len(row) > tail_idx:
+                tail = row[tail_idx]
+                if (isinstance(tail, bool) or not isinstance(tail, list)
+                        or any(not isinstance(t, str) for t in tail)):
+                    bad_tail += 1
         if rid in ids:
             dupes += 1
         ids.add(rid)
@@ -80,11 +108,14 @@ def main() -> int:
             break
         if int(stars) < args.min_stars:
             below += 1
+        if isinstance(hook, str) and len(hook) > 90:
+            long_hooks += 1
         for label, val, table in (("lang", lang, "languages"), ("dom", dom, "domains"),
                                   ("sub", sub, "subsystems"), ("art", art, "artifacts")):
             if int(val) not in maps[table]:
                 oob += 1
         slug = slugify(packed["domains"][str(dom)])
+        id_shard[rid] = slug
         domain_sizes[slug] = domain_sizes.get(slug, 0) + 1
     if dupes:
         errors.append(f"{dupes} duplicate ids in packed index")
@@ -100,8 +131,14 @@ def main() -> int:
         errors.append(f"{below} rows below the {args.min_stars} star threshold")
     if oob:
         errors.append(f"{oob} dictionary-encoded references outside their map")
+    if bad_margin:
+        errors.append(f"{bad_margin} rows carry a domain_margin outside 0..9")
+    if bad_tail:
+        errors.append(f"{bad_tail} rows have malformed topics/compatibility tail fields")
+    if long_hooks:
+        errors.append(f"{long_hooks} rows have hooks longer than 90 characters")
 
-    for fname in ("catalog-index.json", "repos.json"):
+    for fname in ("catalog-index.json",):
         path = os.path.join(base, fname)
         if not os.path.exists(path):
             errors.append(f"missing {path}")
@@ -144,11 +181,20 @@ def main() -> int:
                 covered.add(rid)
                 if rid not in ids:
                     stray += 1
+                elif id_shard.get(rid) is not None and id_shard[rid] != slug:
+                    # W2 §1.7 check #4: the deep record must sit in the shard
+                    # file named by the row's domain, or the UI's domain->
+                    # shard lookup opens the wrong file and misses the card.
+                    misplaced += 1
         missing = ids - covered
         print(f"Tier-2 shards: {len(present_slugs)} files, {total_deep:,} deep records, "
-              f"{len(covered):,} unique ids ({len(missing):,} catalog ids without deep record, {stray} stray)")
+              f"{len(covered):,} unique ids ({len(missing):,} catalog ids without deep record, "
+              f"{stray} stray, {misplaced} misplaced)")
         if stray:
             errors.append(f"{stray} shard records have ids not present in the Tier-1 index")
+        if misplaced:
+            errors.append(f"{misplaced} deep records live in a shard that does not match "
+                          f"their row's domain slug")
         if missing:
             errors.append(f"{len(missing)} catalog repositories have no Tier-2 deep record")
         for slug in domain_sizes:

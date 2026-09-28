@@ -8,3 +8,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 sample_scraped.json
+
+# generate_seed.py demo output (must never be committed; live catalog lives in web/public/)
+pipeline/seed_demo.json

@@ -20,8 +20,12 @@ GitScour eliminates traditional backend database costs by combining static pre-i
    * Filters out generic "awesome lists" and tutorials so users searching for systems software find actual codebases.
 
 2. **Web Explorer & In-Browser SQL Studio (`web/`):**
-   * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, and languages.
-   * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with one-click CSV export.
+   * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, languages, license tiers, and pack-time **topics**.
+   * **Search latency:** ranked tokenized search over the pack-time index measures **0.1–3.8 ms median per query** — `web/smoke-test.mjs` reports the medians on every build and hard-fails any ranked query above **50 ms** (a ceiling set far above measured so CI variance never flakes), so the claim is gate-asserted, not aspirational.
+   * **Topic cloud & Ecosystems tab:** per-domain topic cloud from `facets.topics_by_domain`, plus a co-occurrence graph (`topic-map.json`: term frequency >= 25, pair count >= 10, top-10 edges per topic) built at pack time by `pipeline/topicmap.py` — click a node to filter the catalog.
+   * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`) with one-click CSV export; mutation statements (`INSERT`, `UPDATE`, `DROP`, ...) are rejected — the console is read-only over Tier-1.
+   * **History & Rising:** per-rebuild star snapshots (`history/<date>-stars.json`, byte-identical same-day re-runs) diffed into `changelog.json` — added/removed rows and |delta| movers feed the *Rising* tab, the Explorer shelf, and the inspector's momentum sparkline. One snapshot only = honest seeded-baseline note, never invented deltas.
+   * **Inspire (blueprints):** eight curated blueprints in `web/src/blueprints.json` (seeds verified against the packed catalog) completed by the deterministic `blueprint-engine.mjs`; stack generation is reproducible from the URL `?seed=` parameter (mulberry32 — no `Math.random`). Pool synergy is the **mean over pair scores** from `synergy-core.mjs`, so 2-slot and 6-slot stacks are comparable, with a protocol matrix derived from `COMPATIBILITY_RULES` (Postgres-compatible <-> pg drivers, OpenAI-compatible <-> OpenAI clients, ...).
 
 3. **Zero-Maintenance Automation (`.github/workflows/`):**
    * `backfill_123k.yml` (monthly) enumerates the full >500★ universe, rebuilds the
@@ -31,6 +35,33 @@ GitScour eliminates traditional backend database costs by combining static pre-i
      branch after `verify_catalog.py` passes. It no longer harvests during the build:
      regenerating shards from a partial index during deploy is how the deployed Tier-2
      data could drift away from the repository.
+   * Both workflows run the same gate lane before deploying/harvesting: deterministic
+     unit tests, `verify_catalog.py`, the repo-wide **zero-LLM guardrail**
+     (`pipeline/check_zero_llm.py` — the build fails if any scanned source wires up an
+     LLM provider SDK, import, or call form; every feature ships deterministic and
+     rule-based with zero model calls), then the artefact smoke test
+     (`web/smoke-test.mjs`).
+
+4. **Signal score (pack-time, auditable):** one 0–100 integer per repository written
+   to `catalog-packed.json` as the parallel `signal` array and used by the Explorer's
+   *Signal* sort and *Min Signal* slider. Pure arithmetic -- no LLM, no network:
+
+   ```
+   signal = round(45 · stars_pct
+                + 25 · push_recency
+                + 20 · fork_ratio_pct
+                + 10 · has_release)
+   ```
+
+   | Term | Definition |
+   |---|---|
+   | `stars_pct` | Percentile rank of the row's star count among all 123k rows. |
+   | `push_recency` | `exp(-age_days / 548)` over the last push (≈2-year decay). No push data = **0.5** (unknown, never assumed dead). |
+   | `fork_ratio_pct` | Percentile rank of the `(forks+1)/(stars+1)` ratio. |
+   | `has_release` | 1 when the curated quickstart carries a real install command (`pip install`, `npm install`, `cargo install`, `docker pull`, ...), else 0 (default `git clone` stub). |
+
+   Weights sum to 100; every term is monotone in its input. The formula is pinned by
+   `tests/test_signal.py` (bounds, monotonicity, per-term contributions).
 
 ---
 
@@ -69,16 +100,25 @@ npm run dev
 ```
 Open `http://localhost:5173` to explore the catalog.
 
-### 2. Run the Classification Pipeline
+### 2. Run the Classification Pipeline (offline demo)
 ```bash
 python3 pipeline/generate_seed.py
 ```
+Enriches 16 curated seed records through the real taxonomy engine and writes them
+to `pipeline/seed_demo.json` (gitignored). This is a self-contained demo — it
+**never writes into `web/public/`**, so running it cannot clobber the live
+catalog artifacts (`catalog-index.json`, the shards) the way an
+older version of this script did.
 
 ### 3. Fetch Repositories via GitHub GraphQL API
 ```bash
 export GITHUB_TOKEN="your_pat_token"
-python3 pipeline/ingest.py
+python3 pipeline/harvest_enumerate.py --min-stars 500 \
+  --output harvest/raw_repos.jsonl --manifest harvest/windows_done.jsonl
 ```
+(The single-query `ingest.py` this step used to run is archived in `legacy/`;
+it was capped by GitHub's 1,000-result search limit — step 4 explains the
+window-partitioned sweep that replaced it.)
 
 ### 4. Full backfill (enumerate every repo above a star threshold)
 
@@ -103,18 +143,31 @@ python3 pipeline/rebuild_catalog.py --harvest harvest/raw_repos.jsonl
 python3 pipeline/verify_catalog.py
 ```
 
-`reconcile_stale_rows.py` is an optional pass in front of `rebuild_catalog.py`: it
-resolves catalog rows the sweep did not match, drops deleted / taken-down /
-sub-threshold repos, and collapses renames so one project is never listed twice
-under its old and new `owner/name`.
+`reconcile_stale_rows.py` runs automatically in the monthly backfill CI
+(`backfill_123k.yml`, step "Reconcile stale rows") immediately **before**
+`rebuild_catalog.py` (R1.6): it resolves catalog rows the sweep did not match,
+drops deleted / taken-down / sub-threshold repos, and collapses renames so one
+project is never listed twice under its old and new `owner/name`. It can also
+be run locally as a pass in front of `rebuild_catalog.py`.
+
+### 5. Run the test suite
+```bash
+python3 -m pytest tests/ -q                # what both CI workflows run
+# or, with zero dependencies:
+python3 -m unittest discover -s tests -v
+```
+Deterministic and network-free: window-planner split arithmetic, harvest
+completeness guarantees (partial-window detection, probe-failure abort,
+`forks:>=N` clauses). `deploy.yml` runs this before verifying, and
+`backfill_123k.yml` runs it before harvesting.
 
 | Script | Role |
 | --- | --- |
 | `harvest_enumerate.py` | Window-partitioned GraphQL sweep; the only harvester that can exceed 1,000 records per query |
-| `rebuild_catalog.py` | Single consolidation point for all four artefacts (`catalog-packed.json`, `catalog-index.json`, `repos.json`, `data/details/*.json`) |
+| `rebuild_catalog.py` | Single consolidation point for all three artefacts (`catalog-packed.json`, `catalog-index.json`, `data/details/*.json`) |
 | `verify_catalog.py` | Cross-artefact integrity gate (ids, encodings, star floor, shard coverage) |
 | `reconcile_stale_rows.py` | Live re-validation of rows missing from the current universe |
-| `harvest_scale.py`, `backfill_worker.py`, `scale_50k.py` | Earlier samplers, capped at ~1k records per window; retained as reference |
-| `pack_index.py`, `shard_manager.py` | Superseded artefact writers kept for reference -- they each rebuild only *part* of the set, which is how the index and shards drifted apart |
+| `legacy/harvest_scale.py`, `legacy/backfill_worker.py`, `legacy/scale_50k.py` | Earlier samplers, capped at ~1k records per window; archived in `legacy/` (see `legacy/README.md`) |
+| `legacy/pack_index.py`, `legacy/shard_manager.py` | Superseded artefact writers, archived in `legacy/` -- they each rebuilt only *part* of the set, which is how the index and shards drifted apart |
 
 > `scale_50k.py` re-derives ids with `abs(hash(url))`. Python salts string hashing per process, so re-running it rewrites every id in the catalog and breaks Tier-2 lookups; `rebuild_catalog.py` assigns stable ids inside JavaScript's exact-integer range instead.

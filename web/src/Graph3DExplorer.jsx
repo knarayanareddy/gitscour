@@ -5,8 +5,16 @@ import {
   SlidersHorizontal, Target, Crosshair, ArrowRight, Play, ExternalLink,
   Share2, Network, Sliders, Activity, Focus, Orbit, Radio
 } from 'lucide-react';
+import { deriveCompatibility, tier1Corpus } from './compatibility.js';
 
-export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain }) {
+// Rendered-sample limits — the galaxy cannot draw all 123k nodes, so it draws a
+// star-ranked sample and synthesizes links for a smaller cohort. Exported so the
+// App header can state what is actually on screen instead of claiming every
+// catalog node is rendered (review finding #7c).
+export const GRAPH_SAMPLE_LIMIT = 1600;
+export const GRAPH_LINK_LIMIT = 450;
+
+export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain, onStatsChange, edgeList }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -24,6 +32,14 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   const [filterDomain, setFilterDomain] = useState(selectedDomain || 'all');
   const [filterMinStars, setFilterMinStars] = useState(500);
 
+  // Prop-sync: the cluster-filter dropdown lives in App.jsx and writes
+  // `selectedDomain`. Without this effect the local copy was set once at mount
+  // and never again, so the dropdown was inert while the tab stayed open
+  // (review finding #7a).
+  useEffect(() => {
+    setFilterDomain(selectedDomain || 'all');
+  }, [selectedDomain]);
+
   // Second Brain / Obsidian & 3D Force Graph Interactive Controls
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [nodeSizingMetric, setNodeSizingMetric] = useState('stars'); // 'stars' | 'forks' | 'uniform'
@@ -35,6 +51,8 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
   // Interaction Refs (for 60 FPS physics & rendering loops)
   const isDragging = useRef(false);
+  const touchStart = useRef(null);
+  const pickedOnDown = useRef(null);
   const isPanning = useRef(false);
   const prevMousePos = useRef({ x: 0, y: 0 });
   const animationFrameId = useRef(null);
@@ -83,7 +101,7 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
   }, []);
 
   // 1. Build Graph Topology, Node Geometries & Force-Layout Positioning
-  const { nodes, links, domainClusters, nodeLookup } = useMemo(() => {
+  const { nodes, links, domainClusters, nodeLookup, filteredCount, linkedCount } = useMemo(() => {
     const validRepos = repos.filter((r) => {
       if (filterDomain !== 'all' && r.domain !== filterDomain) return false;
       if (r.stars < filterMinStars) return false;
@@ -105,7 +123,10 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     });
 
     const lookup = {};
-    const sampleLimit = Math.min(validRepos.length, 1600);
+    // Row ordinals: nodes index edges.json (pack-time kNN), and filtering
+    // preserves repos order, so the ORIGINAL repos index is the edge key.
+    const ordinalById = new Map(repos.map((r, i) => [r.id, i]));
+    const sampleLimit = Math.min(validRepos.length, GRAPH_SAMPLE_LIMIT);
     const graphNodes = validRepos.slice(0, sampleLimit).map((repo, idx) => {
       let x = 0, y = 0, z = 0;
 
@@ -156,7 +177,12 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
         forks: repo.forks,
         language: repo.language,
         primitives: repo.primitives || [],
-        compatibility: repo.compatibility || [],
+        // W3 §2.4: rows now carry `compatibility` themselves (15-field schema);
+        // deriveCompatibility stays as the legacy-row fallback (review #7b).
+        compatibility: (repo.compatibility && repo.compatibility.length)
+          ? repo.compatibility
+          : deriveCompatibility(tier1Corpus(repo)),
+        ordinal: ordinalById.get(repo.id),
         color: DOMAIN_CONFIG[repo.domain] || DOMAIN_CONFIG["Other / General"],
         size,
         baseX: x, baseY: y, baseZ: z,
@@ -168,41 +194,126 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       return nodeObj;
     });
 
-    // 2. Synthesize High-Signal Relationships & Multi-Hop Bridges
+    // 2. Edges: pack-time kNN from edges.json (W3 §2.4), with the old client
+    // derivation kept as fallback when the file has not loaded.
     const graphLinks = [];
-    const maxLinkNodes = Math.min(graphNodes.length, 450);
+    const seenPairs = new Set();
+    const pushLink = (a, b, strength, relationship) => {
+      const key = a.id < b.id ? `${a.id}:${b.id}` : `${b.id}:${a.id}`;
+      if (a === b || seenPairs.has(key)) return false;
+      seenPairs.add(key);
+      graphLinks.push({ source: a, target: b, strength, relationship });
+      return true;
+    };
+    // Template reason strings, derived at render from the shared evidence sets
+    const reasonFor = (a, b) => {
+      if (a.subsystem && a.subsystem === b.subsystem && !a.subsystem.startsWith('General')) {
+        return `Shared Subsystem (${a.subsystem})`;
+      }
+      const p = (a.primitives || []).find((x) => (b.primitives || []).includes(x));
+      if (p) return `Shared Primitive (${p})`;
+      const c = (a.compatibility || []).find((x) => (b.compatibility || []).includes(x));
+      if (c) return `Shared Interop (${c})`;
+      const ta = a.repo.topics || [];
+      const tb = b.repo.topics || [];
+      const t = ta.find((x) => tb.includes(x));
+      if (t) return `Shared Topic (${t})`;
+      const la = a.language, lb = b.language;
+      if (la && la === lb && la !== 'Other') return `Same Language (${la})`;
+      return null;
+    };
 
-    for (let i = 0; i < maxLinkNodes; i++) {
-      for (let j = i + 1; j < maxLinkNodes; j++) {
-        const a = graphNodes[i];
-        const b = graphNodes[j];
-        
-        let strength = 0;
-        let relationship = "";
+    const maxLinkNodes = Math.min(graphNodes.length, GRAPH_LINK_LIMIT);
+    const edgesReady = Array.isArray(edgeList) && edgeList.length > 0;
+    let linkedCount = 0;
 
-        if (a.subsystem && b.subsystem && a.subsystem === b.subsystem) {
-          strength += 3;
-          relationship = `Shared Subsystem (${a.subsystem})`;
-        }
-        const commonPrim = a.primitives.find((p) => b.primitives.includes(p));
-        if (commonPrim) {
-          strength += 2;
-          relationship = `Shared Primitive (${commonPrim})`;
-        }
-        const commonComp = a.compatibility.find((c) => b.compatibility.includes(c));
-        if (commonComp) {
-          strength += 2;
-          relationship = `Shared Interop (${commonComp})`;
-        }
-
-        if (strength >= 3) {
-          graphLinks.push({ source: a, target: b, strength, relationship });
+    if (edgesReady) {
+      const nodeByOrdinal = new Map(graphNodes.map((n) => [n.ordinal, n]));
+      const linked = new Set();
+      for (const node of graphNodes) {
+        const entries = edgeList[node.ordinal] || [];
+        for (const entry of entries) {
+          const [jOrd, w] = entry;
+          const other = nodeByOrdinal.get(jOrd);
+          if (!other) continue; // neighbour outside the graph sample
+          const reason = reasonFor(node, other)
+            || (w <= 0.1 ? 'Nearby catalog entry (no shared signals)' : 'Weighted Similarity');
+          if (pushLink(node, other, w, reason)) linked.add(node.id);
         }
       }
+      // Every sampled node keeps at least one link: nearest sampled ordinal.
+      const ordinals = graphNodes.map((n) => n.ordinal).sort((a, b) => a - b);
+      for (const node of graphNodes) {
+        if (linked.has(node.id)) continue;
+        let best = null, bestGap = Infinity;
+        for (const o of ordinals) {
+          if (o === node.ordinal) continue;
+          const gap = Math.abs(o - node.ordinal);
+          if (gap < bestGap) { bestGap = gap; best = o; }
+        }
+        if (best !== null) {
+          const other = nodeByOrdinal.get(best);
+          if (pushLink(node, other, 0.1, 'Nearest catalog neighbor (graph sample)')) {
+            linked.add(node.id);
+          }
+        }
+      }
+      linkedCount = linked.size;
+    } else {
+      // Legacy fallback: synthesize relationships over the first cohort only
+      // (pre-W3 behaviour — O(450^2), first 450 sampled nodes).
+      for (let i = 0; i < maxLinkNodes; i++) {
+        for (let j = i + 1; j < maxLinkNodes; j++) {
+          const a = graphNodes[i];
+          const b = graphNodes[j];
+          let strength = 0;
+          let relationship = "";
+          if (a.subsystem && b.subsystem && a.subsystem === b.subsystem) {
+            strength += 3;
+            relationship = `Shared Subsystem (${a.subsystem})`;
+          }
+          const commonPrim = a.primitives.find((p) => b.primitives.includes(p));
+          if (commonPrim) {
+            strength += 2;
+            relationship = `Shared Primitive (${commonPrim})`;
+          }
+          const commonComp = a.compatibility.find((c) => b.compatibility.includes(c));
+          if (commonComp) {
+            strength += 2;
+            relationship = `Shared Interop (${commonComp})`;
+          }
+          if (strength >= 3) {
+            graphLinks.push({ source: a, target: b, strength, relationship });
+          }
+        }
+      }
+      linkedCount = Math.min(maxLinkNodes, graphNodes.length);
     }
 
-    return { nodes: graphNodes, links: graphLinks, domainClusters: domainNames, nodeLookup: lookup };
-  }, [repos, filterDomain, filterMinStars, viewMode, repulsionForce, nodeSizingMetric]);
+    return {
+      nodes: graphNodes,
+      links: graphLinks,
+      domainClusters: domainNames,
+      nodeLookup: lookup,
+      filteredCount: validRepos.length,   // rows passing domain + min-stars filters
+      linkedCount,                        // nodes actually holding >= 1 link
+    };
+  }, [repos, filterDomain, filterMinStars, viewMode, repulsionForce, nodeSizingMetric, edgeList]);
+
+  // Report live graph stats so the App header can state real numbers instead of
+  // the old bare "123,153 Nodes" claim (review finding #7c). Deps are numeric
+  // primitives from the memo above, and the callback goes through a ref: the
+  // effect fires when graph content changes — never on parent re-renders, so no
+  // setState loop even if a caller passes an inline arrow.
+  const onStatsRef = useRef(onStatsChange);
+  useEffect(() => { onStatsRef.current = onStatsChange; });
+  useEffect(() => {
+    onStatsRef.current?.({
+      filtered: filteredCount,
+      rendered: nodes.length,
+      linked: linkedCount,
+    });
+  }, [filteredCount, nodes.length, linkedCount]);
 
   // Active Focus & Connected Neighborhood Computation (with Hop Depth support)
   const activeFocusNode = selectedNode || hoveredNode;
@@ -453,13 +564,39 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
 
   // Mouse & Touch Controls
   const handleMouseDown = (e) => {
+    // W4 §3.7: unified pointer handling — works for mouse AND touch/pen.
+    if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* already released */ }
+    }
     if (e.button === 2 || e.shiftKey) {
       isPanning.current = true;
     } else {
       isDragging.current = true;
+      touchStart.current = { x: e.clientX, y: e.clientY };
     }
     prevMousePos.current = { x: e.clientX, y: e.clientY };
     setAutoRotate(false);
+    // touch has no hover: pick a node on contact so a tap can open it too
+    if (e.pointerType === 'touch' && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const picked = pickNode(e.clientX - rect.left, e.clientY - rect.top);
+      if (picked) setHoveredNode(picked);
+      pickedOnDown.current = picked;
+    }
+  };
+
+  const pickNode = (mouseX, mouseY) => {
+    let found = null;
+    let closestDist = 18;
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      const dist = Math.hypot(n.screenX - mouseX, n.screenY - mouseY);
+      if (dist < closestDist) {
+        found = n;
+        closestDist = dist;
+      }
+    }
+    return found;
   };
 
   const handleMouseMove = (e) => {
@@ -491,21 +628,19 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
     }
 
     // Raycast / Proximity Check
-    let found = null;
-    let closestDist = 18;
-
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      const n = nodes[i];
-      const dist = Math.hypot(n.screenX - mouseX, n.screenY - mouseY);
-      if (dist < closestDist) {
-        found = n;
-        closestDist = dist;
-      }
-    }
-    setHoveredNode(found);
+    setHoveredNode(pickNode(mouseX, mouseY));
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    // Tap detection (touch): a press that barely moved opens the picked node.
+    if (e && touchStart.current) {
+      const dx = e.clientX - touchStart.current.x;
+      const dy = e.clientY - touchStart.current.y;
+      if (Math.hypot(dx, dy) < 6 && pickedOnDown.current) {
+        flyToNode(pickedOnDown.current);
+      }
+    }
+    pickedOnDown.current = null;
     isDragging.current = false;
     isPanning.current = false;
   };
@@ -526,12 +661,14 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
       <div 
         ref={containerRef}
         className="relative flex-1 w-full h-full cursor-grab active:cursor-grabbing"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onPointerDown={handleMouseDown}
+        onPointerMove={handleMouseMove}
+        onPointerUp={handleMouseUp}
+        onPointerCancel={handleMouseUp}
         onWheel={handleWheel}
         onClick={handleClick}
         onContextMenu={(e) => e.preventDefault()}
+        style={{ touchAction: 'none' }}
       >
         <canvas ref={canvasRef} className="w-full h-full block" />
 
@@ -725,6 +862,32 @@ export default function Graph3DExplorer({ repos, onSelectRepo, selectedDomain })
                     }`}
                   >
                     {h} Hop{h > 1 ? 's' : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Minimum Star Filter — this setter previously had no UI at all
+                (review finding #7a); presets keep it deterministic. */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-[10px] font-semibold uppercase text-zinc-400">
+                  Minimum Stars
+                </label>
+                <span className="font-mono text-zinc-300">{filterMinStars.toLocaleString()}★</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1 bg-obs-inset p-1 rounded-lg border border-white/[0.07]">
+                {[500, 1000, 5000, 25000].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setFilterMinStars(m)}
+                    className={`py-1 text-[11px] rounded transition-colors ${
+                      filterMinStars === m
+                        ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white font-medium'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {m >= 1000 ? `${m / 1000}k` : m}
                   </button>
                 ))}
               </div>

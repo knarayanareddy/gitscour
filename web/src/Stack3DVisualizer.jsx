@@ -238,9 +238,26 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
 
   // Mouse Handlers
   const handleMouseDown = (e) => {
+    // W4 §3.7: unified pointer handling — mouse AND touch/pen.
+    if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* already released */ }
+    }
     isDragging.current = true;
     prevMousePos.current = { x: e.clientX, y: e.clientY };
     setAutoRotate(false);
+    if (e.pointerType === 'touch' && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      let found = null;
+      let closestDist = 22;
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        const n = nodes[i];
+        const dist = Math.hypot(n.screenX - mouseX, n.screenY - mouseY);
+        if (dist < closestDist) { found = n; closestDist = dist; }
+      }
+      if (found) setHoveredNode(found);
+    }
   };
 
   const handleMouseMove = (e) => {
@@ -288,10 +305,12 @@ export default function Stack3DVisualizer({ stackItems, analysis, onSelectRepo }
       <div 
         ref={containerRef}
         className="relative w-full h-[400px] cursor-grab active:cursor-grabbing"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onPointerDown={handleMouseDown}
+        onPointerMove={handleMouseMove}
+        onPointerUp={handleMouseUp}
+        onPointerCancel={handleMouseUp}
         onWheel={handleWheel}
+        style={{ touchAction: 'none' }}
       >
         <canvas ref={canvasRef} className="w-full h-full block" />
 

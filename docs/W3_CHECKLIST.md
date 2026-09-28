@@ -1,0 +1,175 @@
+# W3 — Leverage: implementation checklist
+
+Source: `docs/REMAINING_WORK.md` §2 (findings #7c/#7d/#8/#11/#12/#14, features 3.2–3.7).
+Branch `arena/01a0d2cb-gitscour`. Standing rule: **zero LLM calls.** Predecessor: `docs/W2_CHECKLIST.md` (32/33, pushed `c3e8f19`).
+
+**Status: COMPLETE — 26/26 ticked (2.7 "permissive-only" satisfied by the License Tier
+select's Permissive option). Sole caveat: activity/archived + topics-driven edges reach
+their full data quality on the next CI backfill (local shards predate those fields).**
+
+## Baseline (measured on the shipped 123,153-row catalog before the change)
+
+| Metric | Measured |
+|---|---|
+| One full search scan (per keystroke, no debounce) | **143.7 ms** (accept: <5 ms) |
+| `'simd'` hits (substring over name/owner/hook/lang/domain/subsystem) | **48** (142 rows carry the primitive) |
+| `'sql vector'` hits | **1** (review measured the same) |
+| `'raft'` hits | 654 (includes *draft/craft* substring false positives) |
+| `catalog-packed.json` gzip | **7.25 MB** (README/header claim *3.2 MB* — false) |
+| Tier-2 topics coverage (shipped shards) | 0% (W2 §1.4 writes them from the next backfill) |
+| General\\* subsystem fallback share (v1 labels) | 74.2% (edges must not clique on it) |
+
+## Execution order
+
+2.3 → 2.1 → 2.2 → **commit search** → 2.4 → 2.5 → **commit graph** → 2.6 → 2.7 → 2.8 → gates.
+
+## 2.3 Search runtime hygiene (finding #8, cheap)
+
+- [x] Memoize the per-repo search corpus **once** at unpack (`searchCorpus` built in the
+      unpack map; substring fallback no longer rebuilds per keystroke)
+- [x] Debounce input 120 ms (`debouncedQuery` state; URL sync stays on the raw query)
+- *Accept:* indexed query path measures **0.09–1.06 ms** median (gates assert <5 ms)
+
+## 2.1 Pack-time inverted index + BM25-lite ranking (finding #8, P1)
+
+- [x] `write_artifacts` (shared by rebuild **and** reclassify) emits `web/public/search-index.json`
+      (`pipeline/search_index.py`): 142,546 tokens / 1,415,241 postings / 14.80 MB raw /
+      **3.79 MB gzip**; flat pairs `[ord0_abs, code, delta, code…]`, `code=(tf<<10)|field-mask`
+- [x] Client query path: field-weighted BM25-lite in `web/src/search-core.mjs`
+      (`idf = ln(1+N/df)`, `tf/(1+tf)`, weights name 5 > owner 4 > subsystem 3 > topics 2.5 >
+       primitives 2 > compatibility 1.5 > domain 1.5 > hook 1 > language 0.5 >
+       license 0.5; **match-count-first** ordering + `1+0.5*(matched-1)` bonus;
+      tie-break `ln(1+stars)` then ordinal; empty query keeps stars-desc)
+- [x] Backfill regenerates the index automatically — it flows through `write_artifacts`
+      (rebuild + reclassify); confirmed `backfill_123k.yml` needs no edit (pytest step,
+      rebuild, re-score, verify, `node web/smoke-test.mjs web/public` all in place)
+- *Accept:* **947/142/157 hits for `'sql vector'`/`'simd'`/`'raft'` at 1.06/0.20/0.10 ms**,
+  duckdb top-3 all `duckdb/*`, 7/10 of the `'sql vector'` top-10 mention both tokens
+
+## 2.2 Search what you already know (finding #8)
+
+- [x] Searchable fields include `primitives`, `license`, `compatibility`, `topics`
+      (all 10 fields are indexed; the memoized fallback corpus covers them too)
+- [x] `web/smoke-test.mjs` imports `src/search-core.mjs` (the shipped code — no mirror)
+      and asserts hits + latency + relevance + determinism + index shape; thresholds:
+      `'sql vector'` ≥20 (947), `'simd'` ≥100 (142), `'raft'` ≥150 (157 — exact tokens,
+      the old substring's 654 included *draft/craft*), each <5 ms median
+- [x] `tests/test_search_index.py` (13 tests): keep-rules (name df==1 kept, body df==1
+      dropped, stop-word cap), delta roundtrip + ascending order, df↔postings agreement,
+      determinism, match-count-first ranking, edges invariants incl. General* = fallback
+      only, facet recount — suite **50/50 green**
+
+## 2.4 Pack-time kNN edge list (findings #7c/#7d + §2.E)
+
+- [x] `write_artifacts` also emits `web/public/edges.json` (`pipeline/neighbors.py`):
+      top-k=8 weighted Jaccard over `(topics, subsystem, primitives, compatibility)`
+      **+ language/artifact seed groups** (weight 1 each); per-row candidate counting with
+      `MAX_FEAT_DF=1500`, `CAND_CAP=64` (the eager all-pairs version OOM'd at 123k rows)
+- [x] General\\* subsystem contributes **0** similarity (unit-tested); window fallback (0.1,
+      i±8) guarantees ≥1 edge — builder report: 985,224 edges, **min degree 8**,
+      fallback 74.85% locally (empty topics until the CI backfill lands them),
+      top bucket **19.7% ≤25%**
+- [x] `Graph3DExplorer.jsx` consumes `edges.json` (fetched in App, passed as `edgeList`;
+      nodes still sampled for layout but every link comes from the file, deduped
+      bidirectional pairs, template reasons derived at render, legacy O(450²)
+      synthesis kept as the fetch-failure fallback; a post-pass links any sampled
+      node left isolated to its nearest sampled ordinal — `linked` stat now reports
+      nodes actually holding ≥1 link)
+- *Accept:* every node has ≥1 edge ✓ (min degree 8); no bucket >25% ✓ (19.7%)
+
+## 2.5 "Similar repositories" Neighbors tab (feature 3.4)
+
+- [x] New modal tab **"Similar Repositories"**: top-5 neighbours from `edges.json`,
+      template reason strings computed from the shared sets at render
+      (`Shared Subsystem/Primitive/Interop/Topic/Same Language`, else
+      `Nearby catalog entry (no shared signals)`), match % from the stored weight,
+      click-through opens that repo's modal — deterministic
+
+## 2.6 Activity & freshness intelligence (features 3.2 + finding #11)
+
+- [x] GraphQL adds `isArchived` + `createdAt` (harvest query + node mapping); pack derives
+      **Active / Idle / Archived** into a parallel `activity` array in `catalog-packed.json`
+      (`[status, pushed_epoch]` per row — row arity untouched at 12..15, index ordinals
+      unchanged); UI: status badges on cards, `Sort: Recently pushed`, `Hide dormant`
+      filter (idle+archived), URL stays shareable
+- [x] **Maturity v2** (`classify_maturity`): dormant ≥4y → "Dormant Legacy (last push YYYY)"
+      tier-4 regardless of stars; 20k+ stars needs ≥1000 forks for "Production
+      Battle-Tested" (else "High Adoption / Low Fork Traction"); missing/unparsable
+      date = unknown, never assumed dormant — 6 unit tests
+- [x] Fabricated `pushed_at: "2026-09-01T00:00:00Z"` fallback removed (sentinel
+      `FABRICATED_PUSHED_AT` treated as null in pack/maturity; shard writer writes null);
+      modal footer guards the parse → "Pushed: Unknown" instead of Invalid Date,
+      plus a Created line when `createdAt` exists
+- *Local evidence:* activity counts 63,714 active / 59,439 idle / 0 archived
+  (archived needs the backfill's `isArchived`), 0 unknown locally
+
+## 2.7 License normalization + working facet (finding #12, feature 3.7)
+
+- [x] Pack maps junk (`Open Source`, `Unknown`, `NOASSERTION`, empty) → `Unknown`
+      (`taxonomy_engine.normalize_license` applied at every Tier-1 writer); per-row
+      `license_tiers` parallel array interned from the existing `classify_license_freedom`
+      rules (`license_tier()` → permissive|copyleft|source-available|unknown); no row
+      churn (arity unchanged). Local evidence: **0 junk-license rows**; tiers
+      permissive 64,220 / unknown 45,593 / copyleft 13,255 / source-available 85
+- [x] UI: `selectedLicenseTier` wired to a **License Tier** select (All / Permissive only /
+      Copyleft / Source-Available / Unknown) — the filter now compares the interned tier
+      (the old raw-license compare was broken), no raw `NOASSERTION` can render
+
+## 2.8 Facet counts + badge truth (feature 3.11, finding #14)
+
+- [x] Pack-time `facets.json` written (`pipeline/facets.py`): domains/subsystems(+domain
+      parent)/artifacts/languages/topics(top 60)/primitives/compatibility/licenses;
+      smoke recounts every domain count from the rows — exact truth ✓
+- [x] Chips UI: domain chips `Databases & Storage (3,800)`-style from `facets.json`
+      (click toggles, exact counts, subsystem chips scoped to the selected domain);
+      license-tier facet counts ship in `facets.json` and are smoke-checked to sum
+      to the row count
+- [x] Size truth: header badge now **"Packed • 7.98MB Gzip"** (measured), fetch comment
+      states the full transfer (packed 7.98 + search-index 3.79 + edges 1.26 + facets
+      0.02 MB gzip); README carries no size claim to fix
+
+## Verification gates
+
+- [x] All suites green: **50 tests** (37 existing + 13 new)
+- [x] `web/smoke-test.mjs`: unpack (arity 12..15, topics/compat tail) + search gates +
+      edges invariants + facet recount + Tier-2 merge + fallback — **OK for 123,153 repos**
+- [x] `npm run build` + smoke pass; latency asserted with `performance.now()` (<5 ms,
+      measured 0.09–1.06 ms medians)
+- [x] `verify_catalog.py` exit 0 on regenerated artifacts (0 stray/misplaced/missing);
+      Tier-2 shard bytes untouched locally (`write_artifacts(write_shards=False)`)
+- [x] Size budget: search-index 14.80 MB raw / **3.79 MB gzip**, edges 11.96 MB /
+      0.81 MB gzip, facets 0.02 MB — all new files ~27 MB of the 128 MB budget
+- [x] Both workflow YAMLs parse (`backfill_123k.yml`, `deploy.yml`); no workflow edit needed
+      (index/edges/facets regenerate inside the existing rebuild + re-score steps)
+
+## Evidence (measured on the shipped artifacts, 2026-09-25)
+
+| Gate | Result |
+|---|---|
+| Unit suite | **62/62 OK** (37 pre-W3 + 13 search/edges/facets + 9 maturity/activity/license + 3 more license) |
+| `npm run build` | OK (bundle 257.5 kB / 74.8 kB gzip — search-core included) |
+| `node smoke-test.mjs dist` | **exit 0** — ranked search, edges, facets, activity, licenses, Tier-2 merge, fallback |
+| `verify_catalog.py --base-dir web/public` | **exit 0** (0 stray / 0 misplaced / 0 missing; Tier-2 shards byte-untouched locally) |
+| Workflow YAML (`backfill_123k.yml`, `deploy.yml`) | both parse; no workflow edit needed |
+
+Search (was: 143.7 ms full scan, stars-desc-only):
+
+| Query | Hits | Median latency | Relevance |
+|---|---|---|---|
+| `sql vector` | 947 (was 1) | 0.69 ms | 7/10 top rows mention both tokens |
+| `simd` | 142 (was 48 substring) | 0.09 ms | top-3: simd-json / Simd / portable-simd |
+| `raft` | 157 (was 654 incl. *draft/craft*) | 0.09 ms | top-3 all raft projects |
+| `duckdb` | 41 | — | top-3 all `duckdb/*` |
+
+Graph & facets:
+
+- edges.json: 985,224 endpoints, min degree 8, fallback 74.85% (empty local topics —
+  the CI backfill writes them), top bucket **19.7% ≤ 25%**, gzip 1.26 MB.
+- facets.json: exact recount-verified; domains show `Other / General (28,461)` etc.
+- activity: 63,714 active / 59,439 idle / 0 archived (needs backfill `isArchived`).
+- licenses: 0 junk rows; permissive 64,220 / unknown 45,593 / copyleft 13,255 /
+  source-available 85.
+
+Measured transfer (gzip): packed **7.98 MB** (badge fixed from 3.2 MB), search-index
+**3.79 MB**, edges 1.26 MB, facets 0.02 MB. Local regeneration used
+`write_artifacts(..., write_shards=False)` so committed Tier-2 shard bytes never moved.

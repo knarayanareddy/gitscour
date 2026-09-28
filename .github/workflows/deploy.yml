@@ -30,15 +30,37 @@ jobs:
         with:
           python-version: '3.11'
 
+      # Deterministic unit tests, no network: window planner, harvest
+      # completeness guarantees, fork-clause emission. pytest is the only
+      # Python dependency (the pipeline itself is stdlib-only).
+      - name: Install Test Runner
+        run: python -m pip install pytest
+
+      - name: Unit Tests (no network)
+        run: python -m pytest tests/ -q
+
       # Deploys are reproducible: this workflow publishes exactly the catalog
-      # committed to the branch. It used to run `pipeline/harvest_scale.py`
+      # committed to the branch. It used to run `legacy/harvest_scale.py`
       # here, which rebuilt the Tier-1 fallback index and every Tier-2 shard
       # from `web/public/repos.json`. That file only carried a stale subset of
       # the catalog, so a scheduled deploy silently shrank the deployed shards
       # and emptied their deep-intel fields. Live ingestion now belongs to the
       # backfill workflow, which commits its output instead of mutating a build.
+      # (The `repos.json` twin itself was removed in W5 O.4 — `catalog-index.json`
+      # is the sole fallback index and the parity check covers it alone.)
       - name: Verify Catalog Integrity
         run: python3 pipeline/verify_catalog.py
+
+      # W5 §5: the zero-LLM constraint is enforced, not just documented —
+      # call/import/site forms only, so static lexicons naming providers pass.
+      - name: Zero-LLM guardrail
+        run: python3 pipeline/check_zero_llm.py
+
+      # W2 §1.8 (finding #6b): the 16 hand-written SEEDS ELI5 cards finally
+      # reach the deployed bundle. Idempotent — once the backfill PR commits
+      # the merged shards this becomes a no-op that still guards against drift.
+      - name: Merge Curated Seed ELI5 Cards
+        run: python3 pipeline/merge_seed_intel.py --apply
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -54,6 +76,13 @@ jobs:
       - name: Build Web Explorer
         working-directory: web
         run: npm run build
+
+      # Contract gate over the artefacts that just got built: Tier-1 unpack,
+      # star sort/floor, shard coverage, and the lazy Tier-2 modal merge.
+      # The smoke test existed but was never wired into CI (review finding #14).
+      - name: Smoke Test Built Artefacts
+        working-directory: web
+        run: npm run smoke
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

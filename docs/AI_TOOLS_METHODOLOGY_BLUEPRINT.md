@@ -12,9 +12,10 @@ The two-tier sharded architecture (`catalog-packed.json` + lazy-loaded domain sh
 ### 1.2 Core Metrics & Constraints
 - **Hosting Cost**: **$0.00 / month forever** (100% static assets on GitHub Pages or Cloudflare Pages).
 - **Target Scale**: **10,000 to 50,000+ AI software repositories, models, runtimes, agents, and developer tools**.
-- **Search Latency**: **Sub-5ms** tokenized search in-browser across 50,000 records.
+- **Search Latency**: **Sub-5ms** tokenized search in-browser across 50,000 records (target; the shipped GitScour engine of the same shape measures 0.1–3.8 ms medians and is hard-asserted at a 50 ms ceiling by `web/smoke-test.mjs` — the gate behind this claim).
 - **Initial Network Transfer**: **< 1.8 MB gzipped** for the complete AI directory index.
 - **3D Spatial Performance**: **60 FPS** with Level-of-Detail (LOD) culling, spatial neighborhood traversal, and smooth fly-to camera physics.
+- **Zero-LLM constraint (standing)**: every shipped feature must work with **zero LLM calls** — deterministic and rule-based, enforced repo-wide by `pipeline/check_zero_llm.py` in CI. The constraint applies to any future phase built from this blueprint; if that phase proceeds, its "agent" personas structure authoring only, never runtime behavior.
 
 ---
 
@@ -87,6 +88,12 @@ To capture all notable open-source AI tools with $\ge 500$ stars:
 ---
 
 ## 4. Multi-Agent Persona Architecture for Implementation
+
+> **Standing constraint — applies if this phase proceeds:** anything built from
+> this blueprint must satisfy the repository's zero-LLM rule — shipped features
+> work with **zero LLM calls** (deterministic, rule-based), enforced by the
+> `pipeline/check_zero_llm.py` CI guard. The personas below structure *authoring*;
+> they do not license model calls at runtime.
 
 When deploying an AI agent to build this repository, instruct it to assume these five distinct personas:
 

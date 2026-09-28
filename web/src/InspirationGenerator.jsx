@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Sparkles, Shuffle, ArrowRight, Layers, ExternalLink, 
   Database, Cpu, Globe, CheckCircle2, Shield, Rocket, Copy, Check,
@@ -8,11 +8,15 @@ import {
   Gauge, Filter, Eye
 } from 'lucide-react';
 import Stack3DVisualizer from './Stack3DVisualizer.jsx';
+import blueprintsDoc from './blueprints.json';
+import { mulberry32, selectBlueprint, completeStack } from './blueprint-engine.mjs';
+import { evaluatePair, synergyFromPairs } from './synergy-core.mjs';
 
-export default function InspirationGenerator({ repos, onSelectRepo }) {
+export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeedChange }) {
   const [activeStack, setActiveStack] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [selectedGoal, setSelectedGoal] = useState('all');
+  const [genStep, setGenStep] = useState(0); // W4 §3.8 — rng step: same ?seed= => same first stack
 
   // Intelligent Progressive Cascading Filter Toggle
   const [enableGuidedCascading, setEnableGuidedCascading] = useState(true);
@@ -22,10 +26,14 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
 
   // 1. Dynamic User Stack Pooling Sandbox
   const [customPool, setCustomPool] = useState([
-    { role: "Vector / State Store", repoId: 44211562, domainFilter: "Databases & Storage" }, // duckdb
-    { role: "Inference / LLM Engine", repoId: null, domainFilter: "AI & Machine Learning" },
-    { role: "API Gateway / Backend", repoId: null, domainFilter: "Web Platforms & Frameworks" },
-    { role: "Reactive UI / Canvas", repoId: null, domainFilter: "Web Platforms & Frameworks" }
+    // Layer 0 seeds from the catalog itself once loaded — never hardcode a repo
+    // id here: the catalog uses synthetic blake2b ids, and a stale truthy id
+    // (e.g. duckdb's real GitHub id 44211562) used to survive every self-heal
+    // guard and crash the pairwise analysis. See EXPERT_PANEL_REVIEW.md #1.
+    { role: "Vector / State Store", repoId: null, domainFilter: "Databases & Storage", subsystem: "Vector Database" },
+    { role: "Inference / LLM Engine", repoId: null, domainFilter: "AI & Machine Learning", subsystem: "LLM Inference & Serving" },
+    { role: "API Gateway / Backend", repoId: null, domainFilter: "Web Platforms & Frameworks", subsystem: "Service Mesh & API Gateway" },
+    { role: "Reactive UI / Canvas", repoId: null, domainFilter: "Web Platforms & Frameworks", subsystem: "UI Component Architecture" }
   ]);
 
   // Fast Repo ID Lookup Map
@@ -35,13 +43,28 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     return map;
   }, [repos]);
 
-  // Seed initial duckdb/popular if available
-  useMemo(() => {
-    if (repos.length > 0 && !customPool[0].repoId) {
-      const db = repos.find(r => r.name.toLowerCase() === 'duckdb') || repos.find(r => r.domain === 'Databases & Storage');
-      if (db) customPool[0].repoId = db.id;
+  // §3.8 — subsystem vocabulary for slot requirements (from the packed catalog)
+  const subsystemOptions = useMemo(
+    () => [...new Set(repos.map(r => r.subsystem).filter(Boolean))].sort(),
+    [repos]
+  );
+
+  // Seed Layer 0 with duckdb (or the top database repo) once the catalog loads.
+  // Replaces a side-effectful useMemo that mutated state during render and only
+  // checked truthiness, so it could never heal a stale-but-truthy id. This also
+  // self-heals: any Layer-0 id missing from the catalog is re-seeded.
+  useEffect(() => {
+    if (repos.length === 0) return;
+    const currentId = customPool[0] && customPool[0].repoId;
+    if (currentId && repoMap.has(currentId)) return; // valid selection — keep the user's choice
+    const db = repos.find(r => r.name.toLowerCase() === 'duckdb') || repos.find(r => r.domain === 'Databases & Storage');
+    if (db) {
+      setCustomPool(prev => prev.map((s, i) => (i === 0 ? { ...s, repoId: db.id } : s)));
     }
-  }, [repos]);
+    // customPool intentionally omitted: this must only re-run when the catalog
+    // changes, not on every slot edit (user edits of Layer 0 are respected).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repos, repoMap]);
 
   // Categorize repositories into architectural roles
   const categorized = useMemo(() => {
@@ -55,101 +78,45 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     };
   }, [repos]);
 
-  // Pre-configured Curated Blueprints
-  const ARCHITECTURE_TEMPLATES = [
-    {
-      id: "ai-rag-analytics",
-      goal: "ai",
-      title: "Self-Hosted Multi-Modal RAG & Real-Time Semantic Engine",
-      tagline: "Build a zero-cloud document intelligence engine that queries millions of PDFs, audio transcripts, and embeddings with sub-second vector search.",
-      roles: [
-        { label: "Vector & Embedding Store", category: "storage" },
-        { label: "Local LLM / Embeddings Runtime", category: "ai" },
-        { label: "High-Throughput Async Backend", category: "backend" },
-        { label: "Reactive Dashboard & Canvas UI", category: "frontend" },
-        { label: "Telemetry & Pipeline Orchestration", category: "devtools" }
-      ],
-      whyItWorks: "Bypasses recurring OpenAI token fees and eliminates cloud data privacy risks by running quantised models locally on Apple Silicon or CUDA, backed by an in-memory vector index.",
-      tradeoffs: "Requires dedicated GPU memory for high concurrency; initial cold starts during model checkpoint loading.",
-      starterCli: "npm create modern-rag@latest --template fullstack"
-    },
-    {
-      id: "edge-observability",
-      goal: "systems",
-      title: "Edge-First Vectorized Telemetry & Distributed Tracing Engine",
-      tagline: "Ingest and visualize 100M+ structured events and HTTP trace spans per second on a single commodity VPS.",
-      roles: [
-        { label: "Vectorized Columnar OLAP Engine", category: "storage" },
-        { label: "High-Speed Async Proxy / Ingestion", category: "backend" },
-        { label: "Zero-Copy Serialization Protocol", category: "devtools" },
-        { label: "WebGL Real-Time Flamegraph UI", category: "frontend" },
-        { label: "Secrets Vault & Node Attestation", category: "security" }
-      ],
-      whyItWorks: "Columnar compression (Parquet/Arrow) achieves up to 10:1 compression ratio over raw JSON logs while enabling SIMD-accelerated aggregations across millions of rows in milliseconds.",
-      tradeoffs: "High-throughput append buffering means trace spans have a 500ms micro-batching visibility window.",
-      starterCli: "curl -fsSL https://get.gitscour.dev/telemetry | sh"
-    },
-    {
-      id: "autonomous-coding-agent",
-      goal: "ai",
-      title: "Autonomous Developer Swarm & Continuous AST Refactoring Engine",
-      tagline: "Deploy a team of collaborative AI workers that ingest git issues, reproduce bugs via Docker sandboxes, and synthesize green PRs.",
-      roles: [
-        { label: "Agentic Tool Orchestration & Multi-Turn", category: "ai" },
-        { label: "Hyper-Fast Linter & AST Transformer", category: "devtools" },
-        { label: "Ephemeral Sandbox & Container Manager", category: "devtools" },
-        { label: "Developer Kanban & Diff Inspector", category: "frontend" },
-        { label: "Static Code Vulnerability Scanner", category: "security" }
-      ],
-      whyItWorks: "Pairs tree-sitter AST parsing with iterative LLM generation. When the syntax parser detects a semantic error, it loops back to the agent with exact line errors without burning human engineer time.",
-      tradeoffs: "Non-deterministic PR generation requires strict automated test suites before running auto-merge.",
-      starterCli: "npx agent-swarm-init --preset refactor"
-    },
-    {
-      id: "zero-trust-microservices",
-      goal: "security",
-      title: "Zero-Trust Mesh & Declarative Distributed Microservices",
-      tagline: "Deploy modern multi-cloud microservices with automated mTLS identity certificates and eBPF wire-speed routing.",
-      roles: [
-        { label: "Dynamic Cloud Gateway / Envoy Mesh", category: "backend" },
-        { label: "Distributed Consensus / KV State", category: "storage" },
-        { label: "mTLS Identity & Certificate Authority", category: "security" },
-        { label: "Declarative Infrastructure as Code", category: "devtools" },
-        { label: "Cluster Observability Dashboard", category: "frontend" }
-      ],
-      whyItWorks: "Eliminates hardcoded secrets and manual firewall rules by relying on cryptographic SPIFFE/SPIRE IDs embedded in every mutual TLS packet.",
-      tradeoffs: "Steeper architectural onboarding curve and small CPU overhead from ubiquitous packet encryption.",
-      starterCli: "brew install mesh-ctl && mesh-ctl init"
-    }
-  ];
+  // Curated blueprint library — data lives in blueprints.json (W4 §3.6),
+  // completion rules live in blueprint-engine.mjs (deterministic, zero-LLM).
+  const BLUEPRINTS = blueprintsDoc.blueprints;
 
-  const generateRandomStack = (forcedTemplate = null) => {
-    let pool = ARCHITECTURE_TEMPLATES;
-    if (selectedGoal !== 'all') {
-      pool = ARCHITECTURE_TEMPLATES.filter(t => t.goal === selectedGoal);
-      if (pool.length === 0) pool = ARCHITECTURE_TEMPLATES;
-    }
+  // owner/name -> repo over the WHOLE catalog, so curated seeds resolve even
+  // when a v1 subsystem label filed them outside the category bucket.
+  const repoLookup = useMemo(
+    () => new Map(repos.map(r => [`${r.owner}/${r.name}`, r])),
+    [repos]
+  );
 
-    const template = forcedTemplate || pool[Math.floor(Math.random() * pool.length)];
+  // Deterministic stack generation (§3.6/§3.8): rng is a pure function of
+  // (URL ?seed=, goal, click-step). No Math.random anywhere in generation.
+  const generateRandomStack = (forcedBlueprint = null, goalOverride = null, seedOverride = null) => {
+    const goal = goalOverride ?? selectedGoal;
+    const step = genStep + 1;
+    setGenStep(step);
+    const effSeed = seedOverride ?? (seed || `gs-${Date.now().toString(36)}-${genStep}`);
+    if (!seed && !seedOverride && onSeedChange) onSeedChange(effSeed); // adopt into ?seed=
+    const rng = mulberry32(`${effSeed}|${goal}|${step}`);
 
-    const getRandomItem = (category, fallback) => {
-      const list = categorized[category] || [];
-      if (list.length === 0) return fallback || repos[0];
-      return list[Math.floor(Math.random() * list.length)];
-    };
+    const blueprint = forcedBlueprint || selectBlueprint(BLUEPRINTS, goal, rng);
+    if (!blueprint) return;
 
-    const components = template.roles.map(r => ({
-      role: r.label,
-      repo: getRandomItem(r.category)
-    }));
+    const { components, missing } = completeStack(blueprint, categorized, repoLookup, rng);
+    setActiveStack({ template: blueprint, components, missing });
+  };
 
-    setActiveStack({ template, components });
+  // §3.8 — visible/resettable seed: re-roll writes a fresh ?seed= and rebuilds.
+  const rerollSeed = () => {
+    const s = `gs-${Date.now().toString(36)}-${genStep}`;
+    if (onSeedChange) onSeedChange(s);
+    generateRandomStack(null, null, s);
   };
 
   const copyBlueprint = () => {
     if (!activeStack) return;
     const text = `🚀 Project Blueprint: ${activeStack.template.title}\n${activeStack.template.tagline}\n\nArchitecture Stack:\n` +
-      activeStack.components.map(c => `• ${c.role}: ${c.repo.owner}/${c.repo.name} (${c.repo.url})`).join('\n') +
+      activeStack.components.map(c => c.repo ? `• ${c.role}: ${c.repo.owner}/${c.repo.name} (${c.repo.url})` : `• ${c.role}: — no candidate in this catalog build`).join('\n') +
       `\n\nWhy this stack works:\n${activeStack.template.whyItWorks}\n\nArchitectural Tradeoffs:\n${activeStack.template.tradeoffs}`;
     navigator.clipboard.writeText(text);
     setCopiedIndex(true);
@@ -162,7 +129,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
   const customPoolAnalysis = useMemo(() => {
     const selectedRepos = customPool
       .map(slot => ({ role: slot.role, repo: slot.repoId ? repoMap.get(slot.repoId) : null }))
-      .filter(item => item.repo !== null);
+      .filter(item => item.repo); // truthy: drops null AND undefined (stale ids — review finding #1)
 
     if (selectedRepos.length === 0) {
       return {
@@ -177,129 +144,45 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
       };
     }
 
-    let positiveScore = 0;
-    let frictionScore = 0;
+    // W4 §3.8 — scoring moved to synergy-core.mjs (unit-pinned):
+    //   * score = MEAN over pair scores (2-slot and 6-slot pools comparable)
+    //   * same language alone never reaches "High Synergy" (18 < 25 gap)
+    //   * protocol matrix derived from COMPATIBILITY_RULES labels incl. the
+    //     deterministic client pairings (Postgres-compatible <-> pg drivers …)
     const positiveSignals = [];
     const frictions = [];
     const runtimeHarmonies = [];
     const matrix = [];
+    const pairScores = [];
 
-    // Pairwise Cartesian Evaluation
     for (let i = 0; i < selectedRepos.length; i++) {
       for (let j = i + 1; j < selectedRepos.length; j++) {
         const a = selectedRepos[i].repo;
         const b = selectedRepos[j].repo;
         const roleA = selectedRepos[i].role;
         const roleB = selectedRepos[j].role;
-
-        let pairScore = 50;
-        let pairStatus = "Compatible";
-        let pairNotes = [];
-
-        // 1. Runtime Harmony
-        const langA = (a.language || 'Other').toLowerCase();
-        const langB = (b.language || 'Other').toLowerCase();
-        
-        if (langA === langB && langA !== 'other') {
-          pairScore += 25;
-          positiveScore += 15;
-          const note = `Native ${a.language} ecosystem: direct in-process binding without FFI overhead.`;
-          pairNotes.push(note);
-          runtimeHarmonies.push({ pair: `${a.name} ↔ ${b.name}`, text: note });
-        } else if (
-          (langA === 'typescript' && langB === 'javascript') ||
-          (langA === 'javascript' && langB === 'typescript') ||
-          (langA === 'c++' && langB === 'c') ||
-          (langA === 'c' && langB === 'c++')
-        ) {
-          pairScore += 20;
-          positiveScore += 10;
-          pairNotes.push(`Native interop between ${a.language} and ${b.language}.`);
-        } else if (
-          (langA === 'python' && ['rust', 'c++', 'c'].includes(langB)) ||
-          (langB === 'python' && ['rust', 'c++', 'c'].includes(langA))
-        ) {
-          pairScore += 15;
-          positiveScore += 10;
-          pairNotes.push(`High-performance C-extension / PyO3 binding: ${b.name} natively accelerates ${a.name}.`);
-        } else {
-          pairScore -= 5;
-          frictionScore += 5;
-          frictions.push({
-            pair: `${a.name} (${a.language}) ↔ ${b.name} (${b.language})`,
-            type: "Network / IPC Boundary",
-            severity: "low",
-            desc: `Requires serialized communication (HTTP/JSON, gRPC, or WebSockets) across processes.`
-          });
-          pairNotes.push(`IPC / Network protocol bridge required.`);
-        }
-
-        // 2. Shared Architectural Primitives
-        const primsA = a.primitives || [];
-        const primsB = b.primitives || [];
-        const sharedPrims = primsA.filter(p => primsB.includes(p));
-
-        if (sharedPrims.length > 0) {
-          pairScore += 20;
-          positiveScore += 20;
-          const note = `Aligned on architectural primitive [${sharedPrims.join(', ')}].`;
-          pairNotes.push(note);
-          positiveSignals.push({
-            pair: `${a.name} ↔ ${b.name}`,
-            primitive: sharedPrims.join(', '),
-            desc: `Both components are optimized for ${sharedPrims.join(', ')}, eliminating memory transcode bottlenecks.`
-          });
-        }
-
-        // 3. Commercial License Compatibility Check
-        const licA = (a.license || 'Open Source').toLowerCase();
-        const licB = (b.license || 'Open Source').toLowerCase();
-        const isCopyleftA = licA.includes('gpl') && !licA.includes('lgpl');
-        const isCopyleftB = licB.includes('gpl') && !licB.includes('lgpl');
-
-        if (isCopyleftA !== isCopyleftB && (isCopyleftA || isCopyleftB)) {
-          pairScore -= 15;
-          frictionScore += 15;
-          frictions.push({
-            pair: `${a.name} (${a.license}) ↔ ${b.name} (${b.license})`,
-            type: "License Reciprocity Asymmetry",
-            severity: "medium",
-            desc: `Copyleft license terms (${isCopyleftA ? a.name : b.name}) may mandate open-sourcing client proprietary source code if statically linked.`
-          });
-          pairNotes.push(`GPL reciprocity considerations.`);
-        }
-
-        pairScore = Math.max(10, Math.min(100, pairScore));
-        if (pairScore >= 75) pairStatus = "High Synergy";
-        else if (pairScore >= 50) pairStatus = "Compatible";
-        else pairStatus = "Friction Warning";
-
+        const res = evaluatePair(a, b);
+        pairScores.push(res.score);
+        positiveSignals.push(...res.positives);
+        frictions.push(...res.frictions);
+        runtimeHarmonies.push(...res.harmonies);
         matrix.push({
           nodeA: a,
           nodeB: b,
           roleA,
           roleB,
-          score: pairScore,
-          status: pairStatus,
-          notes: pairNotes
+          score: res.score,
+          status: res.status,
+          notes: res.notes
         });
       }
     }
 
-    let totalScore = 50 + (positiveScore * 0.8) - (frictionScore * 0.9);
-    totalScore = Math.max(15, Math.min(98, Math.round(totalScore)));
-
-    let grade = "Production Ready";
-    let gradeColor = "text-signal-ok";
-    if (totalScore >= 80) { grade = "High Architectural Synergy"; gradeColor = "text-signal-ok"; }
-    else if (totalScore >= 60) { grade = "Production Viable (Standard IPC)"; gradeColor = "text-signal-info"; }
-    else if (totalScore >= 40) { grade = "Architectural Friction Detected"; gradeColor = "text-signal-star"; }
-    else { grade = "High Coupling / License Conflict"; gradeColor = "text-signal-risk"; }
-
+    const agg = synergyFromPairs(pairScores);
     return {
-      score: totalScore,
-      grade,
-      gradeColor,
+      score: agg.score,
+      grade: agg.grade,
+      gradeColor: agg.gradeColor,
       selectedCount: selectedRepos.length,
       matrix,
       positiveSignals,
@@ -318,6 +201,16 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
 
     // Base pool matching domain
     let base = repos.filter(r => slot.domainFilter === 'all' || r.domain === slot.domainFilter);
+
+    // §3.8 — declared subsystem requirement: exact-label matches are boosted to
+    // the front of the candidate list (a boost, not a hard filter: v1 labels
+    // are noisy, and an empty dropdown would be worse than an honest ranking).
+    if (slot.subsystem) {
+      base = [
+        ...base.filter(r => r.subsystem === slot.subsystem),
+        ...base.filter(r => r.subsystem !== slot.subsystem)
+      ];
+    }
 
     // Apply text search if entered
     if (searchVal) {
@@ -382,9 +275,12 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
     return scoredCandidates.slice(0, 45);
   };
 
-  if (!activeStack && repos.length > 0) {
-    generateRandomStack();
-  }
+  // First auto-stack once the catalog loads. (Render-phase setState must not
+  // leak the adopted seed up to App, so this runs as an effect — §3.8.)
+  useEffect(() => {
+    if (!activeStack && repos.length > 0) generateRandomStack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repos.length]);
 
   return (
     <div className="space-y-8">
@@ -433,7 +329,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
               onClick={() => {
                 setCustomPool(prev => [
                   ...prev,
-                  { role: `Auxiliary Layer ${prev.length + 1}`, repoId: null, domainFilter: "all" }
+                  { role: `Auxiliary Layer ${prev.length + 1}`, repoId: null, domainFilter: "all", subsystem: null }
                 ]);
               }}
               className="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.09] text-zinc-200 border border-white/[0.10] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
@@ -448,10 +344,10 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                 const ai = repos.find(r => r.name.toLowerCase() === 'vllm') || repos[2];
                 const ui = repos.find(r => r.name.toLowerCase() === 'tremor') || repos[3];
                 setCustomPool([
-                  { role: "Vector / State Store", repoId: db?.id || null, domainFilter: "Databases & Storage" },
-                  { role: "Inference / LLM Engine", repoId: ai?.id || null, domainFilter: "AI & Machine Learning" },
-                  { role: "Async API Backend", repoId: py?.id || null, domainFilter: "Web Platforms & Frameworks" },
-                  { role: "Modern Analytics UI", repoId: ui?.id || null, domainFilter: "Web Platforms & Frameworks" }
+                  { role: "Vector / State Store", repoId: db?.id || null, domainFilter: "Databases & Storage", subsystem: "Vector Database" },
+                  { role: "Inference / LLM Engine", repoId: ai?.id || null, domainFilter: "AI & Machine Learning", subsystem: "LLM Inference & Serving" },
+                  { role: "Async API Backend", repoId: py?.id || null, domainFilter: "Web Platforms & Frameworks", subsystem: "Service Mesh & API Gateway" },
+                  { role: "Modern Analytics UI", repoId: ui?.id || null, domainFilter: "Web Platforms & Frameworks", subsystem: "UI Component Architecture" }
                 ]);
               }}
               className="btn-primary px-3.5 py-2 rounded-xl text-xs font-bold transition-all"
@@ -465,7 +361,7 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
         {/* Dynamic Architectural Slots Grid with Guided Cascading */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {customPool.map((slot, idx) => {
-            const selectedItem = slot.repoId ? repoMap.get(slot.repoId) : null;
+            const selectedItem = (slot.repoId && repoMap.get(slot.repoId)) || null;
             const candidates = getCandidatesForSlot(idx);
 
             return (
@@ -501,6 +397,18 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                         className="w-full bg-obs-surface border border-white/[0.09] rounded-lg pl-7 pr-2 py-1 text-[11px] text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07]"
                       />
                     </div>
+
+                    <select
+                      value={slot.subsystem || ''}
+                      onChange={(e) => setCustomPool(prev => prev.map((s, i) => i === idx ? { ...s, subsystem: e.target.value || null } : s))}
+                      title="Required subsystem for this slot — matches are boosted to the top of the candidate list"
+                      className="w-full bg-obs-surface border border-white/[0.10] rounded-lg px-2 py-1.5 text-[11px] text-zinc-300 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/[0.07] truncate"
+                    >
+                      <option value="">Required subsystem: any</option>
+                      {subsystemOptions.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
 
                     <select
                       value={slot.repoId || ''}
@@ -744,8 +652,8 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                     key={g}
                     onClick={() => {
                       setSelectedGoal(g);
-                      const matching = ARCHITECTURE_TEMPLATES.find(t => g === 'all' || t.goal === g);
-                      if (matching) generateRandomStack(matching);
+                      // §3.6: regenerate from the chosen goal's blueprint pool
+                      generateRandomStack(null, g);
                     }}
                     className={`px-2.5 py-1 rounded-lg capitalize font-medium transition-colors ${
                       selectedGoal === g ? 'bg-white/[0.08] ring-1 ring-inset ring-white/[0.14] text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
@@ -773,19 +681,34 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                 )}
               </button>
 
-              <button
-                onClick={() => generateRandomStack()}
-                className="btn-primary px-4 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Shuffle className="w-4 h-4" />
-                <span>Shuffle Blueprint</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <span
+                  title="Generation seed — the same ?seed= + goal always rebuilds the identical stack (§3.8)"
+                  className="px-2 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.10] text-[10px] font-mono text-zinc-400 max-w-[160px] truncate"
+                >
+                  seed: {seed || '—'}
+                </span>
+                <button
+                  onClick={rerollSeed}
+                  title="New seed — resets reproducibility"
+                  className="px-2 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.10] text-zinc-300 transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => generateRandomStack()}
+                  className="btn-primary px-4 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Shuffle className="w-4 h-4" />
+                  <span>Shuffle Blueprint</span>
+                </button>
+              </div>
             </div>
           </div>
 
           {/* 5-Layer Complementary Pipeline Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
-            {activeStack.components.map((comp, idx) => (
+            {activeStack.components.map((comp, idx) => comp.repo ? (
               <div
                 key={idx}
                 className="bg-obs-surface hover:bg-obs-raised border border-white/[0.07] hover:border-white/25 rounded-xl p-4 transition-all flex flex-col justify-between group relative shadow-md"
@@ -814,6 +737,12 @@ export default function InspirationGenerator({ repos, onSelectRepo }) {
                   <span className="font-mono text-signal-star font-medium">{comp.repo.stars.toLocaleString()}★</span>
                   <span className="text-zinc-400 bg-white/[0.05] px-1.5 py-0.5 rounded text-[10px]">{comp.repo.language}</span>
                 </div>
+              </div>
+            ) : (
+              <div key={idx} className="bg-obs-surface border border-dashed border-white/[0.14] rounded-xl p-4 flex flex-col justify-center items-center text-center min-h-[160px]">
+                <AlertTriangle className="w-4 h-4 text-zinc-500 mb-2" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block mb-1">{comp.role}</span>
+                <span className="text-[11px] text-zinc-500 leading-relaxed">No catalog candidate for this slot in the current build — left empty rather than guessed.</span>
               </div>
             ))}
           </div>

@@ -2,11 +2,11 @@
 
 Why this script exists
 ----------------------
-``backfill_worker.py`` and ``harvest_scale.py`` both drive the GraphQL *search*
+``legacy/backfill_worker.py`` and ``legacy/harvest_scale.py`` both drive the GraphQL *search*
 endpoint, which GitHub truncates at 1,000 results per query regardless of how
 deep you paginate.  Those scripts sweep a fixed list of ~12 coarse star windows,
 so a single run can capture at most ``12 x 1000 = 12,000`` records (and
-``harvest_scale.py`` only paginates 2 pages of 40, i.e. ~960 records).  They are
+``legacy/harvest_scale.py`` only paginates 2 pages of 40, i.e. ~960 records).  They are
 therefore structurally unable to close a ~72k-record gap, no matter how many
 times they are re-run.
 
@@ -22,10 +22,13 @@ sampling it:
    point per request against this token's ~8100 point/minute budget, so the
    binding constraint is latency rather than quota.
 3. Everything is appended to a resumable JSONL checkpoint, so an interrupted
-   run continues where it left off instead of re-fetching.
+   run continues where it left off instead of re-fetching: the manifest keys
+   completed windows by **search clause only** (volatile probe counts are not
+   part of the identity) and the record-dedupe set is reloaded from the output
+   file at startup, so a resume never re-harvests or re-appends (W5 O.1).
 
 Output: one raw record per line (JSON) in ``--output``, shaped exactly like the
-``raw`` dict inside ``backfill_worker.py`` so ``taxonomy_engine`` can consume it
+``raw`` dict inside ``legacy/backfill_worker.py`` so ``taxonomy_engine`` can consume it
 unchanged.
 """
 
@@ -64,6 +67,8 @@ query($q: String!, $cursor: String) {
         licenseInfo { spdxId name }
         repositoryTopics(first: 8) { nodes { topic { name } } }
         pushedAt
+        createdAt
+        isArchived
       }
     }
   }
@@ -165,23 +170,50 @@ class GitHub:
 
 def window_clause(star_lo: int, star_hi: int, fork_lo: int | None, fork_hi: int | None) -> str:
     stars = f"stars:{star_lo}" if star_lo == star_hi else f"stars:{star_lo}..{star_hi}"
-    if fork_lo is not None:
-        forks = f" forks:{fork_lo}" if fork_lo == (fork_hi or fork_lo) else f" forks:{fork_lo}..{fork_hi}"
-    else:
+    if fork_lo is None:
         forks = ""
+    elif fork_hi is None:
+        # Open-ended upper bound. This used to emit an EXACT `forks:{N}`, which
+        # silently skipped every repo with more than N forks at that star value
+        # (review finding #2d). `forks:>=N` is a documented GitHub qualifier.
+        forks = f" forks:>={fork_lo}"
+    elif fork_lo == fork_hi:
+        forks = f" forks:{fork_lo}"
+    else:
+        forks = f" forks:{fork_lo}..{fork_hi}"
     return f"{stars}{forks} sort:stars-desc"
 
 
-def probe_count(gh: GitHub, clause: str, retries: int = 8) -> int:
+CLAUSE_KEYS = ("star_lo", "star_hi", "fork_lo", "fork_hi")
+
+
+def clause_key(window: dict) -> str:
+    """Stable identity of a harvest window: its search-clause coordinates.
+
+    The planner's probe ``count`` and its ``truncated`` verdict are volatile
+    across runs, so keying the manifest on the whole window dict silently
+    defeated cross-run resume whenever a count drifted (W5 O.1).  Legacy
+    full-dict manifest lines re-key through this same function on load.
+    """
+    return json.dumps({k: window.get(k) for k in CLAUSE_KEYS}, sort_keys=True)
+
+
+def probe_count(gh: GitHub, clause: str, retries: int = 8) -> int | None:
+    """repositoryCount for a clause, or None if the probe failed.
+
+    A failure must NOT read as 0: count 0 makes the planner skip that star
+    range entirely, turning a transient API error into a silent hole in the
+    harvested universe (review finding #2b). None means "retry / abort".
+    """
     for attempt in range(retries):
         try:
             data = gh.run(COUNT_QUERY, {"q": clause})
             return int((data.get("search") or {}).get("repositoryCount") or 0)
-        except Backoff as exc:
+        except Backoff:
             time.sleep(min(90.0, 5.0 * (attempt + 1)) + random.uniform(0, 2))
         except RuntimeError:
-            return 0
-    return 0
+            return None
+    return None
 
 
 def plan_windows(gh: GitHub, star_lo: int, star_hi: int, concurrency: int, log) -> list[dict]:
@@ -189,12 +221,28 @@ def plan_windows(gh: GitHub, star_lo: int, star_hi: int, concurrency: int, log) 
     frontier = [{"star_lo": star_lo, "star_hi": star_hi, "fork_lo": None, "fork_hi": None}]
     leaves: list[dict] = []
     probed = 0
+    probe_failures: dict[str, int] = {}  # clause -> consecutive failed attempts
     while frontier:
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
             results = list(pool.map(lambda w: probe_count(gh, window_clause(**{k: w[k] for k in ("star_lo", "star_hi", "fork_lo", "fork_hi")})), frontier))
         probed += len(results)
         nxt: list[dict] = []
         for w, count in zip(frontier, results):
+            clause = window_clause(w["star_lo"], w["star_hi"], w["fork_lo"], w["fork_hi"])
+            if count is None:
+                # Probe failed: re-queue for another attempt, abort hard after 3
+                # so a star range can never be dropped from the plan (finding #2b).
+                attempts = probe_failures.get(clause, 0) + 1
+                probe_failures[clause] = attempts
+                if attempts >= 3:
+                    raise RuntimeError(
+                        f"planning probe failed {attempts}x for '{clause}' — "
+                        "aborting rather than silently skipping that star range"
+                    )
+                log(f"  ! probe failed for '{clause}' (attempt {attempts}/3); will retry")
+                nxt.append(w)
+                continue
+            probe_failures.pop(clause, None)
             if count == 0:
                 continue
             if count <= MAX_RESULTS_PER_QUERY:
@@ -224,7 +272,13 @@ def plan_windows(gh: GitHub, star_lo: int, star_hi: int, concurrency: int, log) 
 
 
 class Checkpoint:
-    """Append-only JSONL sink + set of completed windows, safe across threads."""
+    """Append-only JSONL sink + set of completed windows, safe across threads.
+
+    ``done`` holds *clause keys* only (legacy full-dict manifest lines are
+    re-keyed on load), and ``seen`` is populated by streaming the output file
+    once at startup — so an interrupted run resumes without re-harvesting
+    finished windows and without re-appending records already on disk (W5 O.1).
+    """
 
     def __init__(self, path: str, manifest_path: str):
         self.path = path
@@ -235,11 +289,30 @@ class Checkpoint:
             with open(manifest_path, "r", encoding="utf-8") as fh:
                 for line in fh:
                     line = line.strip()
-                    if line:
-                        self.done.add(line)
+                    if not line:
+                        continue
+                    try:
+                        window = json.loads(line)
+                    except ValueError:
+                        # A line without a parseable clause can only cause a
+                        # harmless re-harvest, never a lost window.
+                        continue
+                    self.done.add(clause_key(window))
+        self.seen = set()
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        self.seen.add(self.key(json.loads(line)))
+                    except (ValueError, KeyError, TypeError):
+                        # Malformed output lines are skipped by the dedupe
+                        # scan; downstream merge still validates records.
+                        continue
         self.fh = open(path, "a", encoding="utf-8")
         self.mh = open(manifest_path, "a", encoding="utf-8")
-        self.seen = set()
 
     def key(self, rec: dict) -> str:
         return f"{rec['owner']}/{rec['name']}".lower()
@@ -259,10 +332,11 @@ class Checkpoint:
             os.fsync(self.fh.fileno())
 
     def complete(self, window: dict):
+        ck = clause_key(window)
         with self.lock:
-            self.mh.write(json.dumps(window, sort_keys=True) + "\n")
+            self.mh.write(ck + "\n")
             self.mh.flush()
-            self.done.add(json.dumps(window, sort_keys=True))
+            self.done.add(ck)
 
 
 def harvest_window(gh: GitHub, window: dict) -> tuple[dict, list[dict], int]:
@@ -271,18 +345,20 @@ def harvest_window(gh: GitHub, window: dict) -> tuple[dict, list[dict], int]:
     cursor = None
     pages = 0
     retries = 0
-    while pages < (MAX_RESULTS_PER_QUERY // PAGE_SIZE):
+    while True:
         try:
             data = gh.run(SEARCH_QUERY, {"q": clause, "cursor": cursor})
-        except Backoff as exc:
+        except Backoff:
             retries += 1
             if retries > 12:
                 raise
-            log_delay = min(90.0, 5.0 * retries) + random.uniform(0, 2)
-            time.sleep(log_delay)
+            time.sleep(min(90.0, 5.0 * retries) + random.uniform(0, 2))
             continue
         except RuntimeError:
-            break
+            # Mid-pagination failure. This window must NOT be returned as if it
+            # were complete: the caller used to checkpoint partial windows as
+            # done, permanently losing the remaining pages (finding #2a).
+            raise
         pages += 1
         search = data.get("search") or {}
         for node in search.get("nodes") or []:
@@ -300,10 +376,20 @@ def harvest_window(gh: GitHub, window: dict) -> tuple[dict, list[dict], int]:
                 "license": lic.get("spdxId") or lic.get("name") or "Unknown",
                 "topics": [t["topic"]["name"] for t in node.get("repositoryTopics", {}).get("nodes", []) if t.get("topic")],
                 "pushed_at": node.get("pushedAt"),
+                "created_at": node.get("createdAt"),
+                "is_archived": node.get("isArchived"),
             })
         info = search.get("pageInfo") or {}
         if not info.get("hasNextPage"):
             break
+        if pages >= (MAX_RESULTS_PER_QUERY // PAGE_SIZE):
+            # The window grew past the search cap between planning and harvest
+            # (repos gained stars). Falling through would silently drop the
+            # remaining pages, so fail loudly instead (finding #2c).
+            raise RuntimeError(
+                f"window '{clause}' still reports more pages after {pages} pages — "
+                "window outgrew the search cap; rerun to re-plan"
+            )
         cursor = info.get("endCursor")
     return window, records, retries
 
@@ -317,6 +403,9 @@ def main() -> int:
     parser.add_argument("--concurrency", type=int, default=12)
     parser.add_argument("--rps", type=float, default=18.0, help="global request cap per second")
     parser.add_argument("--dry-plan", action="store_true", help="only print the window plan")
+    parser.add_argument("--allow-truncated", action="store_true",
+                        help="exit 0 even if some windows were truncated by the 1,000-result cap "
+                             "(default: exit non-zero so CI cannot ignore coverage holes)")
     args = parser.parse_args()
 
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -335,7 +424,13 @@ def main() -> int:
 
     log(f"start={start_wall} threshold>={args.min_stars} concurrency={args.concurrency} rps={args.rps}")
     log("planning star windows (each <= %d repos)..." % MAX_RESULTS_PER_QUERY)
-    windows = plan_windows(gh, args.min_stars, args.max_stars, args.concurrency, log)
+    try:
+        windows = plan_windows(gh, args.min_stars, args.max_stars, args.concurrency, log)
+    except RuntimeError as exc:
+        # A probe that keeps failing must abort the run (finding #2b) — never
+        # fall through with a plan that silently omits a star range.
+        log(f"ERROR: planning aborted: {exc}")
+        return 1
     planned_total = sum(w.get("count", 0) for w in windows)
     log(f"plan complete: {len(windows)} windows, universe estimate {planned_total} repos ({time.time()-t0:.0f}s)")
 
@@ -344,20 +439,24 @@ def main() -> int:
             print(json.dumps(w))
         return 0
 
-    pending = [w for w in windows if json.dumps(w, sort_keys=True) not in ckpt.done]
+    pending = [w for w in windows if clause_key(w) not in ckpt.done]
     log(f"{len(windows) - len(pending)} windows already checkpointed, {len(pending)} to harvest")
 
     done_lock = threading.Lock()
     finished = 0
     truncated = 0
+    failed = 0
 
     def work(window):
-        nonlocal finished, truncated
+        nonlocal finished, truncated, failed
         try:
             w, records, retries = harvest_window(gh, window)
         except Exception as exc:
+            # Never checkpointed: the window stays pending so a rerun retries it,
+            # and the run exits non-zero so CI cannot ship a partial universe.
             with done_lock:
-                log(f"  x window {window['star_lo']}..{window['star_hi']} failed: {exc}")
+                failed += 1
+                log(f"  x window {window['star_lo']}..{window['star_hi']} failed (not checkpointed): {exc}")
             return
         ckpt.write_records(records)
         ckpt.complete(window)
@@ -379,11 +478,26 @@ def main() -> int:
             "elapsed_s": round(time.time() - t0, 1),
             "windows_planned": len(windows),
             "windows_done": len(ckpt.done),
+            "windows_failed": failed,
             "windows_truncated": truncated,
             "universe_estimate": planned_total,
         }, fh, indent=2)
 
     log(f"DONE: {len(ckpt.done)} windows in {time.time()-t0:.0f}s -> {args.output}")
+
+    # Completeness is a guarantee, not a hope: a failed or truncated window is a
+    # silent hole in the universe, so the run must fail loudly (finding #2a/c).
+    if failed:
+        log(f"ERROR: {failed} window(s) failed mid-harvest — data is INCOMPLETE; "
+            "rerun to retry the pending windows before rebuilding the catalog")
+        return 2
+    if truncated:
+        if args.allow_truncated:
+            log(f"WARNING: {truncated} window(s) truncated by the 1,000-result cap (allowed by --allow-truncated)")
+        else:
+            log(f"ERROR: {truncated} window(s) truncated by the 1,000-result cap — coverage is INCOMPLETE; "
+                "re-run to re-plan them, or pass --allow-truncated to accept the holes explicitly")
+            return 3
     return 0
 
 

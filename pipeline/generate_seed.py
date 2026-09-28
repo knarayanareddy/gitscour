@@ -1,4 +1,7 @@
+import argparse
 import json
+import os
+
 from taxonomy_engine import enrich_repository_record
 
 # Rich curated repository knowledge base with deep beginner & inspirational context
@@ -153,7 +156,7 @@ SEEDS = [
     {
         "id": 2002,
         "name": "llama.cpp",
-        "owner": "ggerganov",
+        "owner": "ggml-org",  # GitHub rename: was ggerganov/llama.cpp
         "description": "LLM inference in C/C++ with zero dependencies",
         "stars": 72500,
         "forks": 10400,
@@ -161,7 +164,7 @@ SEEDS = [
         "license": "MIT",
         "topics": ["llm", "llm-inference", "gguf", "transformer", "c-plus-plus"],
         "pushed_at": "2026-09-16T08:00:00Z",
-        "quickstart_code": "git clone https://github.com/ggerganov/llama.cpp\ncd llama.cpp && make\n./llama-cli -m model.gguf -p 'Explain quantum computing simply:'",
+        "quickstart_code": "git clone https://github.com/ggml-org/llama.cpp\ncd llama.cpp && make\n./llama-cli -m model.gguf -p 'Explain quantum computing simply:'",
         "beginner_intel": {
             "what_it_does": "Allows you to run state-of-the-art AI language models locally on consumer MacBooks, laptops, and everyday desktop CPUs without requiring an expensive NVIDIA GPU.",
             "why_it_matters": "AI used to require massive multi-thousand-dollar cloud servers. llama.cpp invented the GGUF file format and quantized 4-bit weights so a standard laptop can run AI offline privately.",
@@ -374,8 +377,8 @@ SEEDS = [
     },
     {
         "id": 6003,
-        "name": "shadcn-ui",
-        "owner": "shadcn-ui",
+        "name": "ui",
+        "owner": "shadcn-ui",  # GitHub rename: was shadcn-ui/shadcn-ui
         "description": "Beautifully designed components that you can copy and paste into your apps. Accessible. Customizable. Open Source.",
         "stars": 76800,
         "forks": 6500,
@@ -398,12 +401,35 @@ SEEDS = [
     }
 ]
 
-def generate_dataset():
+def generate_dataset(output_path: str | None = None) -> str:
     enriched = [enrich_repository_record(r) for r in SEEDS]
-    output_path = "web/public/repos.json"
+    if output_path is None:
+        # NEVER default into web/public: a 63 MB live catalog artifact (the
+        # byte-identical index twin, since removed in W5 O.4) once got
+        # overwritten with ~16 demo rows here, which broke verify_catalog.py
+        # and the deploy gate — README quick-start step 2 used to do exactly
+        # that (review finding #6). The web/public refusal below still guards.
+        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed_demo.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(enriched, f, indent=2)
     print(f"Generated {len(enriched)} enriched repository records with deep beginner intel at {output_path}")
+    return output_path
+
 
 if __name__ == "__main__":
-    generate_dataset()
+    parser = argparse.ArgumentParser(description="Generate the demo seed dataset (never touches the live catalog)")
+    parser.add_argument("--output", default=None,
+                        help="destination path (default: pipeline/seed_demo.json; "
+                             "web/public/ paths are rejected on purpose)")
+    args = parser.parse_args()
+
+    if args.output:
+        resolved = os.path.abspath(args.output)
+        public_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web", "public"))
+        if resolved.startswith(public_dir + os.sep):
+            parser.error(
+                f"refusing to write into {public_dir}: it holds the live catalog "
+                "(catalog-index.json / shards). "
+                "Use --output with a path outside web/public."
+            )
+    generate_dataset(args.output)

@@ -1,7 +1,12 @@
-// Mirrors App.jsx's decode + modal-merge contract against the built artefacts.
+// Mirrors App.jsx's decode + search + modal-merge contract against built artefacts.
 // Run: node smoke-test.mjs [distDir]
-import { readFileSync } from 'fs';
+//
+// The query path is NOT mirrored: this test imports `src/search-core.mjs`, the
+// exact module App.jsx uses, so the gate exercises the shipped algorithm.
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { performance } from 'perf_hooks';
+import { rankQuery, tokenize } from './src/search-core.mjs';
 
 const dir = process.argv[2] || 'dist';
 const fail = [];
@@ -25,13 +30,29 @@ const unpacked = rows.map((r) => {
     artifact: artifacts[r[8]] || 'Application / Service',
     license: r[9], primitives: r[10] || [], hook: r[11] || '',
     description: r[11] || '', url: `https://github.com/${r[2]}/${r[1]}`, shard: slugify(domName),
+    // W2 §1.1: optional 13th field (domain margin); null when absent
+    domainMargin: r.length > 12 && typeof r[12] === 'number' ? r[12] : null,
+    // W3 §2.2/2.4: optional 14th/15th fields (topics, compatibility)
+    topics: Array.isArray(r[13]) ? r[13] : [],
+    compatibility: Array.isArray(r[14]) ? r[14] : [],
   };
 });
 check(unpacked.length === rows.length, 'row count changed during unpack');
+check(rows.every((r) => r.length >= 12 && r.length <= 15), 'row arity outside 12..15');
+check(rows.every((r) => r.length <= 12 || (Number.isInteger(r[12]) && r[12] >= 0 && r[12] <= 9)),
+  'row[12] domainMargin is not an integer in 0..9');
+check(rows.every((r) => r.length <= 13 || (Array.isArray(r[13]) && r[13].every((t) => typeof t === 'string'))),
+  'row[13] topics is not a string array');
+check(rows.every((r) => r.length <= 14 || (Array.isArray(r[14]) && r[14].every((t) => typeof t === 'string'))),
+  'row[14] compatibility is not a string array');
+check(unpacked.every((x) => x.domainMargin === null ||
+  (Number.isInteger(x.domainMargin) && x.domainMargin >= 0 && x.domainMargin <= 9)),
+  'domainMargin decoded outside 0..9');
 check(unpacked.every((x) => x.name && x.owner && Number.isFinite(x.stars)), 'row unpacked without name/owner/stars');
 check(unpacked.every((x) => x.stars >= 500), 'a row is below the 500 star floor');
 check(unpacked.every((x) => x.domain && x.subsystem && x.artifact && x.language), 'a row decoded to an empty facet');
-check(unpacked.every((x) => Array.isArray(x.primitives)), 'primitives is not an array');
+check(unpacked.every((x) => Array.isArray(x.primitives) && Array.isArray(x.topics) && Array.isArray(x.compatibility)),
+  'primitives/topics/compatibility is not an array');
 const ids = new Set(unpacked.map((x) => x.id));
 check(ids.size === unpacked.length, `duplicate ids in Tier-1 (${unpacked.length - ids.size} collisions)`);
 
@@ -40,11 +61,152 @@ let sorted = true;
 for (let i = 1; i < unpacked.length; i++) if (unpacked[i].stars > unpacked[i - 1].stars) { sorted = false; break; }
 check(sorted, 'rows are not sorted by stars descending');
 
-// 3. Tier-2 lazy shard fetch + modal merge for a sample across every domain
+// 3. W3 §2.1/2.2 — ranked search over the pack-time index (exact shipped code)
+const searchIndex = JSON.parse(readFileSync(join(dir, 'search-index.json'), 'utf8'));
+check(searchIndex.n === rows.length, `search index n=${searchIndex.n} != rows ${rows.length}`);
+check(searchIndex.t.length === searchIndex.d.length && searchIndex.t.length === searchIndex.p.length,
+  'search index token/df/postings arrays are ragged');
+check(searchIndex.f.length === searchIndex.w.length, 'search index field/weight arrays are ragged');
+const starsByOrdinal = unpacked.map((r) => r.stars);
+const starsByOrdinalDirect = starsByOrdinal; // alias for the filter-core parity check
+const rankOnce = (q) => rankQuery(searchIndex, q, starsByOrdinal);
+
+// warm-up + deterministic ordering
+const warm = rankOnce('raft');
+check(rankOnce('raft').map(([o]) => o).join(',') === warm.map(([o]) => o).join(','),
+  'rankQuery is not deterministic');
+
+// Hard-fail ceiling for ranked queries (G, O.7): far above the measured
+// medians (0.1-1.3 ms in the dev sandbox, 3.1-3.8 ms on slower runners) so CI
+// variance never flakes, while still catching a real regression (orders of
+// magnitude, not percent). The medians are reported on every run.
+const RANK_CEILING_MS = 50;
+const queryGates = [
+  // [query, min hits, hard-fail ceiling]
+  ['sql vector', 20, RANK_CEILING_MS],
+  ['simd', 100, RANK_CEILING_MS],
+  ['raft', 150, RANK_CEILING_MS], // exact-token matches only (old substring's 654 included draft/craft)
+];
+const queryReport = [];
+for (const [q, minHits, budget] of queryGates) {
+  const runs = [];
+  let res = [];
+  for (let i = 0; i < 5; i++) {
+    const t0 = performance.now();
+    res = rankOnce(q);
+    runs.push(performance.now() - t0);
+  }
+  runs.sort((a, b) => a - b);
+  const median = runs[2];
+  queryReport.push(`'${q}': ${res.length} hits, median ${median.toFixed(2)}ms`);
+  check(res.length >= minHits, `query ${q} returned ${res.length} hits, need >= ${minHits}`);
+  check(median < budget, `query ${q} took ${median.toFixed(2)}ms, budget ${budget}ms`);
+}
+// relevance: top rows must actually be about the query
+const topNames = (q, n) => rankOnce(q).slice(0, n).map(([o]) => `${unpacked[o].owner}/${unpacked[o].name}`.toLowerCase());
+const duckTop = topNames('duckdb', 3);
+check(duckTop.every((s) => s.includes('duckdb')), `duckdb top-3 not duckdb repos: ${duckTop}`);
+const simdTop = topNames('simd', 5);
+check(simdTop.some((s) => s.includes('simd')), `simd top-5 has no simd repo: ${simdTop}`);
+// multi-token: most of the top-10 must mention BOTH tokens somewhere searchable
+const sv = rankOnce('sql vector').slice(0, 10);
+const bothTokens = sv.filter(([o]) => {
+  const r = unpacked[o];
+  // full searchable field set (mirror of the index's doc fields)
+  const text = [r.name, r.owner, r.hook, r.subsystem, r.domain, r.language,
+    r.license, ...r.primitives, ...r.topics, ...r.compatibility].join(' ').toLowerCase();
+  return text.includes('sql') && text.includes('vector');
+}).length;
+check(bothTokens >= 4, `sql vector top-10: only ${bothTokens}/10 rows mention both tokens`);
+console.log(`\nsearch gates: ${queryReport.join(' | ')}`);
+console.log(`  latency: per-query medians above | hard-fail ceiling ${RANK_CEILING_MS}ms/query (>=13x worst measured median)`);
+console.log(`  relevance: duckdb top-3 all duckdb ✓ | sql+vector both-token top-10: ${bothTokens}/10`);
+
+// 4. W3 §2.4 — edges invariants
+const edgesData = JSON.parse(readFileSync(join(dir, 'edges.json'), 'utf8'));
+const edges = edgesData.edges;
+check(edges.length === rows.length, `edges length ${edges.length} != rows ${rows.length}`);
+let minDeg = Infinity, badNb = 0, selfEdge = 0;
+const bucketCount = new Map();
+for (let i = 0; i < edges.length; i++) {
+  const list = edges[i];
+  if (!Array.isArray(list) || list.length === 0) { badNb++; continue; }
+  minDeg = Math.min(minDeg, list.length);
+  for (const [j, w] of list) {
+    if (!(j >= 0 && j < rows.length)) badNb++;
+    if (j === i) selfEdge++;
+    if (!(w > 0 && w <= 1)) badNb++;
+    const sub = subsystems[rows[j][7]] || 'General Components';
+    bucketCount.set(sub, (bucketCount.get(sub) || 0) + 1);
+  }
+}
+check(badNb === 0, `${badNb} malformed edge endpoints`);
+check(selfEdge === 0, `${selfEdge} self-edges`);
+check(minDeg >= 1, `min degree ${minDeg}: some node has no edge`);
+const totalEdgeEnds = [...bucketCount.values()].reduce((a, b) => a + b, 0);
+const [topName, topN] = [...bucketCount.entries()].sort((a, b) => b[1] - a[1])[0];
+const topPct = (100 * topN / totalEdgeEnds);
+check(topPct <= 25, `top edge bucket ${topName} holds ${topPct.toFixed(1)}% (>25%)`);
+console.log(`\nedges: ${totalEdgeEnds.toLocaleString()} endpoints | min degree ${minDeg} | ` +
+  `top bucket ${topName} ${topPct.toFixed(1)}%`);
+
+// 5. W3 §2.8 — facet counts must equal a recount from the rows (exact truth)
+const facets = JSON.parse(readFileSync(join(dir, 'facets.json'), 'utf8'));
+check(facets.total === rows.length, `facets.total ${facets.total} != rows ${rows.length}`);
+const recount = new Map();
+for (const r of rows) {
+  const d = domains[r[6]] || 'Other / General';
+  recount.set(d, (recount.get(d) || 0) + 1);
+}
+for (const f of facets.domains) {
+  check(recount.get(f.name) === f.count, `facet ${f.name}: ${f.count} != recount ${recount.get(f.name) || 0}`);
+}
+check(recount.size === facets.domains.length, 'facet domain list does not cover every domain');
+console.log(`facets: ${facets.domains.length} domains verified against row recount ` +
+  `(${facets.domains.slice(0, 3).map((f) => `${f.name} (${f.count})`).join(', ')}, ...)`);
+
+// 6a. W3 §2.7 — junk licenses normalized away, tier array well-formed
+const junkLicenses = new Set(['NOASSERTION', 'Open Source', 'noassertion']);
+const junkRows = rows.filter((r) => junkLicenses.has(r[9]));
+check(junkRows.length === 0, `${junkRows.length} rows still carry a junk license value`);
+check(rows.every((r) => r[9] && r[9].length > 0), 'a row has an empty license');
+if (packed.license_tiers !== undefined) {
+  check(packed.license_tiers.length === rows.length,
+    `license_tiers length ${packed.license_tiers.length} != rows ${rows.length}`);
+  const validTiers = new Set(['permissive', 'copyleft', 'source-available', 'unknown']);
+  const badTiers = packed.license_tiers.filter((t) => !validTiers.has(t));
+  check(badTiers.length === 0, `${badTiers.length} rows have an invalid license tier`);
+}
+if (facets.license_tiers !== undefined) {
+  const tierSum = facets.license_tiers.reduce((a, b) => a + b.count, 0);
+  check(tierSum === rows.length, `license tier facet counts sum ${tierSum} != rows ${rows.length}`);
+}
+console.log(`licenses: junk rows ${junkRows.length} | tiers ` +
+  (packed.license_tiers
+    ? Object.entries(packed.license_tiers.reduce((m, t) => ({ ...m, [t]: (m[t] || 0) + 1 }), {}))
+        .map(([k, v]) => `${k} ${v}`).join(', ')
+    : 'n/a'));
+
+// 6. W3 §2.6 — activity array aligned with rows, statuses well-formed
+if (packed.activity !== undefined) {
+  check(packed.activity.length === rows.length, `activity length ${packed.activity.length} != rows ${rows.length}`);
+  const allowed = new Set(['active', 'idle', 'archived', null]);
+  let badStatus = 0, badTs = 0, unknown = 0;
+  for (const a of packed.activity) {
+    if (!Array.isArray(a) || !allowed.has(a[0])) badStatus++;
+    else if (a[0] === null) unknown++;
+    else if (!(a[1] > 0)) badTs++;
+  }
+  check(badStatus === 0, `${badStatus} activity entries with bad status`);
+  check(badTs === 0, `${badTs} non-null activity entries without a pushed timestamp`);
+  console.log(`activity: ${packed.activity.length === rows.length} aligned | unknown(no push data): ${unknown}`);
+}
+
+// 7. Tier-2 lazy shard fetch + modal merge for a sample across every domain
 const byShard = new Map();
 for (const r of unpacked) if (!byShard.has(r.shard)) byShard.set(r.shard, r);
 console.log(`\nshards referenced by Tier-1: ${byShard.size}`);
-let deepCoverage = 0, pushedAt = 0, quickstart = 0, beginner = 0, sampled = 0;
+let deepCoverage = 0, pushedAt = 0, nullPushed = 0, invalidPushed = 0, quickstart = 0, beginner = 0, sampled = 0;
 for (const [shard, repo] of byShard) {
   const data = JSON.parse(readFileSync(join(dir, 'data', 'details', `${shard}.json`), 'utf8'));
   const rec = data[repo.id];
@@ -53,18 +215,27 @@ for (const [shard, repo] of byShard) {
   if (!rec) continue;
   deepCoverage++;
   const merged = { ...repo, ...(rec || {}) };
-  if (merged.pushed_at && !Number.isNaN(Date.parse(merged.pushed_at))) pushedAt++;
+  // W3 §2.6: null pushed_at is valid data ("Pushed: Unknown"); an
+  // unparsable non-null string is what renders "Invalid Date".
+  const hasPushed = Object.prototype.hasOwnProperty.call(merged, 'pushed_at') && merged.pushed_at != null;
+  if (hasPushed) {
+    if (Number.isNaN(Date.parse(merged.pushed_at))) invalidPushed++;
+    else pushedAt++;
+  } else {
+    nullPushed++;
+  }
   if (merged.quickstart_code) quickstart++;
   if (merged.beginner_intel && merged.beginner_intel.what_it_does) beginner++;
   check(merged.stars === repo.stars, `Tier-2 mirror overrode Tier-1 stars for ${repo.name}`);
 }
 console.log(`sampled one repo per shard: ${sampled} | deep record found ${deepCoverage} | ` +
-  `valid pushed_at ${pushedAt} | quickstart ${quickstart} | beginner_intel ${beginner}`);
+  `valid pushed_at ${pushedAt} | null pushed_at ${nullPushed} | invalid ${invalidPushed} | ` +
+  `quickstart ${quickstart} | beginner_intel ${beginner}`);
 check(deepCoverage === sampled, 'some shards did not resolve the sampled id');
-check(pushedAt === sampled, 'pushed_at missing/invalid on a deep record (modal "Pushed:" line would read Invalid Date)');
+check(invalidPushed === 0, `${invalidPushed} deep records carry an unparsable pushed_at (Invalid Date in the modal)`);
 check(beginner === sampled, 'beginner_intel.what_it_does missing on a deep record');
 
-// 4. Fallback path: catalog-index.json must describe the same catalog
+// 8. Fallback path: catalog-index.json must describe the same catalog
 const index = JSON.parse(readFileSync(join(dir, 'catalog-index.json'), 'utf8'));
 check(index.length === unpacked.length, `fallback index holds ${index.length} records vs packed ${unpacked.length}`);
 const idxIds = new Set(index.map((r) => r.id));
@@ -72,6 +243,330 @@ check(unpacked.every((r) => idxIds.has(r.id)), 'fallback index is missing packed
 check(index.every((r) => r.url && r.shard && (r.hook || r.description)), 'fallback record lacks url/shard/hook');
 console.log(`\nfallback index: ${index.length.toLocaleString()} records (matches packed: ${index.length === unpacked.length})`);
 
+// 9. W4 §3.1 — SQL Studio: shipped helpers + sql.js executing the README demo
+const { isReadOnlySql, resultsToCsv, SQL_COLUMNS, repoToSqlValues } =
+  await import('./src/sql-utils.mjs');
+check(isReadOnlySql("SELECT name FROM repos LIMIT 5;"), 'SELECT rejected by read-only guard');
+check(isReadOnlySql("WITH x AS (SELECT 1) SELECT * FROM x;"), 'WITH rejected by read-only guard');
+check(!isReadOnlySql("INSERT INTO repos VALUES (1);"), 'INSERT accepted by read-only guard');
+check(!isReadOnlySql("DROP TABLE repos;"), 'DROP accepted by read-only guard');
+
+{
+  const { default: initSqlJs } = await import('sql.js');
+  const SQL = await initSqlJs({ locateFile: (f) => join('node_modules/sql.js/dist', f) });
+  const db = new SQL.Database();
+  db.run(`CREATE TABLE repos (${SQL_COLUMNS.map((c) =>
+    `${c} ${['id', 'stars', 'forks'].includes(c) ? 'INTEGER' : 'TEXT'}`).join(', ')})`);
+  const stmt = db.prepare(`INSERT INTO repos VALUES (${SQL_COLUMNS.map(() => '?').join(',')})`);
+  db.run('BEGIN');
+  const sample = unpacked.slice(0, 5000);
+  for (const r of sample) stmt.run(repoToSqlValues(r));
+  db.run('COMMIT');
+  stmt.free();
+
+  const demo = "SELECT name, stars, language, domain, subsystem\nFROM repos\nWHERE domain = 'Databases & Storage' AND stars >= 20000\nORDER BY stars DESC;";
+  const res = db.exec(demo);
+  check(res.length === 1 && res[0].values.length >= 3,
+    `demo query returned ${res.length ? res[0].values.length : 0} rows (want >= 3 from the 5k sample)`);
+  if (res.length === 1) {
+    const { columns, values } = res[0];
+    check(columns.join(',') === 'name,stars,language,domain,subsystem', `unexpected columns: ${columns}`);
+    let desc = true;
+    for (let i = 1; i < values.length; i++) if (values[i][1] > values[i - 1][1]) desc = false;
+    check(desc, 'demo query results are not ordered by stars DESC');
+    check(values.every((r) => r[1] >= 20000 && r[3] === 'Databases & Storage'),
+      'demo query WHERE clause not honoured');
+    // CSV round-trip on the shipped serializer
+    const csv = resultsToCsv(columns, values);
+    const lines = csv.split('\n');
+    check(lines.length === values.length + 1, 'CSV line count mismatch');
+    check(lines[0] === 'name,stars,language,domain,subsystem', 'CSV header mismatch');
+    // re-parse with a minimal RFC4180 reader and compare
+    const parseCsv = (text) => {
+      const rows = []; let row = [], field = '', inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQ) {
+          if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+          else if (ch === '"') inQ = false;
+          else field += ch;
+        } else if (ch === '"') inQ = true;
+        else if (ch === ',') { row.push(field); field = ''; }
+        else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+        else if (ch !== '\r') field += ch;
+      }
+      if (field.length || row.length) { row.push(field); rows.push(row); }
+      return rows;
+    };
+    const back = parseCsv(csv);
+    check(back.length === lines.length, 'CSV re-parse line count mismatch');
+    check(back[1][0] === String(values[0][0]), 'CSV re-parse first cell mismatch');
+    console.log(`\nSQL Studio: demo query -> ${values.length} rows from a ${sample.length.toLocaleString()}-row sample, ` +
+      `top = ${values[0][0]} (${values[0][1].toLocaleString()}★) | CSV round-trip ${csv.length} bytes`);
+  }
+  db.close();
+}
+
+// 10. W4 §3.7 — filter-core (worker + sync fallback share this module)
+const { filterOrdinals, majorLanguages, unpackLight, LONG_TAIL_LANGUAGE } =
+  await import('./src/filter-core.mjs');
+
+const light = unpackLight(packed);
+check(light.length === rows.length, `unpackLight rows ${light.length} != ${rows.length}`);
+check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length > 0,
+  'unpackLight corpus empty');
+{
+  const stats = majorLanguages(light);
+  const tailCount = stats.tailRows;
+  const base = { q: '', domain: 'all', subsystem: 'all', artifact: 'all', language: 'all',
+    primitive: 'all', licenseTier: 'all', minStars: 500, hideDormant: false, sortBy: 'stars' };
+
+  const t0 = performance.now();
+  const identity = filterOrdinals(light, searchIndex, base, stats.majorsSet);
+  const tEmpty = performance.now() - t0;
+  check(identity.length === rows.length, `empty filter returned ${identity.length}`);
+  let starsDesc = true;
+  for (let i = 1; i < identity.length; i++) if (light[identity[i]].stars > light[identity[i - 1]].stars) starsDesc = false;
+  check(starsDesc, 'empty filter is not stars-desc');
+
+  // domain count must equal the pack-time facet truth
+  const dbCount = filterOrdinals(light, searchIndex, { ...base, domain: 'Databases & Storage' }, stats.majorsSet).length;
+  const dbFacet = facets.domains.find((d) => d.name === 'Databases & Storage');
+  check(dbFacet && dbCount === dbFacet.count,
+    `domain filter ${dbCount} != facet ${dbFacet && dbFacet.count}`);
+
+  // long-tail language grouping: exactly the tail rows, never a major
+  const tailOnly = filterOrdinals(light, searchIndex, { ...base, language: LONG_TAIL_LANGUAGE }, stats.majorsSet);
+  check(tailOnly.length === tailCount, `tail filter ${tailOnly.length} != ${tailCount}`);
+  check(tailOnly.every((o) => !stats.majorsSet.has(light[o].language)), 'tail filter included a major language');
+  check(stats.majors.length === 61, `expected 61 major languages, got ${stats.majors.length}`);
+
+  // dormant filter drops idle+archived
+  const active = filterOrdinals(light, searchIndex, { ...base, hideDormant: true }, stats.majorsSet);
+  check(active.every((o) => !light[o].activity || light[o].activity.status === 'active'),
+    'hideDormant kept a non-active row');
+  check(active.length < rows.length, 'hideDormant removed nothing');
+
+  // recent sort: pushedAt non-increasing over rows that have data
+  const recent = filterOrdinals(light, searchIndex, { ...base, sortBy: 'recent' }, stats.majorsSet);
+  let recentOk = true;
+  let prev = Infinity;
+  for (const o of recent) {
+    const ts = (light[o].activity && light[o].activity.pushedAt) || 0;
+    if (ts > prev) { recentOk = false; break; }
+    if (ts) prev = ts;
+  }
+  check(recentOk, 'recent sort is not pushedAt-desc');
+
+  // ranked query parity with the W3 search gate (same counts, same top-5)
+  const t1 = performance.now();
+  const ranked = filterOrdinals(light, searchIndex, { ...base, q: 'sql vector' }, stats.majorsSet);
+  const tQuery = performance.now() - t1;
+  check(ranked.length === 947, `'sql vector' via filter-core returned ${ranked.length}, want 947`);
+  const direct = rankQuery(searchIndex, 'sql vector', starsByOrdinalDirect).slice(0, 5).map(([o]) => o);
+  check(ranked.slice(0, 5).join(',') === direct.join(','),
+    'filter-core rank order diverges from rankQuery');
+  const again = filterOrdinals(light, searchIndex, { ...base, q: 'sql vector' }, stats.majorsSet);
+  check(again.join(',') === ranked.join(','), 'filter-core is not deterministic');
+  // W4 §3.4: pack-time signal — present, in range, sorts, and filters
+  check(Array.isArray(packed.signal) && packed.signal.length === rows.length,
+    `signal array ${packed.signal && packed.signal.length} != ${rows.length}`);
+  check(packed.signal.every((v) => Number.isInteger(v) && v >= 0 && v <= 100),
+    'signal out of 0..100 or non-integer');
+  const bySignal = filterOrdinals(light, searchIndex, { ...base, minSignal: 0, sortBy: 'signal' }, stats.majorsSet);
+  let sigDesc = true;
+  for (let i = 1; i < bySignal.length; i++) if (light[bySignal[i]].signal > light[bySignal[i - 1]].signal) sigDesc = false;
+  check(sigDesc, 'signal sort is not descending');
+  const sigFiltered = filterOrdinals(light, searchIndex, { ...base, minSignal: 60 }, stats.majorsSet);
+  check(sigFiltered.length > 0 && sigFiltered.every((o) => light[o].signal >= 60),
+    'minSignal filter failed');
+  const sigMean = packed.signal.reduce((a, b) => a + b, 0) / packed.signal.length;
+
+  // W4 §3.5: topic facet through the same core. Real rows carry no topics
+  // until the backfill, so pin the rule on a synthetic projection too.
+  const synRows = [
+    { id: 1, stars: 10, language: 'Python', domain: 'D', subsystem: 'S', artifact: 'A',
+      licenseTier: 'permissive', signal: 50, primitives: [], topics: ['llm', 'rag'],
+      compatibility: [], activity: null, searchCorpus: 'x' },
+    { id: 2, stars: 20, language: 'Go', domain: 'D', subsystem: 'S', artifact: 'A',
+      licenseTier: 'permissive', signal: 50, primitives: [], topics: ['web'],
+      compatibility: [], activity: null, searchCorpus: 'y' },
+  ];
+  const synBase = { q: '', domain: 'all', subsystem: 'all', artifact: 'all', language: 'all',
+    primitive: 'all', licenseTier: 'all', minStars: 0, minSignal: 0, hideDormant: false, sortBy: 'stars' };
+  check(filterOrdinals(synRows, null, { ...synBase, topic: 'llm' }, undefined).length === 1,
+    'topic filter kept the wrong synthetic row');
+  check(filterOrdinals(synRows, null, { ...synBase, topic: 'nope' }, undefined).length === 0,
+    'topic filter matched a topic no row has');
+  check(filterOrdinals(synRows, null, { ...synBase, topic: 'all' }, undefined).length === 2,
+    'topic=all did not return every row');
+  const realTopic = filterOrdinals(light, searchIndex, { ...base, topic: 'llm' }, stats.majorsSet);
+  check(realTopic.every((o) => (light[o].topics || []).includes('llm')),
+    'topic filter leaked a row without the topic');
+
+  console.log(`\nfilter-core: identity ${identity.length.toLocaleString()} rows in ${tEmpty.toFixed(1)}ms | ` +
+    `ranked 'sql vector' ${ranked.length} in ${tQuery.toFixed(1)}ms | tail ${tailCount} rows / ${stats.tail.length} langs | ` +
+    `hideDormant ${active.length.toLocaleString()} | signal mean ${sigMean.toFixed(1)}, ≥60: ${sigFiltered.length.toLocaleString()}`);
+}
+
+// 11. W4 §3.2/§3.3 — history snapshots + changelog diff
+{
+  const clPath = join(dir, 'changelog.json');
+  const clRaw = existsSync(clPath) ? readFileSync(clPath, 'utf8') : null;
+  check(clRaw !== null, 'changelog.json missing from dist');
+  const cl = clRaw ? JSON.parse(clRaw) : {};
+  check(Array.isArray(cl.top_movers), 'changelog.top_movers not an array');
+  check(typeof cl.generated === 'string' && cl.generated.length > 0, 'changelog.generated missing');
+  if (cl.period) {
+    check(cl.period.from < cl.period.to, 'changelog period not ordered');
+    const deltas = cl.top_movers.map((m) => Math.abs(m.delta));
+    check(deltas.every((d) => d > 0), 'zero-delta mover present');
+    for (let i = 1; i < deltas.length; i++) check(deltas[i] <= deltas[i - 1], 'movers not |delta|-desc');
+    check(cl.top_movers.every((m) => m.from !== m.to), 'mover with from == to');
+  } else {
+    check(typeof cl.note === 'string' && cl.note.includes('Baseline'),
+      'first-run changelog lacks seeded-baseline note');
+    check(cl.top_movers.length === 0, 'single-snapshot changelog must not invent movers');
+  }
+  const histDir = join(dir, 'history');
+  const snaps = existsSync(histDir)
+    ? readdirSync(histDir).filter((f) => f.endsWith('-stars.json')) : [];
+  check(snaps.length >= 1, 'no history snapshots');
+  const first = JSON.parse(readFileSync(join(histDir, snaps.sort()[0]), 'utf8'));
+  check(Array.isArray(first.names) && first.names.length === first.stars.length
+    && first.names.length === rows.length, 'snapshot alignment/count mismatch');
+  if (snaps.length === 1) {
+    check(first.names[0] === `${unpacked[0].owner}/${unpacked[0].name}`
+      && first.stars[0] === unpacked[0].stars, 'seeded snapshot != packed head row');
+  }
+  console.log(`changelog: ${snaps.length} snapshot(s), generated ${cl.generated}, ` +
+    `${cl.top_movers.length} movers, +${cl.added_count}/-${cl.removed_count}` +
+    (cl.period ? ` | ${cl.period.from} -> ${cl.period.to}` : ' (baseline)'));
+}
+
+// 12. W4 §3.5 — topic-map integrity + per-domain topic counts
+{
+  const tmPath = join(dir, 'topic-map.json');
+  check(existsSync(tmPath), 'topic-map.json missing from dist');
+  const tm = JSON.parse(readFileSync(tmPath, 'utf8'));
+  check(Number.isInteger(tm.min_count) && tm.min_count > 0, 'topic-map min_count invalid');
+  check(Number.isInteger(tm.min_pair) && tm.min_pair > 0, 'topic-map min_pair invalid');
+  check(Array.isArray(tm.topics), 'topic-map.topics not an array');
+  const df = new Map(tm.topics.map((t) => [t.name, t.count]));
+  let countsDesc = true;
+  for (let i = 1; i < tm.topics.length; i++) {
+    if (tm.topics[i].count > tm.topics[i - 1].count) countsDesc = false;
+  }
+  check(countsDesc, 'topic-map topics are not count-descending');
+  for (const t of tm.topics) {
+    check(t.count >= tm.min_count, `topic ${t.name} below min_count`);
+    check(t.edges.length <= 10, `topic ${t.name} has more than 10 edges`);
+    let eDesc = true;
+    for (let i = 1; i < t.edges.length; i++) if (t.edges[i][1] > t.edges[i - 1][1]) eDesc = false;
+    check(eDesc, `edges for ${t.name} are not count-descending`);
+    for (const [other, c] of t.edges) {
+      check(df.has(other), `edge ${t.name} -> ${other} references a topic not in the map`);
+      check(c >= tm.min_pair, `edge ${t.name}/${other} below min_pair`);
+      check(c <= Math.min(t.count, df.get(other)),
+        `edge count ${c} exceeds df for ${t.name}/${other}`);
+    }
+  }
+  // per-domain topic counts must never exceed the global count
+  const globalT = new Map((facets.topics || []).map((t) => [t.name, t.count]));
+  const tbd = facets.topics_by_domain || {};
+  for (const [dom, list] of Object.entries(tbd)) {
+    for (const e of list) {
+      if (globalT.size) {
+        check(e.count <= (globalT.get(e.name) ?? 0),
+          `topics_by_domain[${dom}] ${e.name} exceeds its global count`);
+      }
+      check(e.count > 0, `zero count in topics_by_domain[${dom}]`);
+    }
+  }
+  console.log(`topic map: ${tm.topics.length} topics / ${tm.pairs_considered} pairs considered | ` +
+    `per-domain keys ${Object.keys(tbd).length} | min df ${tm.min_count}, min pair ${tm.min_pair}`);
+}
+
+// ---------------------------------------------------------------------------------------
+// §13 — W4 §3.6: curated blueprint library + completion engine integrity (zero-LLM)
+// ---------------------------------------------------------------------------------------
+{
+  const bpDoc = JSON.parse(readFileSync(new URL('./src/blueprints.json', import.meta.url), 'utf8'));
+  const bps = bpDoc.blueprints || [];
+  const repoSet = new Set(rows.map(r => `${r[2]}/${r[1]}`));
+  const subSet = new Set(Object.values(subsystems));
+
+  check(bps.length >= 6, `blueprint library must exceed the original 4 (got ${bps.length})`);
+  for (const g of ['ai', 'systems', 'security']) {
+    check(bps.filter(b => b.goal === g).length >= 2, `goal ${g} needs >= 2 blueprints`);
+  }
+  const bpIds = bps.map(b => b.id);
+  check(new Set(bpIds).size === bpIds.length, 'duplicate blueprint ids');
+  for (const id of ['ai-rag-analytics', 'edge-observability', 'autonomous-coding-agent', 'zero-trust-microservices']) {
+    check(bpIds.includes(id), `original template ${id} missing from library`);
+  }
+
+  let seedTotal = 0;
+  for (const b of bps) {
+    const labels = new Set(b.roles.map(r => r.label));
+    check(labels.size === b.roles.length, `${b.id}: duplicate role labels`);
+    for (const r of b.roles) {
+      check(['storage', 'ai', 'backend', 'frontend', 'devtools', 'security'].includes(r.category),
+        `${b.id}/${r.label}: unknown category ${r.category}`);
+      for (const s of (r.seeds || [])) {
+        seedTotal++;
+        check(repoSet.has(s), `${b.id}/${r.label}: seed ${s} not in packed catalog`);
+      }
+      if (r.requiredSubsystem) {
+        check(subSet.has(r.requiredSubsystem), `${b.id}/${r.label}: unknown subsystem ${r.requiredSubsystem}`);
+      }
+    }
+    for (const [a, c] of (b.edges || [])) {
+      check(labels.has(a) && labels.has(c), `${b.id}: edge endpoint is not a role label`);
+    }
+  }
+
+  // Engine (the exact module the UI imports) — determinism, seed-first, honest gaps.
+  const { mulberry32, hashSeed, selectBlueprint, completeStack } =
+    await import('./src/blueprint-engine.mjs');
+  check(Number.isInteger(hashSeed('x')) && hashSeed('x') === hashSeed('x'), 'hashSeed not stable');
+  const r1 = mulberry32('a'), r2 = mulberry32('a'), r3 = mulberry32('b');
+  check(r1() === r2() && r1() !== r3(), 'mulberry32 not reproducible per seed');
+
+  const buckets = {
+    storage: unpacked.filter(r => r.domain === 'Databases & Storage'),
+    ai: unpacked.filter(r => r.domain === 'AI & Machine Learning'),
+    backend: unpacked.filter(r => r.domain === 'Web Platforms & Frameworks' || r.domain === 'Networking & Distributed Systems'),
+    frontend: unpacked.filter(r => r.language === 'TypeScript' || r.language === 'JavaScript'),
+    devtools: unpacked.filter(r => r.domain === 'Developer Tooling & Compilers' || r.domain === 'Cloud & Infrastructure'),
+    security: unpacked.filter(r => r.domain === 'Security & Cryptography'),
+  };
+  for (const [k, v] of Object.entries(buckets)) check(v.length > 0, `engine bucket ${k} empty`);
+  const lookup = new Map(unpacked.map(r => [`${r.owner}/${r.name}`, r]));
+
+  const bp0 = bps[0];
+  const s1 = completeStack(bp0, buckets, lookup, mulberry32('same'));
+  const s2 = completeStack(bp0, buckets, lookup, mulberry32('same'));
+  check(JSON.stringify(s1) === JSON.stringify(s2), 'completeStack not reproducible for same seed');
+  check(s1.missing.length === 0 && s1.components.every(c => c.repo),
+    `blueprint ${bp0.id} failed to fill every slot: ${JSON.stringify(s1.missing)}`);
+  for (const comp of s1.components) {
+    const role = bp0.roles.find(r => r.label === comp.role);
+    if (comp.via === 'seed') {
+      check((role.seeds || []).includes(`${comp.repo.owner}/${comp.repo.name}`),
+        `${comp.role}: via=seed but ${comp.repo.owner}/${comp.repo.name} not in role seeds`);
+    } else {
+      check(comp.repo.domain || comp.repo.stars >= 500, `${comp.role}: via=${comp.via} repo lacks identity`);
+    }
+  }
+  const pickSys = selectBlueprint(bps, 'systems', mulberry32('g'));
+  check(pickSys && pickSys.goal === 'systems', 'selectBlueprint did not honour goal filter');
+  check(!!selectBlueprint(bps, 'all', mulberry32('g2')), 'selectBlueprint(all) empty');
+
+  console.log(`blueprints: ${bps.length} (goals ${[...new Set(bps.map(b => b.goal))].sort().join(',')}) | ` +
+    `seeds ${seedTotal} verified | engine: ${s1.components.length} slots filled, reproducible`);
+}
+
 console.log(fail.length ? `\nFAILED (${fail.length}):\n  ` + fail.slice(0, 10).join('\n  ')
-  : `\nOK: packed decode, Tier-2 lazy merge, and fallback index all consistent for ${rows.length.toLocaleString()} repos.`);
+  : `\nOK: packed decode, ranked search, edges, facets, Tier-2 merge, and fallback index consistent for ${rows.length.toLocaleString()} repos.`);
 process.exit(fail.length ? 1 : 0);
