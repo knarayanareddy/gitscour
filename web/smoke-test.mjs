@@ -7,6 +7,7 @@ import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'perf_hooks';
+import { detailShard } from './src/catalog-shards.mjs';
 import { rankQuery, tokenize } from './src/search-core.mjs';
 
 const dir = process.argv[2] || 'dist';
@@ -19,7 +20,6 @@ console.log(`packed: ${rows.length.toLocaleString()} rows | ${Object.keys(domain
   `${Object.keys(subsystems).length} subsystems / ${Object.keys(languages).length} languages / ` +
   `${Object.keys(artifacts).length} artifacts`);
 
-const slugify = (t) => (t || 'other-general').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 // 1. Tier-1 unpack, exactly as App.jsx does it
 const unpacked = rows.map((r) => {
@@ -30,7 +30,7 @@ const unpacked = rows.map((r) => {
     subsystem: subsystems[r[7]] || 'General Components',
     artifact: artifacts[r[8]] || 'Application / Service',
     license: r[9], primitives: r[10] || [], hook: r[11] || '',
-    description: r[11] || '', url: `https://github.com/${r[2]}/${r[1]}`, shard: slugify(domName),
+    description: r[11] || '', url: `https://github.com/${r[2]}/${r[1]}`, shard: detailShard(domName, r[0], packed.shard_parts),
     // W2 §1.1: optional 13th field (domain margin); null when absent
     domainMargin: r.length > 12 && typeof r[12] === 'number' ? r[12] : null,
     // W3 §2.2/2.4: optional 14th/15th fields (topics, compatibility)
@@ -256,8 +256,8 @@ check(idxById.size === index.length, 'fallback index contains duplicate ids');
 check(unpacked.every((r) => {
   const fallback = idxById.get(r.id);
   return fallback && fallback.name === r.name && fallback.owner === r.owner
-    && fallback.stars === r.stars && fallback.forks === r.forks;
-}), 'fallback index does not match packed repository names, stars, or forks');
+    && fallback.stars === r.stars && fallback.forks === r.forks && fallback.shard === r.shard;
+}), 'fallback index does not match packed repository names, stars, forks, or shard paths');
 check(index.every((r) => r.url && r.shard && (r.hook || r.description)), 'fallback record lacks url/shard/hook');
 console.log(`\nfallback index: ${index.length.toLocaleString()} records (matches packed: ${index.length === unpacked.length})`);
 

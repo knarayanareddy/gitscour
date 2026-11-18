@@ -13,6 +13,7 @@ import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { isReadOnlySql, resultsToCsv, SQL_COLUMNS, repoToSqlValues, RESULT_PREVIEW_LIMIT } from './sql-utils.mjs';
 import { filterOrdinals, majorLanguages, LONG_TAIL_LANGUAGE } from './filter-core.mjs';
 import InspirationGenerator from './InspirationGenerator.jsx';
+import { detailShard, slugify } from './catalog-shards.mjs';
 
 export default function App() {
   const [repos, setRepos] = useState([]);
@@ -201,10 +202,6 @@ export default function App() {
     setVisibleCount(36);
   };
 
-  const slugify = (text) => {
-    return (text || "other-general").toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  };
-
   // 1. Fetch & Unpack Packed Index
   useEffect(() => {
     // W3 §2.1 — pack-time inverted index (state lands before/after unpack; the
@@ -272,7 +269,7 @@ export default function App() {
             topics: Array.isArray(r[13]) ? r[13] : [],
             compatibility: Array.isArray(r[14]) ? r[14] : [],
             url: `https://github.com/${r[2]}/${r[1]}`,
-            shard: slugify(domName),
+            shard: detailShard(domName, r[0], data.shard_parts),
             // W3 §2.6: [status, pushed_epoch] aligned with rows (null = no data)
             activity: act && act[0] ? { status: act[0], pushedAt: act[1] } : null,
             // W3 §2.7: interned tier parallel to rows (permissive|copyleft|...)

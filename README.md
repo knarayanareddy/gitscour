@@ -24,7 +24,7 @@ GitScour eliminates traditional backend database costs by combining static pre-i
    * Labels curated lists and learning resources separately so Explorer users can filter by artifact type.
 
 2. **Web Explorer & In-Browser SQL Studio (`web/`):**
-   * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, languages, license tiers, and pack-time **topics**.
+   * **Explorer Mode:** Client-side filtering across domains, subsystems, star thresholds, languages, license tiers, and topics. Inspectors fetch only their Tier-2 detail shard; large domains are split into smaller files by repository ID.
    * **Search latency:** ranked tokenized search over the pack-time index measures **0.1–3.8 ms median per query** — `web/smoke-test.mjs` reports the medians on every build and hard-fails any ranked query above **50 ms** (a ceiling set far above measured so CI variance never flakes), so the claim is gate-asserted, not aspirational.
    * **Topic cloud & Ecosystems tab:** per-domain topic cloud from `facets.topics_by_domain`, plus a co-occurrence graph (`topic-map.json`: term frequency >= 25, pair count >= 10, top-10 edges per topic) built at pack time by `pipeline/topicmap.py` — click a node to filter the catalog.
    * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries
@@ -40,7 +40,9 @@ GitScour eliminates traditional backend database costs by combining static pre-i
    * `backfill_123k.yml` (monthly) sweeps GitHub Search for public repositories at or above 500 stars,
      reconciles known repositories missing from search, rebuilds the artifacts, and opens a
      pull request from the result. A manual run on a non-`main` branch commits verified results
-     to that branch instead, without deploying.
+     to that branch instead, without deploying. If packaging or validation fails after
+     harvesting, dispatch again with the failed run's `checkpoint_run_id` to reuse its
+     completed harvest on the same branch and UTC date.
    * `deploy.yml` (weekly + on push) deploys *exactly* the catalog committed to `main` after `verify_catalog.py` passes. It no longer harvests during the build:
      regenerating shards from a partial index during deploy is how the deployed Tier-2
      data could drift away from the repository.

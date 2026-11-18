@@ -42,11 +42,11 @@ import time
 import hashlib
 import json
 import os
-import re
 import sys
 from collections import Counter, defaultdict
 
 sys.path.append(os.path.dirname(__file__))
+from catalog_shards import MAX_SHARD_BYTES, part_count, shard_name, slugify  # noqa: E402
 from facets import write_facets  # noqa: E402
 from topicmap import write_topic_map  # noqa: E402
 from neighbors import write_edges  # noqa: E402
@@ -63,7 +63,6 @@ from taxonomy_engine import (  # noqa: E402
     generate_beginner_context,
 )
 
-SLUG_RE = re.compile(r"[^a-z0-9]+")
 # Largest integer JavaScript's Number type represents exactly; ids must stay below it.
 JS_SAFE_INT_MAX = 2 ** 53
 # Re-keyed ids live in [2^40, 2^41): above real GitHub databaseIds (which pass 10^10
@@ -120,11 +119,6 @@ def build_activity(records: list, now_ts: int) -> list:
 # topics list from the harvest merge must win over the stored shard copy.
 DEEP_FIELDS = ("beginner_intel", "license_intel", "quickstart_code", "usecases",
                "compatibility", "maturity", "keywords")
-
-
-def slugify(text):
-    text = (text or "other-general").lower().replace("&", "and")
-    return SLUG_RE.sub("-", text).strip("-") or "other-general"
 
 
 def normalise_topics(topics):
@@ -389,7 +383,6 @@ def finalize_records(catalog: dict, min_stars: int, stats: Counter) -> list:
     for r in records:
         r["maturity"] = classify_maturity(int(r["stars"]), int(r.get("forks") or 0), real_pushed_at(r))
         r.setdefault("full_name", f"{r['owner']}/{r['name']}")
-        r["shard"] = slugify(r.get("domain"))
         # ~3% of GitHub repositories have no description at all (e.g. deepseek-ai/
         # DeepSeek-V3). Without a hook those rows render as blank cards, so fall
         # back to the same deterministic context sentence the taxonomy engine
@@ -429,13 +422,20 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
     """
     details_dir = os.path.join(base_dir, "data", "details")
 
+    domain_counts = Counter(slugify(r.get("domain")) for r in records)
+    shard_parts = {slug: part_count(count) for slug, count in sorted(domain_counts.items())
+                   if count > 0 and part_count(count) > 1}
+    if not write_shards:
+        with open(os.path.join(base_dir, "catalog-packed.json"), encoding="utf-8") as fh:
+            shard_parts = json.load(fh).get("shard_parts", {})
+
     # ---------------- Tier 2: deep detail shards ----------------
     # Tier 2 carries only what Tier 1 cannot: the deep intelligence sheet. Mirroring
     # scalars here is what pushed shards to ~1.7 kB/record, and because the modal
     # spreads `...deepRecord` over the Tier-1 row, a stale mirror silently wins.
     shards = defaultdict(dict)
     for r in records:
-        slug = r["shard"]
+        slug = shard_name(slugify(r.get("domain")), r["id"], shard_parts)
         hook = (r.get("hook") or r.get("description") or "")[:90]
         shards[slug][r["id"]] = {
             "id": r["id"],
@@ -474,8 +474,15 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
         path = os.path.join(details_dir, f"{slug}.json")
         linejson.write(path, recs)  # W5 O.3: one deep record per line
         size = os.path.getsize(path)
+        if size > MAX_SHARD_BYTES:
+            raise ValueError(f"Tier-2 shard {path} exceeds the {MAX_SHARD_BYTES // (1024 * 1024)} MiB budget")
         shard_bytes += size
         print(f"  shard [{slug:38s}] {len(recs):7d} deep records  {size/1e6:6.2f} MB")
+
+    if write_shards:
+        for filename in os.listdir(details_dir):
+            if filename.endswith(".json") and filename[:-5] not in shards:
+                os.remove(os.path.join(details_dir, filename))
 
     # ---------------- Tier 1: readable fallback index ----------------
     # Readable fallback for the loader path that only runs if the packed index
@@ -501,7 +508,7 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
             "hook": hook,
             "description": (r.get("description") or hook)[:90],
             "url": r.get("url") or f"https://github.com/{r['owner']}/{r['name']}",
-            "shard": r["shard"],
+            "shard": shard_name(slugify(r.get("domain")), r["id"], shard_parts),
         })
     for name in ("catalog-index.json",):
         path = os.path.join(base_dir, name)
@@ -546,6 +553,7 @@ def write_artifacts(records: list, base_dir: str, write_shards: bool = True) -> 
         "languages": {v: k for k, v in lang_map.items()},
         "artifacts": {v: k for k, v in artifact_map.items()},
         "rows": rows,
+        "shard_parts": shard_parts,
         # W3 §2.6: activity aligned with rows (sort/filter/badges stay off the
         # row schema, so 12..15-field arity and index ordinals are unchanged)
         "activity": build_activity(records, int(time.time())),
