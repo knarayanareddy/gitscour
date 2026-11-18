@@ -184,6 +184,23 @@ completeness guarantees (partial-window detection, probe-failure abort,
 `forks:>=N` clauses). `deploy.yml` runs this before verifying, and
 `backfill_123k.yml` runs it before harvesting.
 
+### 6. Test the production website in Chromium
+
+```bash
+cd web
+npm ci
+npx playwright install chromium  # add --with-deps on Linux if system libraries are missing
+npm run build
+npm run preview -- --port 4173 --strictPort
+# In another terminal, from web/:
+npm run test:browser
+```
+
+The browser suite exercises the refreshed catalog, split detail shards, SQL and CSV export,
+Rising, Ecosystems, the Galaxy canvas, seeded stacks, mobile navigation, and catalog recovery.
+The deploy workflow runs it against the production build before publishing. Set
+`GITSCOUR_TEST_URL` to test a different preview URL or `CHROMIUM_PATH` to use an existing Chromium.
+
 | Script | Role |
 | --- | --- |
 | `harvest_enumerate.py` | Window-partitioned GraphQL sweep; the only harvester that can exceed 1,000 records per query |

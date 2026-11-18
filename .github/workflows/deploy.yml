@@ -87,6 +87,20 @@ jobs:
         working-directory: web
         run: npm run smoke
 
+      - name: Install Chromium for Browser Tests
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Test the Production Build in Chromium
+        working-directory: web
+        run: |
+          set -euo pipefail
+          npm run preview -- --host 127.0.0.1 --port 4173 --strictPort &
+          preview=$!
+          trap 'kill "$preview" 2>/dev/null || true' EXIT
+          curl --retry 10 --retry-connrefused --retry-delay 1 --fail --silent --output /dev/null http://127.0.0.1:4173/
+          npm run test:browser
+
       - name: Setup Pages
         if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5

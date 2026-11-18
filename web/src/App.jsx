@@ -47,6 +47,7 @@ export default function App() {
   };
 
   const initialUrl = getInitialUrlState();
+  const pendingInspect = useRef(initialUrl.inspect?.toLowerCase());
 
   const [activeTab, setActiveTab] = useState(initialUrl.tab);
   const [inspireSeed, setInspireSeed] = useState(initialUrl.seed); // W4 §3.8 reproducible stacks
@@ -291,17 +292,6 @@ export default function App() {
         packedForWorkerRef.current = data; // raw payload staged for the filter worker
         setRepos(unpacked);
         setLoading(false);
-
-        if (initialUrl.inspect) {
-          // W4 §3.7: prefer the unambiguous owner/name form; bare name is fallback.
-          const target = initialUrl.inspect.toLowerCase();
-          const match =
-               unpacked.find((r) => `${r.owner}/${r.name}`.toLowerCase() === target) ||
-               unpacked.find((r) => r.name.toLowerCase() === target);
-          if (match) {
-            handleOpenRepoModal(match);
-          }
-        }
       })
       .catch((err) => {
         console.warn('Fallback loading catalog-index:', err);
@@ -348,6 +338,16 @@ export default function App() {
       });
   }, [detailShards]);
 
+  // Resolve an incoming inspector link once, from either catalog loader.
+  useEffect(() => {
+    const target = pendingInspect.current;
+    if (!target || !repos.length) return;
+    pendingInspect.current = null;
+    const match = repos.find((r) => `${r.owner}/${r.name}`.toLowerCase() === target)
+      || repos.find((r) => r.name.toLowerCase() === target);
+    if (match) handleOpenRepoModal(match);
+  }, [repos, handleOpenRepoModal]);
+
   // Compute merged active repo with lazy-loaded Tier 2 details
   const activeRepoDetails = useMemo(() => {
     if (!activeRepoModal) return null;
@@ -376,7 +376,7 @@ export default function App() {
 
   // Sync state to URL Query Parameters (Deep Linking)
   useEffect(() => {
-    if (loading) return;
+    if (loading || catalogLoadError) return;
     const params = new URLSearchParams();
 
     if (activeTab !== 'explorer') params.set('tab', activeTab);
@@ -394,7 +394,7 @@ export default function App() {
 
     const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
     window.history.replaceState({}, '', newUrl);
-  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier, minStars, activeRepoModal, inspireSeed, loading]);
+  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier, minStars, activeRepoModal, inspireSeed, loading, catalogLoadError]);
 
   const copyShareableLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -548,7 +548,7 @@ export default function App() {
     // identical pipeline via filter-core (single source of truth).
     return filterOrdinals(repos, searchIndex, filterOpts, languageStats.majorsSet)
       .map((o) => repos[o]).filter(Boolean);
-  }, [repos, filterResult, searchIndex, filterOpts, languageStats.majorsSet]);
+  }, [repos, filterResult, workerFailed, searchIndex, filterOpts, languageStats.majorsSet]);
 
   const visibleRepos = useMemo(() => {
     return filteredRepos.slice(0, visibleCount);
@@ -609,7 +609,7 @@ export default function App() {
     <div className="min-h-screen bg-obs-base text-zinc-100 flex flex-col font-sans selection:bg-white/20">
       {/* Top Header */}
       <header className="border-b border-white/[0.07] bg-obs-base/95 sticky top-0 z-30 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col items-start gap-2 lg:h-16 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-gradient-to-tr from-white/[0.16] to-white/[0.04] ring-1 ring-inset ring-white/[0.12] text-white p-2 rounded-xl">
               <Database className="w-5 h-5" />
@@ -632,7 +632,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <nav aria-label="Main views" className="flex max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap lg:overflow-visible [&>*]:shrink-0">
             <button
               onClick={() => setActiveTab('explorer')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
@@ -728,7 +728,7 @@ export default function App() {
             >
               <Globe className="w-4 h-4" />
             </a>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -1064,19 +1064,25 @@ export default function App() {
                     style={{ touchAction: 'none' }}
                     onPointerDown={(e) => {
                       ecoMovedRef.current = false;
-                      ecoDragRef.current = { sx: e.clientX, sy: e.clientY, ox: ecoPan.x, oy: ecoPan.y };
-                      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+                      if (!e.isPrimary || e.button !== 0) return;
+                      const scale = e.currentTarget.getBoundingClientRect().width / 760;
+                      ecoDragRef.current = { pointer: e.pointerId, sx: e.clientX, sy: e.clientY, ox: ecoPan.x, oy: ecoPan.y, scale };
                     }}
                     onPointerMove={(e) => {
                       const d = ecoDragRef.current;
-                      if (!d) return;
+                      if (!d || e.pointerId !== d.pointer) return;
                       const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
-                      if (Math.abs(dx) + Math.abs(dy) > 5) ecoMovedRef.current = true;
-                      setEcoPan({ x: d.ox + dx, y: d.oy + dy });
+                      if (!ecoMovedRef.current) {
+                        if (Math.abs(dx) + Math.abs(dy) <= 5) return;
+                        ecoMovedRef.current = true;
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      }
+                      setEcoPan({ x: d.ox + dx / d.scale, y: d.oy + dy / d.scale });
                     }}
-                    onPointerUp={(e) => {
-                      ecoDragRef.current = null;
-                      try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+                    onPointerUp={() => { ecoDragRef.current = null; }}
+                    onPointerCancel={() => { ecoDragRef.current = null; }}
+                    onPointerLeave={(e) => {
+                      if (!e.currentTarget.hasPointerCapture(e.pointerId)) ecoDragRef.current = null;
                     }}
                   >
                     <g transform={`translate(${ecoPan.x},${ecoPan.y})`}>
