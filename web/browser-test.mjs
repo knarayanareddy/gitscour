@@ -23,7 +23,7 @@ const problems = [];
 context.on('page', (p) => p.on('pageerror', (e) => problems.push(e.message)));
 page.on('pageerror', (e) => problems.push(e.message));
 const network = [];
-page.on('response', (r) => { if (!r.ok() && r.url().startsWith(url.origin)) network.push(`${r.status()} ${r.url()}`); });
+page.on('response', (r) => { if (r.status() >= 400 && new URL(r.url()).origin === url.origin) network.push(`${r.status()} ${r.url()}`); });
 const read = (label) => page.getByRole('button', { name: label, exact: typeof label === 'string' });
 const nav = (label) => page.locator('header').getByRole('button', { name: label, exact: true });
 const show = async (l) => l.waitFor({ state: 'visible' });
