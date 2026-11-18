@@ -98,12 +98,18 @@ jobs:
           npm install --prefix "$browser_dir" --no-audit --no-fund @sparticuz/chromium@141.0.0
           TMPDIR="$browser_dir/runtime" GITSCOUR_BROWSER_DIR="$browser_dir" \
             AWS_EXECUTION_ENV=AWS_Lambda_nodejs20.x node --input-type=module >> "$GITHUB_ENV" <<'JS'
+          import { readFile, writeFile } from 'node:fs/promises';
           import { pathToFileURL } from 'node:url';
           const path = process.env.GITSCOUR_BROWSER_DIR + '/node_modules/@sparticuz/chromium/build/esm/index.js';
           const { default: browser } = await import(pathToFileURL(path).href);
-          console.log(`CHROMIUM_PATH=${await browser.executablePath()}`);
+          const executable = await browser.executablePath();
+          // The bundled fonts.conf targets Lambda's fixed /tmp/fonts path.
+          const fonts = process.env.FONTCONFIG_PATH;
+          const config = `${fonts}/fonts.conf`;
+          await writeFile(config, (await readFile(config, 'utf8')).replaceAll('/tmp/fonts', fonts));
+          console.log(`CHROMIUM_PATH=${executable}`);
           console.log(`LD_LIBRARY_PATH=${process.env.LD_LIBRARY_PATH}`);
-          console.log(`FONTCONFIG_PATH=${process.env.FONTCONFIG_PATH}`);
+          console.log(`FONTCONFIG_PATH=${fonts}`);
           JS
 
       - name: Test the Production Build in Chromium
