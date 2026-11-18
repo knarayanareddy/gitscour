@@ -1,4 +1,4 @@
-name: 123k Repositories Autonomous Backfill
+name: Refresh GitScour catalog
 
 on:
   workflow_dispatch:
@@ -7,16 +7,21 @@ on:
         description: 'Lowest star threshold to enumerate'
         required: true
         default: '500'
+      checkpoint_run_id:
+        description: 'Optional same-branch run ID whose completed harvest was captured today'
+        required: false
+        type: string
   schedule:
     # Runs monthly on the 1st at 00:00 UTC for deep backfill
     - cron: '0 0 1 * *'
 
 permissions:
+  actions: read
   contents: write
   pull-requests: write
 
 concurrency:
-  group: "backfill-123k"
+  group: catalog-refresh-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -25,6 +30,7 @@ jobs:
     timeout-minutes: 180
     env:
       MIN_STARS: ${{ github.event.inputs.min_stars || '500' }}
+      CHECKPOINT_RUN_ID: ${{ inputs.checkpoint_run_id }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -42,12 +48,58 @@ jobs:
       - name: Unit Tests (no network)
         run: python -m pytest tests/ -q
 
+      - name: Verify checkpoint source
+        if: inputs.checkpoint_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$CHECKPOINT_RUN_ID" =~ ^[0-9]+$ ]]
+          SOURCE=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CHECKPOINT_RUN_ID")
+          test "$(jq -r .head_branch <<< "$SOURCE")" = "$GITHUB_REF_NAME"
+          test "$(jq -r '.path | split("@")[0]' <<< "$SOURCE")" = '.github/workflows/backfill_123k.yml'
+          test "$(jq -r .status <<< "$SOURCE")" = 'completed'
+          test "$(jq -r '.created_at[:10]' <<< "$SOURCE")" = "$(date -u +%F)"
+          SOURCE_SHA=$(jq -r .head_sha <<< "$SOURCE")
+          git fetch --depth=1 origin "$SOURCE_SHA"
+          git diff --quiet "$SOURCE_SHA" HEAD -- web/public
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CHECKPOINT_RUN_ID/jobs" | jq -e '
+            any(.jobs[]; .name == "enumerate-and-rebuild" and
+              any(.steps[]; .name == "Reconcile stale rows against the live API" and .conclusion == "success"))'
+
+      - name: Restore today's completed harvest
+        if: inputs.checkpoint_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: harvest-checkpoint
+          path: harvest
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.checkpoint_run_id }}
+
+      - name: Validate restored harvest
+        if: inputs.checkpoint_run_id != ''
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path("harvest")
+          stats = json.loads((root / "stats.json").read_text())
+          assert stats["windows_planned"] == stats["windows_done"] > 0, stats
+          assert stats["windows_failed"] == stats["windows_truncated"] == 0, stats
+          min_stars = int(os.environ["MIN_STARS"])
+          with (root / "raw_repos.jsonl").open() as entries:
+              floor = min(json.loads(line)["stars"] for line in entries if line.strip())
+          assert stats.get("min_stars", floor) == min_stars, "checkpoint uses a different star floor"
+          assert (root / "reconcile.json").is_file(), "reconciliation patch missing"
+          PY
+
       # A single job, not a star-window matrix: GitHub truncates every search
       # query at 1,000 results, so the old 12-way matrix could never capture
       # more than ~12,000 records per run and could never share a resume point.
       # The enumerator instead partitions the star continuum into ~180 windows
       # that each fit under that cap and checkpoints each window it finishes.
       - name: Enumerate every repository above the threshold
+        if: inputs.checkpoint_run_id == ''
         env:
           GITHUB_TOKEN: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -61,6 +113,7 @@ jobs:
       # deleted, star-purged, live-but-unindexed) get resolved against the live
       # API and emitted as a patch, instead of leaving duplicate/stale rows.
       - name: Reconcile stale rows against the live API
+        if: inputs.checkpoint_run_id == ''
         env:
           GITHUB_TOKEN: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -71,30 +124,14 @@ jobs:
             --min-stars "$MIN_STARS" \
             --concurrency 12
 
-      - name: Classify and rebuild catalog artefacts
+      - name: Re-score taxonomy and rebuild catalog artefacts
         run: |
           python3 pipeline/rebuild_catalog.py \
             --harvest harvest/raw_repos.jsonl \
             --reconcile harvest/reconcile.json \
-            --min-stars "$MIN_STARS"
-
-      # W2 §1.3: re-score every label with taxonomy v2 through the shared
-      # single-writer units, then gate on churn. --allow-churn because this run
-      # is the deliberate v1->v2 migration (the histogram + machine-readable
-      # report ship in the harvest-checkpoint artifact as reclassify_report.json);
-      # steady-state monthly runs should stay far below the 20% default gate.
-      - name: Re-score labels with taxonomy v2 (churn report)
-        run: |
-          python3 pipeline/reclassify_catalog.py \
             --min-stars "$MIN_STARS" \
-            --allow-churn \
             --min-topics-pct 50 \
-            --report-out harvest/reclassify_report.json
-
-      # W2 §1.8: ship the 16 curated ELI5 cards inside the regenerated shards
-      # (runs after reclassify so it lands in the same reviewable PR).
-      - name: Merge curated seed ELI5 cards into shards
-        run: python3 pipeline/merge_seed_intel.py --apply
+            --reclassify-report harvest/reclassify_report.json
 
       - name: Verify catalog integrity
         run: python3 pipeline/verify_catalog.py --min-stars "$MIN_STARS"
@@ -106,8 +143,7 @@ jobs:
 
       # Same contract gate as deploy.yml: this workflow opens a PR that ships
       # regenerated artefacts, so catch a broken Tier-1 decode / Tier-2 lazy-merge
-      # contract before the PR exists (review finding #14: the smoke test was in
-      # neither workflow). smoke-test.mjs is dependency-free.
+      # contract before the PR exists. The smoke test also runs SQL Studio.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -127,7 +163,22 @@ jobs:
         run: npm run lint
 
       - name: Smoke test regenerated artefacts
-        run: node web/smoke-test.mjs web/public
+        run: |
+          set -euo pipefail
+          if ! node web/smoke-test.mjs web/public 2>&1 | tee harvest/smoke.log; then
+            python3 - <<'PY'
+          from pathlib import Path
+          text = Path('harvest/smoke.log').read_text()
+          detail = text.split('FAILED (', 1)[-1] if 'FAILED (' in text else '\n'.join(text.splitlines()[-15:])
+          print('::error title=Catalog smoke failure::' + detail.strip().replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          PY
+            exit 1
+          fi
+
+      - name: Generate catalog snapshot report
+        run: |
+          python3 pipeline/catalog_summary.py --harvest-stats harvest/stats.json
+          cat docs/CATALOG_SNAPSHOT.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload harvest checkpoint
         if: always()
@@ -138,12 +189,33 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Commit verified refresh to the selected branch
+        if: github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' && github.ref_name != 'main'
+        run: |
+          set -euo pipefail
+          git add web/public docs/CATALOG_SNAPSHOT.md
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m 'data: refresh GitScour catalog from GitHub'
+          if ! git push origin "HEAD:$GITHUB_REF" 2>&1 | tee "$RUNNER_TEMP/catalog-push.log"; then
+            python3 - <<'PY'
+          import os
+          from pathlib import Path
+          path = Path(os.environ['RUNNER_TEMP']) / 'catalog-push.log'
+          detail = '\n'.join(path.read_text().splitlines()[-15:])
+          print('::error title=Catalog branch push failed::' + detail.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          PY
+            exit 1
+          fi
+
       - name: Open backfill pull request
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- web/public && git diff --cached --quiet -- web/public; then
+          if [ -z "$(git status --porcelain -- web/public docs/CATALOG_SNAPSHOT.md)" ]; then
             echo "No catalog changes detected; nothing to propose."
             exit 0
           fi
@@ -152,16 +224,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add web/public
+          git add web/public docs/CATALOG_SNAPSHOT.md
           git commit -q -m "data: backfill catalog to ${REPO_COUNT} repositories (>= ${MIN_STARS} stars)"
           git push -u origin "$BRANCH"
           cat > pr_body.md <<EOF
           Automated backfill run for \`${{ github.ref_name }}\` (run \`${{ github.run_id }}\`).
 
-          - Enumerated every repository at or above ${MIN_STARS} stars with \`pipeline/harvest_enumerate.py\`
+          - Swept GitHub Search for public repositories at or above ${MIN_STARS} stars with \`pipeline/harvest_enumerate.py\`
           - Reconciled stale rows (renames/deletions) via \`pipeline/reconcile_stale_rows.py\`
           - Classified and re-sharded with \`pipeline/rebuild_catalog.py\`
-          - Re-scored all labels with \`pipeline/reclassify_catalog.py\` (taxonomy v2) — full churn histogram in the log, machine-readable report in the \`harvest-checkpoint\` artifact (\`reclassify_report.json\`)
+          - Re-scored all labels with the shared taxonomy v2 scorer — full churn histogram in the log, machine-readable report in the \`harvest-checkpoint\` artifact (\`reclassify_report.json\`)
           - Tier-1 packed index now holds **${REPO_COUNT}** repositories
           - \`pipeline/verify_catalog.py\` passed on the regenerated artefacts
 
@@ -190,7 +262,7 @@ jobs:
               print(f"- Warning: coverage has holes ({failed} failed / "
                     f"{truncated} truncated) — see the job log for the affected clauses.")
           else:
-              print("- No failed or truncated windows: full-coverage sweep.")
+              print("- No failed or truncated search windows. GitHub Search is a live index, not a point-in-time export.")
           PY
           else
             printf '\n## Harvest coverage\n\n_Harvest stats unavailable for this run (no harvest/stats.json) — coverage numbers were not recorded._\n' >> pr_body.md
@@ -212,7 +284,7 @@ jobs:
                   print(f"- **{r['full_name']}** {sign}{abs(r['delta']):,} "
                         f"({r['from']:,} -> {r['to']:,}){lang}")
               print()
-              print(f"Full list in `web/public/changelog.json` — "
+              print(f"More detail in `web/public/changelog.json` — "
                     f"{cl.get('mover_count', 0)} movers, "
                     f"+{cl.get('added_count', 0)} added / -{cl.get('removed_count', 0)} removed.")
           elif cl.get("note"):
@@ -222,4 +294,4 @@ jobs:
           fi
           gh pr create --base "${{ github.ref_name }}" --head "$BRANCH" \
             --title "data: backfill catalog to ${REPO_COUNT} repositories" \
-            --body-file pr_body.md || true
+            --body-file pr_body.md

@@ -1,9 +1,11 @@
 # GitScour 🔭
 
-> A high-performance, queriable knowledge base of GitHub repositories (>500 stars) categorized by domain, subsystem, and artifact distinction. Hosted 100% free on **GitHub Pages** with automated zero-maintenance CI/CD.
+> A high-performance, queryable knowledge base of public GitHub repositories with at least 500 stars categorized by domain, subsystem, and artifact distinction. Hosted on **GitHub Pages**, with scheduled catalog refreshes.
 
 ![GitScour Preview](https://img.shields.io/badge/Status-Live%20Preview-success?style=for-the-badge)
 ![Hosting Cost](https://img.shields.io/badge/Hosting%20Cost-%240.00%2Fmo-blue?style=for-the-badge)
+
+See the [catalog snapshot report](docs/CATALOG_SNAPSHOT.md) for the pack date, exact counts, and changes since the previous refresh. The web Explorer shows the actual loaded count and snapshot date; the Changelog lists new catalog entries.
 
 ---
 
@@ -15,16 +17,14 @@ GitScour eliminates traditional backend database costs by combining static pre-i
    * Deterministic taxonomy engine classifying repositories across 4 orthogonal dimensions:
      * **Artifact Type:** `Library / SDK`, `Developer Tool / CLI`, `Framework`,
        `System Service / Engine`, `Curated List / Docs`, `Template / Starter`, and
-       `Application / Service` — the fallback bucket when no rule fires, which is
-       why it is the largest class in the current catalogue (70.7%); narrowing it
-       below 50% on a live re-score is the last open W2 acceptance criterion.
+       `Application / Service` — the fallback bucket when no rule fires.
      * **Domain / Genre:** `Databases & Storage`, `AI & Machine Learning`, `Cloud & Infrastructure`, `Security & Cryptography`, `Developer Tooling & Compilers`, `Web Platforms`.
      * **Architectural Subsystem:** `Vector Database`, `Distributed SQL Engine`, `LLM Inference & Serving`, `Service Mesh`, etc.
      * **Primary Language & Runtime**.
-   * Filters out generic "awesome lists" and tutorials so users searching for systems software find actual codebases.
+   * Labels curated lists and learning resources separately so Explorer users can filter by artifact type.
 
 2. **Web Explorer & In-Browser SQL Studio (`web/`):**
-   * **Explorer Mode:** Instant client-side faceted filtering across domains, subsystems, star thresholds, languages, license tiers, and pack-time **topics**.
+   * **Explorer Mode:** Client-side filtering across domains, subsystems, star thresholds, languages, license tiers, and topics. Inspectors fetch only their Tier-2 detail shard; large domains are split into smaller files by repository ID.
    * **Search latency:** ranked tokenized search over the pack-time index measures **0.1–3.8 ms median per query** — `web/smoke-test.mjs` reports the medians on every build and hard-fails any ranked query above **50 ms** (a ceiling set far above measured so CI variance never flakes), so the claim is gate-asserted, not aspirational.
    * **Topic cloud & Ecosystems tab:** per-domain topic cloud from `facets.topics_by_domain`, plus a co-occurrence graph (`topic-map.json`: term frequency >= 25, pair count >= 10, top-10 edges per topic) built at pack time by `pipeline/topicmap.py` — click a node to filter the catalog.
    * **SQL Studio Mode:** WebAssembly SQL execution console allowing arbitrary queries
@@ -36,12 +36,14 @@ GitScour eliminates traditional backend database costs by combining static pre-i
    * **History & Rising:** per-rebuild star snapshots (`history/<date>-stars.json`, byte-identical same-day re-runs) diffed into `changelog.json` — added/removed rows and |delta| movers feed the *Rising* tab, the Explorer shelf, and the inspector's momentum sparkline. One snapshot only = honest seeded-baseline note, never invented deltas.
    * **Inspire (blueprints):** eight curated blueprints in `web/src/blueprints.json` (seeds verified against the packed catalog) completed by the deterministic `blueprint-engine.mjs`; stack generation is reproducible from the URL `?seed=` parameter (mulberry32 — no `Math.random`). Pool synergy is the **mean over pair scores** from `synergy-core.mjs`, so 2-slot and 6-slot stacks are comparable, with a protocol matrix derived from `COMPATIBILITY_RULES` (Postgres-compatible <-> pg drivers, OpenAI-compatible <-> OpenAI clients, ...).
 
-3. **Zero-Maintenance Automation (`.github/workflows/`):**
-   * `backfill_123k.yml` (monthly) enumerates the full >500★ universe, rebuilds the
-     index and shards, verifies them, and opens a pull request with the result -- so a
-     data refresh is reviewable instead of silently overwriting the deployed catalog.
-   * `deploy.yml` (weekly + on push) deploys *exactly* the catalog committed to the
-     branch after `verify_catalog.py` passes. It no longer harvests during the build:
+3. **Automation (`.github/workflows/`):**
+   * `backfill_123k.yml` (monthly) sweeps GitHub Search for public repositories at or above 500 stars,
+     reconciles known repositories missing from search, rebuilds the artifacts, and opens a
+     pull request from the result. A manual run on a non-`main` branch commits verified results
+     to that branch instead, without deploying. If packaging or validation fails after
+     harvesting, dispatch again with the failed run's `checkpoint_run_id` to reuse its
+     completed harvest on the same branch and UTC date.
+   * `deploy.yml` (weekly + on push) deploys *exactly* the catalog committed to `main` after `verify_catalog.py` passes. It no longer harvests during the build:
      regenerating shards from a partial index during deploy is how the deployed Tier-2
      data could drift away from the repository.
    * Both workflows run the same gate lane before deploying/harvesting: deterministic
@@ -71,7 +73,7 @@ GitScour eliminates traditional backend database costs by combining static pre-i
 
    | Term | Definition |
    |---|---|
-   | `stars_pct` | Percentile rank of the row's star count among all 123k rows. |
+   | `stars_pct` | Percentile rank of the row's star count among all catalog rows. |
    | `push_recency` | `exp(-age_days / 548)` over the last push (≈2-year decay). No push data = **0.5** (unknown, never assumed dead). |
    | `fork_ratio_pct` | Percentile rank of the `(forks+1)/(stars+1)` ratio. |
    | `has_release` | 1 when the curated quickstart carries a real install command (`pip install`, `npm install`, `cargo install`, `docker pull`, ...), else 0 (default `git clone` stub). |
@@ -136,7 +138,7 @@ python3 pipeline/harvest_enumerate.py --min-stars 500 \
 it was capped by GitHub's 1,000-result search limit — step 4 explains the
 window-partitioned sweep that replaced it.)
 
-### 4. Full backfill (enumerate every repo above a star threshold)
+### 4. Full backfill (sweep GitHub Search at a star threshold)
 
 GitHub truncates *any* search query at 1,000 results, so a harvester that sweeps a
 handful of star windows can never return more than ~1,000 records per window no
@@ -151,20 +153,25 @@ export GITHUB_TOKEN="your_pat_token"
 python3 pipeline/harvest_enumerate.py --min-stars 500 \
   --output harvest/raw_repos.jsonl --manifest harvest/windows_done.jsonl
 
-# 2. Merge into the live catalog, classify new rows through the taxonomy engine,
-#    and regenerate Tier-1 index + Tier-2 domain shards from one source of truth.
-python3 pipeline/rebuild_catalog.py --harvest harvest/raw_repos.jsonl
+# 2. Check missing names directly, then pack refreshed metadata and taxonomy.
+python3 pipeline/reconcile_stale_rows.py --harvest harvest/raw_repos.jsonl --out harvest/reconcile.json
+python3 pipeline/rebuild_catalog.py --harvest harvest/raw_repos.jsonl \
+  --reconcile harvest/reconcile.json --min-topics-pct 50 \
+  --reclassify-report harvest/reclassify_report.json
 
 # 3. Gate the artefacts on internal consistency before committing.
 python3 pipeline/verify_catalog.py
+node web/smoke-test.mjs web/public # after npm ci in web/
+python3 pipeline/catalog_summary.py --harvest-stats harvest/stats.json
 ```
 
 `reconcile_stale_rows.py` runs automatically in the monthly backfill CI
 (`backfill_123k.yml`, step "Reconcile stale rows") immediately **before**
 `rebuild_catalog.py` (R1.6): it resolves catalog rows the sweep did not match,
 drops deleted / taken-down / sub-threshold repos, and collapses renames so one
-project is never listed twice under its old and new `owner/name`. It can also
-be run locally as a pass in front of `rebuild_catalog.py`.
+project is never listed twice under its old and new `owner/name`. It fails closed if the API cannot resolve an unmatched row. Always use a new checkpoint
+directory for a new refresh; reuse the manifest only to resume an interrupted sweep.
+Search results can change while pages are being fetched, so coverage is not a point-in-time census.
 
 ### 5. Run the test suite
 ```bash
@@ -176,6 +183,23 @@ Deterministic and network-free: window-planner split arithmetic, harvest
 completeness guarantees (partial-window detection, probe-failure abort,
 `forks:>=N` clauses). `deploy.yml` runs this before verifying, and
 `backfill_123k.yml` runs it before harvesting.
+
+### 6. Test the production website in Chromium
+
+```bash
+cd web
+npm ci
+npx playwright install chromium  # add --with-deps on Linux if system libraries are missing
+npm run build
+npm run preview -- --port 4173 --strictPort
+# In another terminal, from web/:
+npm run test:browser
+```
+
+The browser suite exercises the refreshed catalog, split detail shards, SQL and CSV export,
+Rising, Ecosystems, the Galaxy canvas, seeded stacks, mobile navigation, and catalog recovery.
+The deploy workflow runs it against the production build before publishing. Set
+`GITSCOUR_TEST_URL` to test a different preview URL or `CHROMIUM_PATH` to use an existing Chromium.
 
 | Script | Role |
 | --- | --- |

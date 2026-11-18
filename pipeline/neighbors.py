@@ -92,8 +92,10 @@ def build_edges(records: List[dict]) -> dict:
             keys.append(f"a:{artifact}")
         feat_keys.append(keys)
 
-    pairs_by_row: List[Dict[int, int]] = [dict() for _ in range(n)]
-    for i in range(n):
+    edges: List[List[List[float]]] = []
+    fallback_edges = 0
+    bucket_counter: Counter = Counter()
+    for i, (ti, pi, ci, si, li, ai) in enumerate(ev):
         counts: Dict[int, int] = {}
         for key in feat_keys[i]:
             ords = lists.get(key)
@@ -103,19 +105,9 @@ def build_edges(records: List[dict]) -> dict:
                 if j != i:
                     counts[j] = counts.get(j, 0) + 1
         if counts:
+            # Pre-cap by strongest shared-feature counts, then score this row
+            # immediately so no per-row candidate tables accumulate in memory.
             top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:CAND_CAP]
-            pairs_by_row[i] = dict(top)
-
-    # ---- score candidates (weighted Jaccard over the four groups)
-    edges: List[List[List[float]]] = []
-    fallback_edges = 0
-    bucket_counter: Counter = Counter()
-    for i in range(n):
-        ti, pi, ci, si, li, ai = ev[i]
-        cands = pairs_by_row[i]
-        if cands:
-            # pre-cap: strongest shared-feature counts first, deterministic
-            top = sorted(cands.items(), key=lambda kv: (-kv[1], kv[0]))[:CAND_CAP]
             scored = []
             for j, _shared in top:
                 tj, pj, cj, sj, lj, aj = ev[j]

@@ -120,16 +120,16 @@ class WindowClauseTests(unittest.TestCase):
         # every repo with >1,001 forks at that star value (review finding #2d).
         self.assertEqual(
             window_clause(500, 500, 1001, None),
-            "stars:500 forks:>=1001 sort:stars-desc",
+            "is:public stars:500 forks:>=1001 sort:stars-desc",
         )
 
     def test_exact_and_range_fork_clauses(self):
-        self.assertEqual(window_clause(500, 500, 50, 50), "stars:500 forks:50 sort:stars-desc")
-        self.assertEqual(window_clause(500, 500, 0, 1000), "stars:500 forks:0..1000 sort:stars-desc")
+        self.assertEqual(window_clause(500, 500, 50, 50), "is:public stars:500 forks:50 sort:stars-desc")
+        self.assertEqual(window_clause(500, 500, 0, 1000), "is:public stars:500 forks:0..1000 sort:stars-desc")
 
     def test_star_only_clauses(self):
-        self.assertEqual(window_clause(500, 500, None, None), "stars:500 sort:stars-desc")
-        self.assertEqual(window_clause(500, 999, None, None), "stars:500..999 sort:stars-desc")
+        self.assertEqual(window_clause(500, 500, None, None), "is:public stars:500 sort:stars-desc")
+        self.assertEqual(window_clause(500, 999, None, None), "is:public stars:500..999 sort:stars-desc")
 
 
 class ProbeCountTests(unittest.TestCase):

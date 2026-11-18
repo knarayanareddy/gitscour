@@ -5,7 +5,9 @@
 // exact module App.jsx uses, so the gate exercises the shipped algorithm.
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'node:url';
 import { performance } from 'perf_hooks';
+import { detailShard } from './src/catalog-shards.mjs';
 import { rankQuery, tokenize } from './src/search-core.mjs';
 
 const dir = process.argv[2] || 'dist';
@@ -18,7 +20,6 @@ console.log(`packed: ${rows.length.toLocaleString()} rows | ${Object.keys(domain
   `${Object.keys(subsystems).length} subsystems / ${Object.keys(languages).length} languages / ` +
   `${Object.keys(artifacts).length} artifacts`);
 
-const slugify = (t) => (t || 'other-general').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 // 1. Tier-1 unpack, exactly as App.jsx does it
 const unpacked = rows.map((r) => {
@@ -29,7 +30,7 @@ const unpacked = rows.map((r) => {
     subsystem: subsystems[r[7]] || 'General Components',
     artifact: artifacts[r[8]] || 'Application / Service',
     license: r[9], primitives: r[10] || [], hook: r[11] || '',
-    description: r[11] || '', url: `https://github.com/${r[2]}/${r[1]}`, shard: slugify(domName),
+    description: r[11] || '', url: `https://github.com/${r[2]}/${r[1]}`, shard: detailShard(domName, r[0], packed.shard_parts),
     // W2 §1.1: optional 13th field (domain margin); null when absent
     domainMargin: r.length > 12 && typeof r[12] === 'number' ? r[12] : null,
     // W3 §2.2/2.4: optional 14th/15th fields (topics, compatibility)
@@ -68,7 +69,6 @@ check(searchIndex.t.length === searchIndex.d.length && searchIndex.t.length === 
   'search index token/df/postings arrays are ragged');
 check(searchIndex.f.length === searchIndex.w.length, 'search index field/weight arrays are ragged');
 const starsByOrdinal = unpacked.map((r) => r.stars);
-const starsByOrdinalDirect = starsByOrdinal; // alias for the filter-core parity check
 const rankOnce = (q) => rankQuery(searchIndex, q, starsByOrdinal);
 
 // warm-up + deterministic ordering
@@ -126,29 +126,42 @@ console.log(`  relevance: duckdb top-3 all duckdb ✓ | sql+vector both-token to
 const edgesData = JSON.parse(readFileSync(join(dir, 'edges.json'), 'utf8'));
 const edges = edgesData.edges;
 check(edges.length === rows.length, `edges length ${edges.length} != rows ${rows.length}`);
-let minDeg = Infinity, badNb = 0, selfEdge = 0;
+let minDeg = Infinity, badNb = 0, selfEdge = 0, duplicates = 0, badDegree = 0;
 const bucketCount = new Map();
+const expectedDegree = Math.min(8, rows.length - 1);
+check(edgesData.k === 8, `unexpected edge neighbor limit ${edgesData.k}`);
 for (let i = 0; i < edges.length; i++) {
   const list = edges[i];
-  if (!Array.isArray(list) || list.length === 0) { badNb++; continue; }
+  if (!Array.isArray(list)) { badDegree++; continue; }
+  if (list.length !== expectedDegree) badDegree++;
   minDeg = Math.min(minDeg, list.length);
-  for (const [j, w] of list) {
-    if (!(j >= 0 && j < rows.length)) badNb++;
+  const seen = new Set();
+  for (const endpoint of list) {
+    if (!Array.isArray(endpoint) || endpoint.length !== 2) { badNb++; continue; }
+    const [j, w] = endpoint;
+    if (!Number.isInteger(j) || !rows[j] || !Number.isFinite(w) || !(w > 0 && w <= 1)) {
+      badNb++;
+      continue;
+    }
     if (j === i) selfEdge++;
-    if (!(w > 0 && w <= 1)) badNb++;
+    if (seen.has(j)) duplicates++;
+    seen.add(j);
     const sub = subsystems[rows[j][7]] || 'General Components';
     bucketCount.set(sub, (bucketCount.get(sub) || 0) + 1);
   }
 }
 check(badNb === 0, `${badNb} malformed edge endpoints`);
 check(selfEdge === 0, `${selfEdge} self-edges`);
-check(minDeg >= 1, `min degree ${minDeg}: some node has no edge`);
+check(duplicates === 0, `${duplicates} duplicate neighbors`);
+check(badDegree === 0, `${badDegree} rows without exactly ${expectedDegree} neighbors`);
 const totalEdgeEnds = [...bucketCount.values()].reduce((a, b) => a + b, 0);
-const [topName, topN] = [...bucketCount.entries()].sort((a, b) => b[1] - a[1])[0];
-const topPct = (100 * topN / totalEdgeEnds);
-check(topPct <= 25, `top edge bucket ${topName} holds ${topPct.toFixed(1)}% (>25%)`);
+const [topName, topN] = [...bucketCount.entries()].sort((a, b) => b[1] - a[1])[0] || ['none', 0];
+const topPct = (100 * topN / (totalEdgeEnds || 1));
+const rowPct = 100 * unpacked.filter(r => r.subsystem === topName).length / (rows.length || 1);
+// Subsystem mix changes with each reclassification; report edge concentration
+// alongside repository prevalence instead of freezing the baseline mix.
 console.log(`\nedges: ${totalEdgeEnds.toLocaleString()} endpoints | min degree ${minDeg} | ` +
-  `top bucket ${topName} ${topPct.toFixed(1)}%`);
+  `top bucket ${topName}: ${topPct.toFixed(1)}% of edges / ${rowPct.toFixed(1)}% of rows`);
 
 // 5. W3 §2.8 — facet counts must equal a recount from the rows (exact truth)
 const facets = JSON.parse(readFileSync(join(dir, 'facets.json'), 'utf8'));
@@ -195,7 +208,7 @@ if (packed.activity !== undefined) {
   for (const a of packed.activity) {
     if (!Array.isArray(a) || !allowed.has(a[0])) badStatus++;
     else if (a[0] === null) unknown++;
-    else if (!(a[1] > 0)) badTs++;
+    else if (!(a[1] > 0) && !(a[0] === 'archived' && a[1] === null)) badTs++;
   }
   check(badStatus === 0, `${badStatus} activity entries with bad status`);
   check(badTs === 0, `${badTs} non-null activity entries without a pushed timestamp`);
@@ -238,8 +251,13 @@ check(beginner === sampled, 'beginner_intel.what_it_does missing on a deep recor
 // 8. Fallback path: catalog-index.json must describe the same catalog
 const index = JSON.parse(readFileSync(join(dir, 'catalog-index.json'), 'utf8'));
 check(index.length === unpacked.length, `fallback index holds ${index.length} records vs packed ${unpacked.length}`);
-const idxIds = new Set(index.map((r) => r.id));
-check(unpacked.every((r) => idxIds.has(r.id)), 'fallback index is missing packed ids');
+const idxById = new Map(index.map((r) => [r.id, r]));
+check(idxById.size === index.length, 'fallback index contains duplicate ids');
+check(unpacked.every((r) => {
+  const fallback = idxById.get(r.id);
+  return fallback && fallback.name === r.name && fallback.owner === r.owner
+    && fallback.stars === r.stars && fallback.forks === r.forks && fallback.shard === r.shard;
+}), 'fallback index does not match packed repository names, stars, forks, or shard paths');
 check(index.every((r) => r.url && r.shard && (r.hook || r.description)), 'fallback record lacks url/shard/hook');
 console.log(`\nfallback index: ${index.length.toLocaleString()} records (matches packed: ${index.length === unpacked.length})`);
 
@@ -253,7 +271,7 @@ check(!isReadOnlySql("DROP TABLE repos;"), 'DROP accepted by read-only guard');
 
 {
   const { default: initSqlJs } = await import('sql.js');
-  const SQL = await initSqlJs({ locateFile: (f) => join('node_modules/sql.js/dist', f) });
+  const SQL = await initSqlJs({ locateFile: (f) => fileURLToPath(new URL(`./node_modules/sql.js/dist/${f}`, import.meta.url)) });
   const db = new SQL.Database();
   db.run(`CREATE TABLE repos (${SQL_COLUMNS.map((c) =>
     `${c} ${['id', 'stars', 'forks'].includes(c) ? 'INTEGER' : 'TEXT'}`).join(', ')})`);
@@ -358,14 +376,14 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   }
   check(recentOk, 'recent sort is not pushedAt-desc');
 
-  // ranked query parity with the W3 search gate (same counts, same top-5)
+  // Ranked query parity: compare the entire ordinal sequence against the
+  // ranker on this snapshot, not the old snapshot's hit count.
   const t1 = performance.now();
   const ranked = filterOrdinals(light, searchIndex, { ...base, q: 'sql vector' }, stats.majorsSet);
   const tQuery = performance.now() - t1;
-  check(ranked.length === 947, `'sql vector' via filter-core returned ${ranked.length}, want 947`);
-  const direct = rankQuery(searchIndex, 'sql vector', starsByOrdinalDirect).slice(0, 5).map(([o]) => o);
-  check(ranked.slice(0, 5).join(',') === direct.join(','),
-    'filter-core rank order diverges from rankQuery');
+  const direct = rankOnce('sql vector').map(([o]) => o);
+  check(ranked.length === direct.length && ranked.every((ordinal, i) => ordinal === direct[i]),
+    `filter-core rank results diverge from rankQuery (${ranked.length} vs ${direct.length} hits)`);
   const again = filterOrdinals(light, searchIndex, { ...base, q: 'sql vector' }, stats.majorsSet);
   check(again.join(',') === ranked.join(','), 'filter-core is not deterministic');
   // W4 §3.4: pack-time signal — present, in range, sorts, and filters
@@ -419,6 +437,8 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   check(typeof cl.generated === 'string' && cl.generated.length > 0, 'changelog.generated missing');
   if (cl.period) {
     check(cl.period.from < cl.period.to, 'changelog period not ordered');
+    check(cl.added.length === cl.added_count && cl.removed.length === cl.removed_count,
+      'changelog must include every added and removed repository');
     const deltas = cl.top_movers.map((m) => Math.abs(m.delta));
     check(deltas.every((d) => d > 0), 'zero-delta mover present');
     for (let i = 1; i < deltas.length; i++) check(deltas[i] <= deltas[i - 1], 'movers not |delta|-desc');
@@ -432,12 +452,20 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   const snaps = existsSync(histDir)
     ? readdirSync(histDir).filter((f) => f.endsWith('-stars.json')) : [];
   check(snaps.length >= 1, 'no history snapshots');
-  const first = JSON.parse(readFileSync(join(histDir, snaps.sort()[0]), 'utf8'));
-  check(Array.isArray(first.names) && first.names.length === first.stars.length
-    && first.names.length === rows.length, 'snapshot alignment/count mismatch');
-  if (snaps.length === 1) {
-    check(first.names[0] === `${unpacked[0].owner}/${unpacked[0].name}`
-      && first.stars[0] === unpacked[0].stars, 'seeded snapshot != packed head row');
+  snaps.sort();
+  let latest;
+  for (const file of snaps) {
+    latest = JSON.parse(readFileSync(join(histDir, file), 'utf8'));
+    check(latest.count === latest.names?.length && latest.count === latest.stars?.length,
+      `${file}: snapshot alignment/count mismatch`);
+  }
+  check(latest?.count === rows.length && unpacked.every((row, i) =>
+    latest.names?.[i] === `${row.owner}/${row.name}` && latest.stars?.[i] === row.stars),
+  'latest snapshot does not match the packed rows');
+  check(latest?.date === cl.generated, 'changelog date does not match latest snapshot');
+  if (snaps.length >= 2) {
+    check(`${cl.period?.from}-stars.json` === snaps.at(-2) && cl.period?.to === latest?.date,
+      'changelog period does not match the last two snapshots');
   }
   console.log(`changelog: ${snaps.length} snapshot(s), generated ${cl.generated}, ` +
     `${cl.top_movers.length} movers, +${cl.added_count}/-${cl.removed_count}` +
@@ -471,16 +499,19 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
         `edge count ${c} exceeds df for ${t.name}/${other}`);
     }
   }
-  // per-domain topic counts must never exceed the global count
-  const globalT = new Map((facets.topics || []).map((t) => [t.name, t.count]));
+  // Global facets expose only the 60 most common topics. A valid domain
+  // topic need not be on that list, so recount it from the packed rows.
   const tbd = facets.topics_by_domain || {};
+  const topicCounts = new Map();
+  for (const row of unpacked) {
+    if (!topicCounts.has(row.domain)) topicCounts.set(row.domain, new Map());
+    const counts = topicCounts.get(row.domain);
+    for (const topic of row.topics) counts.set(topic, (counts.get(topic) || 0) + 1);
+  }
   for (const [dom, list] of Object.entries(tbd)) {
-    for (const e of list) {
-      if (globalT.size) {
-        check(e.count <= (globalT.get(e.name) ?? 0),
-          `topics_by_domain[${dom}] ${e.name} exceeds its global count`);
-      }
-      check(e.count > 0, `zero count in topics_by_domain[${dom}]`);
+    for (const { name, count } of list) {
+      check(count > 0 && count === topicCounts.get(dom)?.get(name),
+        `topics_by_domain[${dom}] ${name} count does not match packed rows`);
     }
   }
   console.log(`topic map: ${tm.topics.length} topics / ${tm.pairs_considered} pairs considered | ` +
@@ -493,7 +524,7 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
 {
   const bpDoc = JSON.parse(readFileSync(new URL('./src/blueprints.json', import.meta.url), 'utf8'));
   const bps = bpDoc.blueprints || [];
-  const repoSet = new Set(rows.map(r => `${r[2]}/${r[1]}`));
+  const repoSet = new Set(rows.map(r => `${r[2]}/${r[1]}`.toLowerCase()));
   const subSet = new Set(Object.values(subsystems));
 
   check(bps.length >= 6, `blueprint library must exceed the original 4 (got ${bps.length})`);
@@ -515,7 +546,7 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
         `${b.id}/${r.label}: unknown category ${r.category}`);
       for (const s of (r.seeds || [])) {
         seedTotal++;
-        check(repoSet.has(s), `${b.id}/${r.label}: seed ${s} not in packed catalog`);
+        check(repoSet.has(s.toLowerCase()), `${b.id}/${r.label}: seed ${s} not in packed catalog`);
       }
       if (r.requiredSubsystem) {
         check(subSet.has(r.requiredSubsystem), `${b.id}/${r.label}: unknown subsystem ${r.requiredSubsystem}`);
@@ -542,7 +573,7 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
     security: unpacked.filter(r => r.domain === 'Security & Cryptography'),
   };
   for (const [k, v] of Object.entries(buckets)) check(v.length > 0, `engine bucket ${k} empty`);
-  const lookup = new Map(unpacked.map(r => [`${r.owner}/${r.name}`, r]));
+  const lookup = new Map(unpacked.map(r => [`${r.owner}/${r.name}`.toLowerCase(), r]));
 
   const bp0 = bps[0];
   const s1 = completeStack(bp0, buckets, lookup, mulberry32('same'));
@@ -553,7 +584,7 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   for (const comp of s1.components) {
     const role = bp0.roles.find(r => r.label === comp.role);
     if (comp.via === 'seed') {
-      check((role.seeds || []).includes(`${comp.repo.owner}/${comp.repo.name}`),
+      check((role.seeds || []).some((seed) => seed.toLowerCase() === `${comp.repo.owner}/${comp.repo.name}`.toLowerCase()),
         `${comp.role}: via=seed but ${comp.repo.owner}/${comp.repo.name} not in role seeds`);
     } else {
       check(comp.repo.domain || comp.repo.stars >= 500, `${comp.role}: via=${comp.via} repo lacks identity`);

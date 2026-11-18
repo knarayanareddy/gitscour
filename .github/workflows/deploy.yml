@@ -15,7 +15,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -56,12 +56,6 @@ jobs:
       - name: Zero-LLM guardrail
         run: python3 pipeline/check_zero_llm.py
 
-      # W2 §1.8 (finding #6b): the 16 hand-written SEEDS ELI5 cards finally
-      # reach the deployed bundle. Idempotent — once the backfill PR commits
-      # the merged shards this becomes a no-op that still guards against drift.
-      - name: Merge Curated Seed ELI5 Cards
-        run: python3 pipeline/merge_seed_intel.py --apply
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -93,16 +87,57 @@ jobs:
         working-directory: web
         run: npm run smoke
 
+      - name: Install Chromium for Browser Tests
+        working-directory: web
+        run: |
+          set -euo pipefail
+          # Playwright's browser CDN and OS package downloads may be unavailable
+          # on restricted runners. Use the matching Chromium build from npm.
+          browser_dir="$RUNNER_TEMP/gitscour-chromium"
+          mkdir -p "$browser_dir/runtime"
+          npm install --prefix "$browser_dir" --no-audit --no-fund @sparticuz/chromium@141.0.0
+          TMPDIR="$browser_dir/runtime" GITSCOUR_BROWSER_DIR="$browser_dir" \
+            AWS_EXECUTION_ENV=AWS_Lambda_nodejs20.x node --input-type=module >> "$GITHUB_ENV" <<'JS'
+          import { readFile, writeFile } from 'node:fs/promises';
+          import { pathToFileURL } from 'node:url';
+          const path = process.env.GITSCOUR_BROWSER_DIR + '/node_modules/@sparticuz/chromium/build/esm/index.js';
+          const { default: browser } = await import(pathToFileURL(path).href);
+          const executable = await browser.executablePath();
+          // The bundled fonts.conf targets Lambda's fixed /tmp/fonts path.
+          const fonts = process.env.FONTCONFIG_PATH;
+          const config = `${fonts}/fonts.conf`;
+          await writeFile(config, (await readFile(config, 'utf8')).replaceAll('/tmp/fonts', fonts));
+          console.log(`CHROMIUM_PATH=${executable}`);
+          console.log(`LD_LIBRARY_PATH=${process.env.LD_LIBRARY_PATH}`);
+          console.log(`FONTCONFIG_PATH=${fonts}`);
+          JS
+
+      - name: Test the Production Build in Chromium
+        working-directory: web
+        run: |
+          set -euo pipefail
+          site=$(mktemp -d)
+          ln -s "$PWD/dist" "$site/gitscour"
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$site" &
+          preview=$!
+          trap 'kill "$preview" 2>/dev/null || true; rm -rf "$site"' EXIT
+          export GITSCOUR_TEST_URL=http://127.0.0.1:4173/gitscour/
+          curl --retry 10 --retry-connrefused --retry-delay 1 --fail --silent --output /dev/null "$GITSCOUR_TEST_URL"
+          npm run test:browser
+
       - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
         with:
           enablement: true
 
       - name: Upload Pages Artifact
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'web/dist'
 
       - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
         id: deployment
         uses: actions/deploy-pages@v4

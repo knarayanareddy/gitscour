@@ -74,7 +74,7 @@ export function completeStack(blueprint, pools, lookup, rng) {
 
     // 1) Curated seeds that exist in this catalog build.
     const seedRepos = (role.seeds || [])
-      .map(key => (lookup && lookup.get ? lookup.get(key) : undefined))
+      .map(key => (lookup && lookup.get ? lookup.get(key.toLowerCase()) || lookup.get(key) : undefined))
       .filter(Boolean);
     let candidates = [];
     let via = 'seed';

@@ -29,7 +29,7 @@ module.exports = {
       // `smoke-test.mjs` is the dependency-free Node gate CI runs against the
       // built artefacts — it is never bundled for the browser, so `process`
       // is legitimate here and nowhere else.
-      files: ['smoke-test.mjs', '*.cjs'],
+      files: ['smoke-test.mjs', 'browser-test.mjs', '*.cjs'],
       env: { node: true },
     },
   ],

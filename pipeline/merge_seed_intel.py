@@ -26,7 +26,8 @@ from typing import Dict, List, Tuple
 
 sys.path.append(os.path.dirname(__file__))
 from generate_seed import SEEDS  # noqa: E402
-from rebuild_catalog import slugify  # noqa: E402
+import linejson  # noqa: E402
+from catalog_shards import shard_name, slugify  # noqa: E402
 
 
 def index_packed(packed_path: str) -> Dict[str, dict]:
@@ -38,7 +39,7 @@ def index_packed(packed_path: str) -> Dict[str, dict]:
     for row in packed["rows"]:
         rid, name, owner = row[0], row[1], row[2]
         dom_name = domains.get(int(row[6]), "Other / General")
-        index[f"{owner}/{name}".lower()] = {"id": rid, "shard": slugify(dom_name)}
+        index[f"{owner}/{name}".lower()] = {"id": rid, "shard": shard_name(slugify(dom_name), rid, packed.get("shard_parts", {}))}
     return index
 
 
@@ -103,8 +104,7 @@ def merge(base_dir: str, apply: bool, require_all: bool) -> int:
     if apply and dirty:
         for slug in sorted(dirty):
             path = shard_path(slug)
-            with open(path, "w", encoding="utf-8") as fh:
-                json.dump(shard_cache[slug], fh, separators=(",", ":"))
+            linejson.write(path, shard_cache[slug])
             print(f"  wrote {path} ({os.path.getsize(path) / 1e6:.2f} MB)")
 
     print(f"\nseeds: {len(SEEDS)} total | in sync: {len(in_sync)} | "

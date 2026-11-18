@@ -28,16 +28,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 
-SLUG_RE = re.compile(r"[^a-z0-9]+")
+from catalog_shards import MAX_SHARD_BYTES, shard_name, slugify
 JS_SAFE_INT_MAX = 2 ** 53  # Number.MAX_SAFE_INTEGER + 1
-
-
-def slugify(text):
-    text = (text or "other-general").lower().replace("&", "and")
-    return SLUG_RE.sub("-", text).strip("-") or "other-general"
 
 
 def main() -> int:
@@ -59,6 +53,14 @@ def main() -> int:
         packed = json.load(fh)
 
     rows = packed.get("rows") or []
+    parts = packed.get("shard_parts", {})
+    domain_slugs = {slugify(domain) for domain in packed.get("domains", {}).values()}
+    if not isinstance(parts, dict) or any(
+        slug not in domain_slugs or type(n) is not int or n < 2 or n & (n - 1)
+        for slug, n in parts.items()
+    ):
+        print("FATAL: malformed shard_parts manifest")
+        return 2
     maps = {name: {int(k) for k in (packed.get(name) or {}).keys()} for name in
             ("domains", "subsystems", "languages", "artifacts")}
     print(f"Tier-1 packed index: {len(rows):,} rows, "
@@ -114,7 +116,7 @@ def main() -> int:
                                   ("sub", sub, "subsystems"), ("art", art, "artifacts")):
             if int(val) not in maps[table]:
                 oob += 1
-        slug = slugify(packed["domains"][str(dom)])
+        slug = shard_name(slugify(packed["domains"].get(str(dom))), rid, parts)
         id_shard[rid] = slug
         domain_sizes[slug] = domain_sizes.get(slug, 0) + 1
     if dupes:
@@ -148,6 +150,9 @@ def main() -> int:
         idx_ids = {r["id"] for r in index}
         status = "identical" if idx_ids == ids else "MISMATCH"
         print(f"Tier-1 fallback {fname:22s}: {len(index):,} records, ids {status} vs packed")
+        wrong_routes = sum("shard" in r and r["shard"] != id_shard.get(r["id"]) for r in index)
+        if wrong_routes:
+            errors.append(f"{fname}: {wrong_routes} rows with incorrect shard paths")
         if idx_ids != ids:
             errors.append(f"{fname}: {len(idx_ids)} records, {len(ids - idx_ids)} packed ids absent, "
                           f"{len(idx_ids - ids)} unknown ids present")
@@ -164,7 +169,10 @@ def main() -> int:
                 continue
             slug = fname[:-5]
             present_slugs.add(slug)
-            with open(os.path.join(details_dir, fname), "r", encoding="utf-8") as fh:
+            path = os.path.join(details_dir, fname)
+            if os.path.getsize(path) > MAX_SHARD_BYTES:
+                errors.append(f"{fname} exceeds the Tier-2 shard size budget")
+            with open(path, "r", encoding="utf-8") as fh:
                 shard = json.load(fh)
             total_deep += len(shard)
             for key, rec in shard.items():

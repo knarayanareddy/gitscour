@@ -60,28 +60,32 @@ def load_snapshots(base_dir: str) -> List[Tuple[str, dict]]:
 
 
 def _map(snap: dict) -> Dict[str, int]:
-    return dict(zip(snap.get("names", []), snap.get("stars", [])))
+    return {name.lower(): stars for name, stars in zip(snap.get("names", []), snap.get("stars", []))}
 
 
 def diff_snapshots(old: dict, new: dict, meta: Dict[str, dict],
                    old_date: str, new_date: str,
-                   history: Optional[List[Tuple[str, Dict[str, int]]]] = None) -> dict:
+                   history: Optional[List[Tuple[str, dict]]] = None) -> dict:
     """added/removed/top_movers between two snapshots.
 
     ``meta`` maps full_name -> {stars, language, domain} from the CURRENT
     packed rows; movers not in the current catalog use snapshot stars and
     null taxonomy (still listed — they existed in history).
 
-    ``history`` (optional) is every snapshot as (date, name->stars); when
+    ``history`` (optional) is every snapshot as (date, snapshot); when
     given, each mover carries ``series: [[date, stars], ...]`` for the modal
     sparkline (W4 §3.2).
     """
     o, n = _map(old), _map(new)
+    old_names = {name.lower(): name for name in old.get("names", [])}
+    new_names = {name.lower(): name for name in new.get("names", [])}
+    meta = {name.lower(): fields for name, fields in meta.items()}
     added = [k for k in n if k not in o]
     removed = [k for k in o if k not in n]
 
-    def entry(name: str, stars: int) -> dict:
-        m = meta.get(name) or {}
+    def entry(key: str, stars: int) -> dict:
+        m = meta.get(key) or {}
+        name = new_names.get(key) or old_names[key]
         return {
             "full_name": name,
             "stars": stars,
@@ -107,21 +111,25 @@ def diff_snapshots(old: dict, new: dict, meta: Dict[str, dict],
             "delta": delta,
             "pct": round(pct, 1),
         })
-        if history:
-            maps = [(d, _map(m)) for d, m in history]
-            row["series"] = [[d, mp[name]] for d, mp in maps if name in mp]
         movers.append(row)
     movers.sort(key=lambda r: (-abs(r["delta"]), r["full_name"]))
+
+    top_movers = movers[:TOP_MOVERS]
+    if history:
+        maps = [(day, _map(snap)) for day, snap in history]
+        for row in top_movers:
+            name = row["full_name"].lower()
+            row["series"] = [[day, mp[name]] for day, mp in maps if name in mp]
 
     return {
         "period": {"from": old_date, "to": new_date},
         "added": sorted((entry(k, n[k]) for k in added),
-                        key=lambda r: -r["stars"])[:TOP_MOVERS],
+                        key=lambda r: (-r["stars"], r["full_name"])),
         "removed": sorted((entry(k, o[k]) for k in removed),
-                          key=lambda r: -r["stars"])[:TOP_MOVERS],
+                          key=lambda r: (-r["stars"], r["full_name"])),
         "added_count": len(added),
         "removed_count": len(removed),
-        "top_movers": movers[:TOP_MOVERS],
+        "top_movers": top_movers,
         "mover_count": len(movers),
     }
 

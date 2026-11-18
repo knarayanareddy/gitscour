@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 HERE = os.path.dirname(__file__)
 SCRIPT = os.path.join(HERE, "..", "pipeline", "verify_catalog.py")
@@ -87,6 +88,33 @@ class TestVerifyCatalog(unittest.TestCase):
         self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         self.assertIn("misplaced", proc.stdout)
         self.assertIn("does not match", proc.stdout)
+
+    def test_split_shard_routes_by_repo_id(self):
+        write_fixture(self.tmp)
+        base = Path(self.tmp)
+        packed_path = base / "catalog-packed.json"
+        packed = json.loads(packed_path.read_text())
+        packed["shard_parts"] = {"web-platforms-and-frameworks": 2}
+        packed_path.write_text(json.dumps(packed))
+        shard = base / "data/details/web-platforms-and-frameworks.json"
+        correct = shard.with_stem(shard.stem + "--1")
+        shard.rename(correct)
+        proc = run(self.tmp)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        correct.rename(shard.with_stem(shard.stem + "--0"))
+        proc = run(self.tmp)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("does not match", proc.stdout)
+
+    def test_invalid_partition_count_is_rejected(self):
+        write_fixture(self.tmp)
+        path = Path(self.tmp) / "catalog-packed.json"
+        packed = json.loads(path.read_text())
+        packed["shard_parts"] = {"web-platforms-and-frameworks": 3}
+        path.write_text(json.dumps(packed))
+        proc = run(self.tmp)
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("malformed shard_parts", proc.stdout)
 
     def test_hook_over_90_fails(self):
         write_fixture(self.tmp, hook="x" * 91)

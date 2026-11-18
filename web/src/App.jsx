@@ -13,10 +13,12 @@ import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { isReadOnlySql, resultsToCsv, SQL_COLUMNS, repoToSqlValues, RESULT_PREVIEW_LIMIT } from './sql-utils.mjs';
 import { filterOrdinals, majorLanguages, LONG_TAIL_LANGUAGE } from './filter-core.mjs';
 import InspirationGenerator from './InspirationGenerator.jsx';
+import { detailShard, slugify } from './catalog-shards.mjs';
 
 export default function App() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [catalogLoadError, setCatalogLoadError] = useState(false);
 
   // In-memory cache for lazy-fetched Tier 2 shards
   const [detailShards, setDetailShards] = useState({});
@@ -45,6 +47,7 @@ export default function App() {
   };
 
   const initialUrl = getInitialUrlState();
+  const pendingInspect = useRef(initialUrl.inspect?.toLowerCase());
 
   const [activeTab, setActiveTab] = useState(initialUrl.tab);
   const [inspireSeed, setInspireSeed] = useState(initialUrl.seed); // W4 §3.8 reproducible stacks
@@ -76,6 +79,8 @@ export default function App() {
   const [facets, setFacets] = useState(null);
   // W4 §3.3: pack-time star-delta changelog (Rising shelf + Changelog tab).
   const [changelog, setChangelog] = useState(null);
+  const [changelogUnavailable, setChangelogUnavailable] = useState(false);
+  const [addedVisibleCount, setAddedVisibleCount] = useState(8);
   // W4 §3.5: pack-time topic co-occurrence map (Ecosystems tab).
   const [topicMap, setTopicMap] = useState(null);
 
@@ -198,12 +203,7 @@ export default function App() {
     setVisibleCount(36);
   };
 
-  const slugify = (text) => {
-    return (text || "other-general").toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  };
-
-  // 1. Fetch & Unpack Packed Index (123,153 repositories; measured transfer:
-  // packed 7.98 MB gzip + search-index 3.79 MB + edges 1.26 MB + facets 0.02 MB)
+  // 1. Fetch & Unpack Packed Index
   useEffect(() => {
     // W3 §2.1 — pack-time inverted index (state lands before/after unpack; the
     // ranked path in `filteredRepos` activates as soon as both are ready).
@@ -227,8 +227,11 @@ export default function App() {
     // a second snapshot exists is handled as an honest empty state).
     fetch('./changelog.json')
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (data && typeof data === 'object') setChangelog(data); })
-      .catch(() => {});
+      .then((data) => {
+        if (data && typeof data === 'object') setChangelog(data);
+        else setChangelogUnavailable(true);
+      })
+      .catch(() => setChangelogUnavailable(true));
     // W4 §3.5: topic co-occurrence map for the Ecosystems tab (empty map
     // locally — Tier-2 topics land with the next backfill).
     fetch('./topic-map.json')
@@ -267,7 +270,7 @@ export default function App() {
             topics: Array.isArray(r[13]) ? r[13] : [],
             compatibility: Array.isArray(r[14]) ? r[14] : [],
             url: `https://github.com/${r[2]}/${r[1]}`,
-            shard: slugify(domName),
+            shard: detailShard(domName, r[0], data.shard_parts),
             // W3 §2.6: [status, pushed_epoch] aligned with rows (null = no data)
             activity: act && act[0] ? { status: act[0], pushedAt: act[1] } : null,
             // W3 §2.7: interned tier parallel to rows (permissive|copyleft|...)
@@ -289,26 +292,20 @@ export default function App() {
         packedForWorkerRef.current = data; // raw payload staged for the filter worker
         setRepos(unpacked);
         setLoading(false);
-
-        if (initialUrl.inspect) {
-          // W4 §3.7: prefer the unambiguous owner/name form; bare name is fallback.
-          const target = initialUrl.inspect.toLowerCase();
-          const match =
-               unpacked.find((r) => `${r.owner}/${r.name}`.toLowerCase() === target) ||
-               unpacked.find((r) => r.name.toLowerCase() === target);
-          if (match) {
-            handleOpenRepoModal(match);
-          }
-        }
       })
       .catch((err) => {
         console.warn('Fallback loading catalog-index:', err);
         fetch('./catalog-index.json')
-          .then((res) => res.json())
+          .then((res) => {
+            if (!res.ok) throw new Error(`Catalog request failed (${res.status})`);
+            return res.json();
+          })
           .then((data) => {
+            if (!Array.isArray(data) || !data.length) throw new Error('Catalog index is empty');
             setRepos(data);
-            setLoading(false);
-          });
+          })
+          .catch(() => setCatalogLoadError(true))
+          .finally(() => setLoading(false));
       });
   }, []);
 
@@ -341,6 +338,16 @@ export default function App() {
       });
   }, [detailShards]);
 
+  // Resolve an incoming inspector link once, from either catalog loader.
+  useEffect(() => {
+    const target = pendingInspect.current;
+    if (!target || !repos.length) return;
+    pendingInspect.current = null;
+    const match = repos.find((r) => `${r.owner}/${r.name}`.toLowerCase() === target)
+      || repos.find((r) => r.name.toLowerCase() === target);
+    if (match) handleOpenRepoModal(match);
+  }, [repos, handleOpenRepoModal]);
+
   // Compute merged active repo with lazy-loaded Tier 2 details
   const activeRepoDetails = useMemo(() => {
     if (!activeRepoModal) return null;
@@ -369,7 +376,7 @@ export default function App() {
 
   // Sync state to URL Query Parameters (Deep Linking)
   useEffect(() => {
-    if (loading) return;
+    if (loading || catalogLoadError) return;
     const params = new URLSearchParams();
 
     if (activeTab !== 'explorer') params.set('tab', activeTab);
@@ -387,7 +394,7 @@ export default function App() {
 
     const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
     window.history.replaceState({}, '', newUrl);
-  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier, minStars, activeRepoModal, inspireSeed, loading]);
+  }, [activeTab, searchQuery, selectedDomain, selectedSubsystem, selectedArtifact, selectedLanguage, selectedPrimitive, selectedTopic, selectedLicenseTier, minStars, activeRepoModal, inspireSeed, loading, catalogLoadError]);
 
   const copyShareableLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -541,7 +548,7 @@ export default function App() {
     // identical pipeline via filter-core (single source of truth).
     return filterOrdinals(repos, searchIndex, filterOpts, languageStats.majorsSet)
       .map((o) => repos[o]).filter(Boolean);
-  }, [repos, filterResult, searchIndex, filterOpts, languageStats.majorsSet]);
+  }, [repos, filterResult, workerFailed, searchIndex, filterOpts, languageStats.majorsSet]);
 
   const visibleRepos = useMemo(() => {
     return filteredRepos.slice(0, visibleCount);
@@ -555,12 +562,12 @@ export default function App() {
     return changelog.top_movers.find((m) => m.full_name === key) || null;
   }, [changelog, activeRepoModal]);
 
-  // W4 §3.2: "Rising this month" shelf — top movers that resolve to a live
-  // catalog row (removed rows still show in the Changelog tab, unclickable).
+  // Show only gains on the Rising shelf; the changelog also shows losses.
   const risingMovers = useMemo(() => {
     if (!changelog || !Array.isArray(changelog.top_movers)) return [];
     const byName = new Map(repos.map((r) => [`${r.owner}/${r.name}`, r]));
     return changelog.top_movers
+      .filter((m) => m.delta > 0)
       .map((m) => ({ mover: m, repo: byName.get(m.full_name) }))
       .filter((x) => x.repo)
       .slice(0, 10);
@@ -602,7 +609,7 @@ export default function App() {
     <div className="min-h-screen bg-obs-base text-zinc-100 flex flex-col font-sans selection:bg-white/20">
       {/* Top Header */}
       <header className="border-b border-white/[0.07] bg-obs-base/95 sticky top-0 z-30 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col items-start gap-2 lg:h-16 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-gradient-to-tr from-white/[0.16] to-white/[0.04] ring-1 ring-inset ring-white/[0.12] text-white p-2 rounded-xl">
               <Database className="w-5 h-5" />
@@ -613,17 +620,19 @@ export default function App() {
                   GitScour
                 </span>
                 <span className="num text-[11px] px-2.5 py-0.5 rounded-full bg-white/[0.05] text-zinc-300 border border-white/[0.10] font-bold">
-                  {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : '123k+ DB'}
+                  {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : 'Catalog'}
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-signal-ok/[0.08] text-signal-ok border border-signal-ok/20 font-mono hidden sm:inline">
-                  Packed &bull; 7.98MB Gzip
-                </span>
+                {changelog?.generated && (
+                  <time dateTime={changelog.generated} className="text-[10px] px-2 py-0.5 rounded bg-signal-ok/[0.08] text-signal-ok border border-signal-ok/20 font-mono hidden sm:inline">
+                    Snapshot {changelog.generated}
+                  </time>
+                )}
               </div>
-              <p className="text-xs text-zinc-400 hidden sm:block">Deep Architectural Taxonomy &amp; 3D Knowledge Galaxy across 123,000+ Repositories</p>
+              <p className="text-xs text-zinc-400 hidden sm:block">Architectural taxonomy &amp; 3D explorer for public GitHub repositories</p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <nav aria-label="Main views" className="flex max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap lg:overflow-visible [&>*]:shrink-0">
             <button
               onClick={() => setActiveTab('explorer')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
@@ -719,7 +728,7 @@ export default function App() {
             >
               <Globe className="w-4 h-4" />
             </a>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -728,7 +737,12 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-white/30 border-t-transparent rounded-full animate-spin" />
-            <p className="text-zinc-400 text-xs font-mono">Unpacking 123,000+ repository index into WebAssembly memory...</p>
+            <p className="text-zinc-400 text-xs font-mono">Loading and unpacking the repository index…</p>
+          </div>
+        ) : catalogLoadError ? (
+          <div role="alert" className="bg-obs-surface border border-white/[0.07] rounded-xl p-5 text-sm">
+            Could not load the repository catalog.{' '}
+            <button className="underline" onClick={() => window.location.reload()}>Try again</button>
           </div>
         ) : activeTab === 'inspire' ? (
           /* SYNERGETIC TECH STACK ARCHITECT & POOLING SANDBOX */
@@ -871,7 +885,7 @@ export default function App() {
             </div>
 
             {!changelog ? (
-              <p className="text-xs text-zinc-500">Loading changelog.json&hellip;</p>
+              <p className="text-xs text-zinc-500">{changelogUnavailable ? 'Catalog changelog is unavailable.' : 'Loading changelog…'}</p>
             ) : !changelog.period ? (
               <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-4 space-y-1.5">
                 <p className="text-xs text-zinc-300">
@@ -943,8 +957,7 @@ export default function App() {
                   </div>
                   {changelog.mover_count > 50 && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      Top 50 of {changelog.mover_count.toLocaleString()} movers — full list in
-                      <code> web/public/changelog.json</code>.
+                      Showing 50 of {changelog.mover_count.toLocaleString()} movers ranked by absolute star change.
                     </p>
                   )}
                 </div>
@@ -958,13 +971,19 @@ export default function App() {
                       <p className="text-[11px] text-zinc-500">None this period.</p>
                     ) : (
                       <ul className="space-y-1">
-                        {changelog.added.slice(0, 8).map((a) => (
+                        {changelog.added.slice(0, addedVisibleCount).map((a) => (
                           <li key={a.full_name} className="font-mono text-[11px] text-zinc-300 flex justify-between gap-2">
-                            <span className="truncate">{a.full_name}</span>
+                            <a className="truncate hover:underline" href={`https://github.com/${a.full_name}`} target="_blank" rel="noreferrer">{a.full_name}</a>
                             <span className="num text-zinc-500 shrink-0">{a.stars.toLocaleString()}&nbsp;★</span>
                           </li>
                         ))}
                       </ul>
+                    )}
+                    {changelog.added.length > addedVisibleCount && (
+                      <button className="mt-3 text-xs text-zinc-300 underline hover:text-white"
+                        onClick={() => setAddedVisibleCount((count) => count + 50)}>
+                        Show more ({(changelog.added.length - addedVisibleCount).toLocaleString()} remaining)
+                      </button>
                     )}
                   </div>
                   <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-3">
@@ -1045,19 +1064,25 @@ export default function App() {
                     style={{ touchAction: 'none' }}
                     onPointerDown={(e) => {
                       ecoMovedRef.current = false;
-                      ecoDragRef.current = { sx: e.clientX, sy: e.clientY, ox: ecoPan.x, oy: ecoPan.y };
-                      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+                      if (!e.isPrimary || e.button !== 0) return;
+                      const scale = e.currentTarget.getBoundingClientRect().width / 760;
+                      ecoDragRef.current = { pointer: e.pointerId, sx: e.clientX, sy: e.clientY, ox: ecoPan.x, oy: ecoPan.y, scale };
                     }}
                     onPointerMove={(e) => {
                       const d = ecoDragRef.current;
-                      if (!d) return;
+                      if (!d || e.pointerId !== d.pointer) return;
                       const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
-                      if (Math.abs(dx) + Math.abs(dy) > 5) ecoMovedRef.current = true;
-                      setEcoPan({ x: d.ox + dx, y: d.oy + dy });
+                      if (!ecoMovedRef.current) {
+                        if (Math.abs(dx) + Math.abs(dy) <= 5) return;
+                        ecoMovedRef.current = true;
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      }
+                      setEcoPan({ x: d.ox + dx / d.scale, y: d.oy + dy / d.scale });
                     }}
-                    onPointerUp={(e) => {
-                      ecoDragRef.current = null;
-                      try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+                    onPointerUp={() => { ecoDragRef.current = null; }}
+                    onPointerCancel={() => { ecoDragRef.current = null; }}
+                    onPointerLeave={(e) => {
+                      if (!e.currentTarget.hasPointerCapture(e.pointerId)) ecoDragRef.current = null;
                     }}
                   >
                     <g transform={`translate(${ecoPan.x},${ecoPan.y})`}>
@@ -1179,7 +1204,7 @@ export default function App() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Tokenized search across 123,000+ repos: try 'sql vector', 'local llm', 'simd', or 'caching'..."
+                  placeholder="Search repositories: try 'sql vector', 'local llm', 'simd', or 'caching'..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -1548,17 +1573,17 @@ export default function App() {
                 Matching <strong className="num text-white">{filteredRepos.length.toLocaleString()}</strong> repositories (showing top <span className="num">{Math.min(visibleRepos.length, filteredRepos.length)}</span>)
               </span>
               <span className="text-zinc-500 hidden sm:inline">
-                123k+ Index &bull; Sub-5ms Token Search &bull; Progressive Windowing Active
+                {repos.length.toLocaleString()} indexed &bull; Ranked token search
               </span>
             </div>
 
-            {/* W4 §3.2 — "Rising this month" shelf (star-delta top movers) */}
+            {/* W4 §3.2 — "Rising since the previous snapshot" shelf (star-delta top movers) */}
             {risingMovers.length > 0 && (
               <div className="bg-obs-surface border border-signal-star/20 rounded-xl p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                     <TrendingUp className="w-3.5 h-3.5 text-signal-star" />
-                    Rising this month
+                    Rising since the previous snapshot
                     {changelog && changelog.period && (
                       <span className="text-[10px] font-mono text-zinc-500 font-normal">
                         {changelog.period.from} &rarr; {changelog.period.to}
