@@ -11,6 +11,10 @@ on:
         description: 'Optional same-branch run ID whose completed harvest was captured today'
         required: false
         type: string
+      export_checkpoint:
+        description: 'Recovery only: return verified public harvest as Git blob chunks'
+        type: boolean
+        default: false
   schedule:
     # Runs monthly on the 1st at 00:00 UTC for deep backfill
     - cron: '0 0 1 * *'
@@ -93,13 +97,29 @@ jobs:
           assert (root / "reconcile.json").is_file(), "reconciliation patch missing"
           PY
 
+      - name: Export verified harvest as recovery chunks
+        if: inputs.export_checkpoint && inputs.checkpoint_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/checkpoint.tar.gz" -C harvest raw_repos.jsonl reconcile.json stats.json
+          split -b 3m "$RUNNER_TEMP/checkpoint.tar.gz" "$RUNNER_TEMP/checkpoint.part."
+          HASHES=()
+          for chunk in "$RUNNER_TEMP"/checkpoint.part.*; do
+            base64 -w0 "$chunk" | jq -Rs '{content: ., encoding: "base64"}' > "$RUNNER_TEMP/git-blob.json"
+            HASHES+=("$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/blobs" --input "$RUNNER_TEMP/git-blob.json" --jq .sha)")
+          done
+          CHECKSUM=$(sha256sum "$RUNNER_TEMP/checkpoint.tar.gz" | cut -d' ' -f1)
+          echo "::notice title=Verified public catalog checkpoint::$CHECKSUM ${HASHES[*]}"
+
       # A single job, not a star-window matrix: GitHub truncates every search
       # query at 1,000 results, so the old 12-way matrix could never capture
       # more than ~12,000 records per run and could never share a resume point.
       # The enumerator instead partitions the star continuum into ~180 windows
       # that each fit under that cap and checkpoints each window it finishes.
       - name: Enumerate every repository above the threshold
-        if: inputs.checkpoint_run_id == ''
+        if: inputs.checkpoint_run_id == '' && !inputs.export_checkpoint
         env:
           GITHUB_TOKEN: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -113,7 +133,7 @@ jobs:
       # deleted, star-purged, live-but-unindexed) get resolved against the live
       # API and emitted as a patch, instead of leaving duplicate/stale rows.
       - name: Reconcile stale rows against the live API
-        if: inputs.checkpoint_run_id == ''
+        if: inputs.checkpoint_run_id == '' && !inputs.export_checkpoint
         env:
           GITHUB_TOKEN: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -125,6 +145,7 @@ jobs:
             --concurrency 12
 
       - name: Re-score taxonomy and rebuild catalog artefacts
+        if: ${{ !inputs.export_checkpoint }}
         run: |
           python3 pipeline/rebuild_catalog.py \
             --harvest harvest/raw_repos.jsonl \
@@ -134,17 +155,20 @@ jobs:
             --reclassify-report harvest/reclassify_report.json
 
       - name: Verify catalog integrity
+        if: ${{ !inputs.export_checkpoint }}
         run: python3 pipeline/verify_catalog.py --min-stars "$MIN_STARS"
 
       # W5 §5: zero-LLM guardrail beside verify — SDK call/import/site forms
       # fail the run; lexicon strings that merely name providers do not.
       - name: Zero-LLM guardrail
+        if: ${{ !inputs.export_checkpoint }}
         run: python3 pipeline/check_zero_llm.py
 
       # Same contract gate as deploy.yml: this workflow opens a PR that ships
       # regenerated artefacts, so catch a broken Tier-1 decode / Tier-2 lazy-merge
       # contract before the PR exists. The smoke test also runs SQL Studio.
       - name: Setup Node.js
+        if: ${{ !inputs.export_checkpoint }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -152,6 +176,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install Frontend Dependencies
+        if: ${{ !inputs.export_checkpoint }}
         working-directory: web
         run: npm ci
 
@@ -159,10 +184,12 @@ jobs:
       # `arena/*`, so without this step a JS regression could ride in on a
       # `backfill/*` branch that no other workflow compiles.
       - name: Lint (no-undef guard)
+        if: ${{ !inputs.export_checkpoint }}
         working-directory: web
         run: npm run lint
 
       - name: Smoke test regenerated artefacts
+        if: ${{ !inputs.export_checkpoint }}
         run: |
           set -euo pipefail
           if ! node web/smoke-test.mjs web/public 2>&1 | tee harvest/smoke.log; then
@@ -176,6 +203,7 @@ jobs:
           fi
 
       - name: Generate catalog snapshot report
+        if: ${{ !inputs.export_checkpoint }}
         run: |
           python3 pipeline/catalog_summary.py --harvest-stats harvest/stats.json
           cat docs/CATALOG_SNAPSHOT.md >> "$GITHUB_STEP_SUMMARY"
@@ -190,7 +218,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Commit verified refresh to the selected branch
-        if: github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' && github.ref_name != 'main'
+        if: github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' && github.ref_name != 'main' && !inputs.export_checkpoint
         run: |
           set -euo pipefail
           git add web/public docs/CATALOG_SNAPSHOT.md
@@ -201,7 +229,7 @@ jobs:
           git push origin "HEAD:$GITHUB_REF"
 
       - name: Open backfill pull request
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && !inputs.export_checkpoint
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
