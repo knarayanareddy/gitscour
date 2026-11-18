@@ -20,6 +20,8 @@ def render(packed, facets, changelog, harvest=None):
         'Counts below describe the checked-in catalog, not a live GitHub counter.', '',
         '| Metric | Count |', '| --- | ---: |',
         f'| Repositories | {total:,} |',
+        f'| Total repository stars | {sum(row[3] for row in rows):,} |',
+        f'| Total repository forks | {sum(row[4] for row in rows):,} |',
         f'| Minimum stars observed | {min(row[3] for row in rows):,} |',
         f'| Domains | {len(packed["domains"]):,} |',
         f'| Primary-language buckets | {len(packed["languages"]):,} |',
@@ -36,6 +38,10 @@ def render(packed, facets, changelog, harvest=None):
                   '- [Changelog data](../web/public/changelog.json) includes all additions and '
                   'removals. Additions include older projects newly found by the sweep, not just '
                   'repositories created during this period.']
+        if changelog['added']:
+            lines += ['', '| Top additions by stars | Stars |', '| --- | ---: |']
+            lines.extend(f"| [{row['full_name']}](https://github.com/{row['full_name']}) | {row['stars']:,} |"
+                         for row in changelog['added'][:5])
     else:
         lines += ['', 'This is the baseline; there is no earlier snapshot to compare.']
     if harvest:
