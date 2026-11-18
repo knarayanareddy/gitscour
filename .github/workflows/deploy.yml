@@ -89,7 +89,22 @@ jobs:
 
       - name: Install Chromium for Browser Tests
         working-directory: web
-        run: npx playwright install --with-deps chromium
+        run: |
+          set -euo pipefail
+          # Playwright's browser CDN and OS package downloads may be unavailable
+          # on restricted runners. Use the matching Chromium build from npm.
+          browser_dir="$RUNNER_TEMP/gitscour-chromium"
+          mkdir -p "$browser_dir/runtime"
+          npm install --prefix "$browser_dir" --no-audit --no-fund @sparticuz/chromium@141.0.0
+          TMPDIR="$browser_dir/runtime" GITSCOUR_BROWSER_DIR="$browser_dir" \
+            AWS_EXECUTION_ENV=AWS_Lambda_nodejs20.x node --input-type=module >> "$GITHUB_ENV" <<'JS'
+          import { pathToFileURL } from 'node:url';
+          const path = process.env.GITSCOUR_BROWSER_DIR + '/node_modules/@sparticuz/chromium/build/esm/index.js';
+          const { default: browser } = await import(pathToFileURL(path).href);
+          console.log(`CHROMIUM_PATH=${await browser.executablePath()}`);
+          console.log(`LD_LIBRARY_PATH=${process.env.LD_LIBRARY_PATH}`);
+          console.log(`FONTCONFIG_PATH=${process.env.FONTCONFIG_PATH}`);
+          JS
 
       - name: Test the Production Build in Chromium
         working-directory: web
