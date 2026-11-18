@@ -1,4 +1,4 @@
-name: 123k Repositories Autonomous Backfill
+name: Refresh GitScour catalog
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: "backfill-123k"
+  group: catalog-refresh-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -71,30 +71,14 @@ jobs:
             --min-stars "$MIN_STARS" \
             --concurrency 12
 
-      - name: Classify and rebuild catalog artefacts
+      - name: Re-score taxonomy and rebuild catalog artefacts
         run: |
           python3 pipeline/rebuild_catalog.py \
             --harvest harvest/raw_repos.jsonl \
             --reconcile harvest/reconcile.json \
-            --min-stars "$MIN_STARS"
-
-      # W2 §1.3: re-score every label with taxonomy v2 through the shared
-      # single-writer units, then gate on churn. --allow-churn because this run
-      # is the deliberate v1->v2 migration (the histogram + machine-readable
-      # report ship in the harvest-checkpoint artifact as reclassify_report.json);
-      # steady-state monthly runs should stay far below the 20% default gate.
-      - name: Re-score labels with taxonomy v2 (churn report)
-        run: |
-          python3 pipeline/reclassify_catalog.py \
             --min-stars "$MIN_STARS" \
-            --allow-churn \
             --min-topics-pct 50 \
-            --report-out harvest/reclassify_report.json
-
-      # W2 §1.8: ship the 16 curated ELI5 cards inside the regenerated shards
-      # (runs after reclassify so it lands in the same reviewable PR).
-      - name: Merge curated seed ELI5 cards into shards
-        run: python3 pipeline/merge_seed_intel.py --apply
+            --reclassify-report harvest/reclassify_report.json
 
       - name: Verify catalog integrity
         run: python3 pipeline/verify_catalog.py --min-stars "$MIN_STARS"
@@ -106,8 +90,7 @@ jobs:
 
       # Same contract gate as deploy.yml: this workflow opens a PR that ships
       # regenerated artefacts, so catch a broken Tier-1 decode / Tier-2 lazy-merge
-      # contract before the PR exists (review finding #14: the smoke test was in
-      # neither workflow). smoke-test.mjs is dependency-free.
+      # contract before the PR exists. The smoke test also runs SQL Studio.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -129,6 +112,11 @@ jobs:
       - name: Smoke test regenerated artefacts
         run: node web/smoke-test.mjs web/public
 
+      - name: Generate catalog snapshot report
+        run: |
+          python3 pipeline/catalog_summary.py --harvest-stats harvest/stats.json
+          cat docs/CATALOG_SNAPSHOT.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload harvest checkpoint
         if: always()
         uses: actions/upload-artifact@v4
@@ -138,12 +126,24 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Commit verified refresh to the selected branch
+        if: github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' && github.ref_name != 'main'
+        run: |
+          set -euo pipefail
+          git add web/public docs/CATALOG_SNAPSHOT.md
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m 'data: refresh GitScour catalog from GitHub'
+          git push origin "HEAD:$GITHUB_REF"
+
       - name: Open backfill pull request
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- web/public && git diff --cached --quiet -- web/public; then
+          if [ -z "$(git status --porcelain -- web/public docs/CATALOG_SNAPSHOT.md)" ]; then
             echo "No catalog changes detected; nothing to propose."
             exit 0
           fi
@@ -152,16 +152,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add web/public
+          git add web/public docs/CATALOG_SNAPSHOT.md
           git commit -q -m "data: backfill catalog to ${REPO_COUNT} repositories (>= ${MIN_STARS} stars)"
           git push -u origin "$BRANCH"
           cat > pr_body.md <<EOF
           Automated backfill run for \`${{ github.ref_name }}\` (run \`${{ github.run_id }}\`).
 
-          - Enumerated every repository at or above ${MIN_STARS} stars with \`pipeline/harvest_enumerate.py\`
+          - Swept GitHub Search for public repositories at or above ${MIN_STARS} stars with \`pipeline/harvest_enumerate.py\`
           - Reconciled stale rows (renames/deletions) via \`pipeline/reconcile_stale_rows.py\`
           - Classified and re-sharded with \`pipeline/rebuild_catalog.py\`
-          - Re-scored all labels with \`pipeline/reclassify_catalog.py\` (taxonomy v2) — full churn histogram in the log, machine-readable report in the \`harvest-checkpoint\` artifact (\`reclassify_report.json\`)
+          - Re-scored all labels with the shared taxonomy v2 scorer — full churn histogram in the log, machine-readable report in the \`harvest-checkpoint\` artifact (\`reclassify_report.json\`)
           - Tier-1 packed index now holds **${REPO_COUNT}** repositories
           - \`pipeline/verify_catalog.py\` passed on the regenerated artefacts
 
@@ -190,7 +190,7 @@ jobs:
               print(f"- Warning: coverage has holes ({failed} failed / "
                     f"{truncated} truncated) — see the job log for the affected clauses.")
           else:
-              print("- No failed or truncated windows: full-coverage sweep.")
+              print("- No failed or truncated search windows. GitHub Search is a live index, not a point-in-time export.")
           PY
           else
             printf '\n## Harvest coverage\n\n_Harvest stats unavailable for this run (no harvest/stats.json) — coverage numbers were not recorded._\n' >> pr_body.md
@@ -212,7 +212,7 @@ jobs:
                   print(f"- **{r['full_name']}** {sign}{abs(r['delta']):,} "
                         f"({r['from']:,} -> {r['to']:,}){lang}")
               print()
-              print(f"Full list in `web/public/changelog.json` — "
+              print(f"More detail in `web/public/changelog.json` — "
                     f"{cl.get('mover_count', 0)} movers, "
                     f"+{cl.get('added_count', 0)} added / -{cl.get('removed_count', 0)} removed.")
           elif cl.get("note"):
@@ -222,4 +222,4 @@ jobs:
           fi
           gh pr create --base "${{ github.ref_name }}" --head "$BRANCH" \
             --title "data: backfill catalog to ${REPO_COUNT} repositories" \
-            --body-file pr_body.md || true
+            --body-file pr_body.md

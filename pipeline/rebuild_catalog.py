@@ -58,6 +58,7 @@ from taxonomy_engine import (  # noqa: E402
     license_tier,
     normalize_license,
     classify_maturity,
+    classify_license_freedom,
     enrich_repository_record,
     generate_beginner_context,
 )
@@ -258,35 +259,32 @@ def merge_harvest(catalog: dict, harvested_path: str, stats: Counter) -> None:
         if not owner or not name:
             stats["incomplete"] += 1
             continue
-        stars = int(raw.get("stars") or 0)
-        if stars < 500:
-            stats["below_threshold"] += 1
-            continue
-        key = f"{owner}/{name}".lower()
-        existing = catalog.get(key)
-        if existing is not None:
-            stats["refreshed"] += 1
-            existing["stars"] = stars
-            existing["forks"] = int(raw.get("forks") or 0)
-            existing["pushed_at"] = raw.get("pushed_at") or existing.get("pushed_at")
-            new_desc = (raw.get("description") or "").strip()
-            if new_desc:
-                existing["description"] = new_desc
-                existing["hook"] = existing.get("hook") or new_desc[:90]
-            topics = normalise_topics(raw.get("topics"))
-            if topics:
-                existing["topics"] = topics
-            if raw.get("language"):
-                existing["language"] = raw["language"]
-            if raw.get("license") and existing.get("license") in (None, "", "Unknown"):
-                existing["license"] = raw["license"]
-            continue
-        enriched = enrich_repository_record(raw)
-        enriched["topics"] = normalise_topics(raw.get("topics"))
-        enriched["keywords"] = normalise_topics(enriched.get("keywords"))
-        enriched["_source"] = "harvest"
-        catalog[key] = enriched
+        merge_live_record(catalog, raw, stats)
+
+
+def merge_live_record(catalog: dict, raw: dict, stats: Counter) -> None:
+    """Refresh authoritative GitHub fields, including cleared topics or license."""
+    key = f"{raw['owner']}/{raw['name']}".lower()
+    raw = {**raw, "topics": normalise_topics(raw.get("topics"))[:MAX_TOPICS]}
+    existing = catalog.get(key)
+    if existing is None:
+        existing = enrich_repository_record(raw)
+        catalog[key] = existing
         stats["new"] += 1
+    else:
+        stats["refreshed"] += 1
+    existing.update(
+        owner=raw["owner"], name=raw["name"], full_name=f"{raw['owner']}/{raw['name']}",
+        stars=int(raw.get("stars") or 0), forks=int(raw.get("forks") or 0),
+        description=(raw.get("description") or "").strip(),
+        topics=raw["topics"], language=raw.get("language") or "Other",
+        license=normalize_license(raw.get("license")),
+    )
+    existing["hook"] = existing["description"][:90]
+    existing["license_intel"] = classify_license_freedom(existing["license"])
+    for field in ("pushed_at", "created_at", "is_archived"):
+        if field in raw:
+            existing[field] = raw[field]
 
 
 def apply_reconcile(catalog: dict, patch: dict, stats: Counter) -> None:
@@ -305,16 +303,10 @@ def apply_reconcile(catalog: dict, patch: dict, stats: Counter) -> None:
             catalog.pop(key)
             collisions += 1
             continue
-        raw = {k: upd.get(k) for k in ("id", "name", "owner", "description", "stars",
-                                       "forks", "language", "license", "topics", "pushed_at")}
-        enriched = enrich_repository_record(raw)
-        # keep the original id so Tier-2 shard keys and existing deep links stay valid
-        enriched["id"] = rec["id"]
-        enriched["topics"] = normalise_topics(raw.get("topics"))
-        enriched["keywords"] = normalise_topics(enriched.get("keywords"))
-        enriched["_source"] = "reconciled"
-        catalog.pop(key)
-        catalog[new_key] = enriched
+        if new_key != key:
+            catalog.pop(key)
+            catalog[new_key] = rec
+        merge_live_record(catalog, upd, Counter())
         updated += 1
     stats["reconcile_dropped"] = dropped
     stats["reconcile_updated"] = updated
@@ -325,7 +317,7 @@ def apply_reconcile(catalog: dict, patch: dict, stats: Counter) -> None:
 def attach_deep(catalog: dict, deep: dict) -> int:
     """Re-key by id, fold Tier-2 deep intel onto the records, return attach count.
 
-    `topics` fills only when empty so fresher harvest topics win (§1.4).
+    The harvest is applied after this restore so even cleared fields win.
     """
     by_id = {r["id"]: r for r in catalog.values()}
     id_counts = Counter(r["id"] for r in catalog.values())
@@ -347,13 +339,12 @@ def attach_deep(catalog: dict, deep: dict) -> int:
         if stored_topics and not rec.get("topics"):
             rec["topics"] = stored_topics[:MAX_TOPICS]
         rec["keywords"] = normalise_topics(rec.get("keywords"))
-        # a shard description beats the truncated Tier-1 hook, but never for a row
-        # we just repointed from the live API -- that description is the fresher one
-        if shard_rec.get("description") and rec.get("_source") != "reconciled":
+        if shard_rec.get("description"):
             rec["description"] = shard_rec["description"]
             rec["hook"] = (rec.get("hook") or rec["description"])[:90]
-        if shard_rec.get("pushed_at"):
-            rec["pushed_at"] = rec.get("pushed_at") or shard_rec["pushed_at"]
+        for field in ("pushed_at", "created_at", "is_archived"):
+            if field in shard_rec:
+                rec[field] = shard_rec[field]
     return attached
 
 
@@ -598,6 +589,8 @@ def main() -> int:
     parser.add_argument("--reconcile", default="", help="patch file from reconcile_stale_rows.py")
     parser.add_argument("--dry-run", action="store_true", help="report only, write nothing")
     parser.add_argument("--min-stars", type=int, default=500)
+    parser.add_argument("--reclassify-report", help="re-score taxonomy before packing and write a churn report")
+    parser.add_argument("--min-topics-pct", type=float, default=0, help="minimum topic coverage for reclassification")
     args = parser.parse_args()
     stats_out = args.stats_out or os.path.join(os.path.dirname(os.path.abspath(args.harvest)) or ".", "rebuild_stats.json")
 
@@ -614,6 +607,10 @@ def main() -> int:
     deep = load_shards(details_dir)
     print(f"  {len(deep)} deep records")
 
+    attached = attach_deep(catalog, deep)
+    print(f"  re-attached deep intel to {attached} records")
+    del deep
+
     print(f"Merging harvest: {args.harvest}")
     merge_harvest(catalog, args.harvest, stats)
     print(f"  {dict(stats)}")
@@ -623,11 +620,26 @@ def main() -> int:
             patch = json.load(fh)
         apply_reconcile(catalog, patch, stats)
 
-    attached = attach_deep(catalog, deep)
-    print(f"  re-attached deep intel to {attached} records")
+    if args.reclassify_report:
+        # Reuse the standalone scorer, but write the interdependent artifacts
+        # only once and never write a snapshot from a rejected refresh.
+        from reclassify_catalog import reclassify_records, build_report, print_histogram
+
+        eligible = [r for r in catalog.values() if r["stars"] >= args.min_stars]
+        topics_pct = (100 * sum(bool(r.get("topics")) for r in eligible) / len(eligible)) if eligible else 0
+        print(f"Topic coverage: {topics_pct:.1f}%")
+        if topics_pct < args.min_topics_pct:
+            print(f"FAIL: topic coverage below {args.min_topics_pct:g}%", file=sys.stderr)
+            return 3
+        result = reclassify_records(catalog)
 
     records = finalize_records(catalog, args.min_stars, stats)
-    dropped = stats["existing"] + stats["new"] + stats["refreshed"] - len(records)
+    if args.reclassify_report:
+        report = build_report(records, result)
+        report["topics_coverage_pct"] = round(topics_pct, 2)
+        print_histogram(report)
+        with open(args.reclassify_report, "w", encoding="utf-8") as fh:
+            json.dump(report, fh, indent=2)
     print(f"Final catalog: {len(records)} unique repositories (>= {args.min_stars} stars)")
 
     if args.dry_run:
@@ -635,6 +647,13 @@ def main() -> int:
         print_domain_histogram(records)  # rows only, header printed above
         print(f"[dry run] new records: {stats['new']}, refreshed: {stats['refreshed']}")
         return 0
+
+    # Apply curated cards before deriving Signal from their install commands.
+    from generate_seed import SEEDS
+    for seed in SEEDS:
+        row = catalog.get(f"{seed['owner']}/{seed['name']}".lower())
+        if row:
+            row.update(beginner_intel=seed["beginner_intel"], quickstart_code=seed["quickstart_code"])
 
     sizes = write_artifacts(records, args.base_dir)
 

@@ -17,6 +17,7 @@ import InspirationGenerator from './InspirationGenerator.jsx';
 export default function App() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [catalogLoadError, setCatalogLoadError] = useState(false);
 
   // In-memory cache for lazy-fetched Tier 2 shards
   const [detailShards, setDetailShards] = useState({});
@@ -76,6 +77,8 @@ export default function App() {
   const [facets, setFacets] = useState(null);
   // W4 §3.3: pack-time star-delta changelog (Rising shelf + Changelog tab).
   const [changelog, setChangelog] = useState(null);
+  const [changelogUnavailable, setChangelogUnavailable] = useState(false);
+  const [addedVisibleCount, setAddedVisibleCount] = useState(8);
   // W4 §3.5: pack-time topic co-occurrence map (Ecosystems tab).
   const [topicMap, setTopicMap] = useState(null);
 
@@ -202,8 +205,7 @@ export default function App() {
     return (text || "other-general").toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   };
 
-  // 1. Fetch & Unpack Packed Index (123,153 repositories; measured transfer:
-  // packed 7.98 MB gzip + search-index 3.79 MB + edges 1.26 MB + facets 0.02 MB)
+  // 1. Fetch & Unpack Packed Index
   useEffect(() => {
     // W3 §2.1 — pack-time inverted index (state lands before/after unpack; the
     // ranked path in `filteredRepos` activates as soon as both are ready).
@@ -227,8 +229,11 @@ export default function App() {
     // a second snapshot exists is handled as an honest empty state).
     fetch('./changelog.json')
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (data && typeof data === 'object') setChangelog(data); })
-      .catch(() => {});
+      .then((data) => {
+        if (data && typeof data === 'object') setChangelog(data);
+        else setChangelogUnavailable(true);
+      })
+      .catch(() => setChangelogUnavailable(true));
     // W4 §3.5: topic co-occurrence map for the Ecosystems tab (empty map
     // locally — Tier-2 topics land with the next backfill).
     fetch('./topic-map.json')
@@ -304,11 +309,16 @@ export default function App() {
       .catch((err) => {
         console.warn('Fallback loading catalog-index:', err);
         fetch('./catalog-index.json')
-          .then((res) => res.json())
+          .then((res) => {
+            if (!res.ok) throw new Error(`Catalog request failed (${res.status})`);
+            return res.json();
+          })
           .then((data) => {
+            if (!Array.isArray(data) || !data.length) throw new Error('Catalog index is empty');
             setRepos(data);
-            setLoading(false);
-          });
+          })
+          .catch(() => setCatalogLoadError(true))
+          .finally(() => setLoading(false));
       });
   }, []);
 
@@ -555,12 +565,12 @@ export default function App() {
     return changelog.top_movers.find((m) => m.full_name === key) || null;
   }, [changelog, activeRepoModal]);
 
-  // W4 §3.2: "Rising this month" shelf — top movers that resolve to a live
-  // catalog row (removed rows still show in the Changelog tab, unclickable).
+  // Show only gains on the Rising shelf; the changelog also shows losses.
   const risingMovers = useMemo(() => {
     if (!changelog || !Array.isArray(changelog.top_movers)) return [];
     const byName = new Map(repos.map((r) => [`${r.owner}/${r.name}`, r]));
     return changelog.top_movers
+      .filter((m) => m.delta > 0)
       .map((m) => ({ mover: m, repo: byName.get(m.full_name) }))
       .filter((x) => x.repo)
       .slice(0, 10);
@@ -613,13 +623,15 @@ export default function App() {
                   GitScour
                 </span>
                 <span className="num text-[11px] px-2.5 py-0.5 rounded-full bg-white/[0.05] text-zinc-300 border border-white/[0.10] font-bold">
-                  {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : '123k+ DB'}
+                  {repos.length > 0 ? `${repos.length.toLocaleString()} Repos` : 'Catalog'}
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-signal-ok/[0.08] text-signal-ok border border-signal-ok/20 font-mono hidden sm:inline">
-                  Packed &bull; 7.98MB Gzip
-                </span>
+                {changelog?.generated && (
+                  <time dateTime={changelog.generated} className="text-[10px] px-2 py-0.5 rounded bg-signal-ok/[0.08] text-signal-ok border border-signal-ok/20 font-mono hidden sm:inline">
+                    Snapshot {changelog.generated}
+                  </time>
+                )}
               </div>
-              <p className="text-xs text-zinc-400 hidden sm:block">Deep Architectural Taxonomy &amp; 3D Knowledge Galaxy across 123,000+ Repositories</p>
+              <p className="text-xs text-zinc-400 hidden sm:block">Architectural taxonomy &amp; 3D explorer for public GitHub repositories</p>
             </div>
           </div>
 
@@ -728,7 +740,12 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="w-8 h-8 border-2 border-white/30 border-t-transparent rounded-full animate-spin" />
-            <p className="text-zinc-400 text-xs font-mono">Unpacking 123,000+ repository index into WebAssembly memory...</p>
+            <p className="text-zinc-400 text-xs font-mono">Loading and unpacking the repository index…</p>
+          </div>
+        ) : catalogLoadError ? (
+          <div role="alert" className="bg-obs-surface border border-white/[0.07] rounded-xl p-5 text-sm">
+            Could not load the repository catalog.{' '}
+            <button className="underline" onClick={() => window.location.reload()}>Try again</button>
           </div>
         ) : activeTab === 'inspire' ? (
           /* SYNERGETIC TECH STACK ARCHITECT & POOLING SANDBOX */
@@ -871,7 +888,7 @@ export default function App() {
             </div>
 
             {!changelog ? (
-              <p className="text-xs text-zinc-500">Loading changelog.json&hellip;</p>
+              <p className="text-xs text-zinc-500">{changelogUnavailable ? 'Catalog changelog is unavailable.' : 'Loading changelog…'}</p>
             ) : !changelog.period ? (
               <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-4 space-y-1.5">
                 <p className="text-xs text-zinc-300">
@@ -943,8 +960,7 @@ export default function App() {
                   </div>
                   {changelog.mover_count > 50 && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      Top 50 of {changelog.mover_count.toLocaleString()} movers — full list in
-                      <code> web/public/changelog.json</code>.
+                      Showing 50 of {changelog.mover_count.toLocaleString()} movers ranked by absolute star change.
                     </p>
                   )}
                 </div>
@@ -958,13 +974,19 @@ export default function App() {
                       <p className="text-[11px] text-zinc-500">None this period.</p>
                     ) : (
                       <ul className="space-y-1">
-                        {changelog.added.slice(0, 8).map((a) => (
+                        {changelog.added.slice(0, addedVisibleCount).map((a) => (
                           <li key={a.full_name} className="font-mono text-[11px] text-zinc-300 flex justify-between gap-2">
-                            <span className="truncate">{a.full_name}</span>
+                            <a className="truncate hover:underline" href={`https://github.com/${a.full_name}`} target="_blank" rel="noreferrer">{a.full_name}</a>
                             <span className="num text-zinc-500 shrink-0">{a.stars.toLocaleString()}&nbsp;★</span>
                           </li>
                         ))}
                       </ul>
+                    )}
+                    {changelog.added.length > addedVisibleCount && (
+                      <button className="mt-3 text-xs text-zinc-300 underline hover:text-white"
+                        onClick={() => setAddedVisibleCount((count) => count + 50)}>
+                        Show more ({(changelog.added.length - addedVisibleCount).toLocaleString()} remaining)
+                      </button>
                     )}
                   </div>
                   <div className="bg-obs-inset border border-white/[0.07] rounded-lg p-3">
@@ -1179,7 +1201,7 @@ export default function App() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Tokenized search across 123,000+ repos: try 'sql vector', 'local llm', 'simd', or 'caching'..."
+                  placeholder="Search repositories: try 'sql vector', 'local llm', 'simd', or 'caching'..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -1548,17 +1570,17 @@ export default function App() {
                 Matching <strong className="num text-white">{filteredRepos.length.toLocaleString()}</strong> repositories (showing top <span className="num">{Math.min(visibleRepos.length, filteredRepos.length)}</span>)
               </span>
               <span className="text-zinc-500 hidden sm:inline">
-                123k+ Index &bull; Sub-5ms Token Search &bull; Progressive Windowing Active
+                {repos.length.toLocaleString()} indexed &bull; Ranked token search
               </span>
             </div>
 
-            {/* W4 §3.2 — "Rising this month" shelf (star-delta top movers) */}
+            {/* W4 §3.2 — "Rising since the previous snapshot" shelf (star-delta top movers) */}
             {risingMovers.length > 0 && (
               <div className="bg-obs-surface border border-signal-star/20 rounded-xl p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                     <TrendingUp className="w-3.5 h-3.5 text-signal-star" />
-                    Rising this month
+                    Rising since the previous snapshot
                     {changelog && changelog.period && (
                       <span className="text-[10px] font-mono text-zinc-500 font-normal">
                         {changelog.period.from} &rarr; {changelog.period.to}

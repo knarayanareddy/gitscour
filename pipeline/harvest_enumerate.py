@@ -18,9 +18,8 @@ sampling it:
    (the searchable cap).  A window whose star range is atomic but still holds
    more than 1,000 repos is split further on its fork-count range.
 2. Harvest phase - paginate each window with cursor pagination (100 nodes per
-   page, <= 10 pages), running windows concurrently.  GraphQL search costs 1
-   point per request against this token's ~8100 point/minute budget, so the
-   binding constraint is latency rather than quota.
+   page, <= 10 pages), running windows concurrently with a shared throttle.
+   GitHub also enforces token- and workload-dependent secondary rate limits.
 3. Everything is appended to a resumable JSONL checkpoint, so an interrupted
    run continues where it left off instead of re-fetching: the manifest keys
    completed windows by **search clause only** (volatile probe counts are not
@@ -94,15 +93,18 @@ class Limiter:
         self.lock = threading.Lock()
         self.next_at = 0.0
 
-    def wait(self):
-        if self.interval <= 0:
-            return
+    def pause(self, seconds: float):
         with self.lock:
-            now = time.monotonic()
-            slot = max(now, self.next_at)
-            self.next_at = slot + self.interval
-        delay = slot - time.monotonic()
-        if delay > 0:
+            self.next_at = max(self.next_at, time.monotonic() + seconds)
+
+    def wait(self):
+        while True:
+            with self.lock:
+                now = time.monotonic()
+                delay = self.next_at - now
+                if delay <= 0:
+                    self.next_at = now + self.interval
+                    return
             time.sleep(delay)
 
 
@@ -136,12 +138,17 @@ class GitHub:
                     detail = exc.read().decode("utf-8")[:200]
                 except Exception:
                     pass
-                if exc.code in (403, 429) or "rate limit" in detail.lower():
-                    sleep_for = float(retry_after) if retry_after else min(60.0, 2.0 ** attempt)
-                    raise Backoff(f"HTTP {exc.code} rate limited; sleeping {sleep_for:.0f}s")
+                if exc.code == 429 or retry_after or "rate limit" in detail.lower():
+                    reset = exc.headers.get("X-RateLimit-Reset") if exc.headers else None
+                    if exc.headers and exc.headers.get("X-RateLimit-Remaining") == "0" and reset:
+                        delay = max(60, float(reset) - time.time() + 1)
+                    else:
+                        delay = float(retry_after) if retry_after else 60
+                    self.limiter.pause(delay)
+                    raise Backoff(f"HTTP {exc.code} rate limited; paused for {delay:.0f}s")
                 last_error = f"HTTP {exc.code} {detail}"
                 # 422 (malformed query) will never succeed; bail out early.
-                if exc.code == 422:
+                if exc.code in (401, 403, 422):
                     raise RuntimeError(last_error)
                 time.sleep(min(30.0, 1.5 ** attempt))
                 continue
@@ -153,16 +160,13 @@ class GitHub:
             if payload.get("errors"):
                 msgs = "; ".join(e.get("message", "?") for e in payload["errors"])
                 if "rate limit" in msgs.lower() or "secondary" in msgs.lower():
+                    self.limiter.pause(60)
                     raise Backoff(f"graphql rate limit: {msgs[:120]}")
                 last_error = f"graphql errors: {msgs[:200]}"
                 time.sleep(min(30.0, 1.5 ** attempt))
                 continue
 
             data = payload.get("data") or {}
-            rate = data.get("rateLimit") or {}
-            if rate and rate.get("remaining") is not None and rate["remaining"] < 120:
-                reset = rate.get("resetAt")
-                raise Backoff(f"graphql budget low ({rate['remaining']} left, reset {reset})")
             return data
 
         raise RuntimeError(last_error or "unknown graphql failure")
@@ -181,7 +185,7 @@ def window_clause(star_lo: int, star_hi: int, fork_lo: int | None, fork_hi: int 
         forks = f" forks:{fork_lo}"
     else:
         forks = f" forks:{fork_lo}..{fork_hi}"
-    return f"{stars}{forks} sort:stars-desc"
+    return f"is:public {stars}{forks} sort:stars-desc"
 
 
 CLAUSE_KEYS = ("star_lo", "star_hi", "fork_lo", "fork_hi")
@@ -401,7 +405,7 @@ def main() -> int:
     parser.add_argument("--output", default="/home/user/harvest/raw_repos.jsonl")
     parser.add_argument("--manifest", default="/home/user/harvest/windows_done.jsonl")
     parser.add_argument("--concurrency", type=int, default=12)
-    parser.add_argument("--rps", type=float, default=18.0, help="global request cap per second")
+    parser.add_argument("--rps", type=float, default=4.0, help="global request cap per second")
     parser.add_argument("--dry-plan", action="store_true", help="only print the window plan")
     parser.add_argument("--allow-truncated", action="store_true",
                         help="exit 0 even if some windows were truncated by the 1,000-result cap "
@@ -444,11 +448,11 @@ def main() -> int:
 
     done_lock = threading.Lock()
     finished = 0
-    truncated = 0
+    truncated = sum(bool(w.get("truncated")) for w in windows)
     failed = 0
 
     def work(window):
-        nonlocal finished, truncated, failed
+        nonlocal finished, failed
         try:
             w, records, retries = harvest_window(gh, window)
         except Exception as exc:
@@ -462,14 +466,14 @@ def main() -> int:
         ckpt.complete(window)
         with done_lock:
             finished += 1
-            truncated += 1 if window.get("truncated") else 0
             per_min = ckpt.harvest_count() / max(1e-6, (time.time() - t0) / 60.0)
             log(f"  [{finished}/{len(pending)}] stars:{window['star_lo']}..{window['star_hi']} "
                 f"+{len(records)} recs | {ckpt.harvest_count()} windows done | {per_min:.0f} windows/min"
                 + (f" | {retries} retries" if retries else ""))
 
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
-        list(as_completed([pool.submit(work, w) for w in pending]))
+        for future in as_completed([pool.submit(work, w) for w in pending]):
+            future.result()
 
     stats_path = os.path.join(os.path.dirname(os.path.abspath(args.output)), "stats.json")
     with open(stats_path, "w", encoding="utf-8") as fh:
@@ -477,9 +481,10 @@ def main() -> int:
             "started": start_wall,
             "elapsed_s": round(time.time() - t0, 1),
             "windows_planned": len(windows),
-            "windows_done": len(ckpt.done),
+            "windows_done": sum(clause_key(w) in ckpt.done for w in windows),
             "windows_failed": failed,
             "windows_truncated": truncated,
+            "unique_repositories": len(ckpt.seen),
             "universe_estimate": planned_total,
         }, fh, indent=2)
 

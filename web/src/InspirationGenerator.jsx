@@ -85,7 +85,7 @@ export default function InspirationGenerator({ repos, onSelectRepo, seed, onSeed
   // owner/name -> repo over the WHOLE catalog, so curated seeds resolve even
   // when a v1 subsystem label filed them outside the category bucket.
   const repoLookup = useMemo(
-    () => new Map(repos.map(r => [`${r.owner}/${r.name}`, r])),
+    () => new Map(repos.map(r => [`${r.owner}/${r.name}`.toLowerCase(), r])),
     [repos]
   );
 

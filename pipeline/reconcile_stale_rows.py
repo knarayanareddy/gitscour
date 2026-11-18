@@ -5,7 +5,7 @@ A committed row that the fresh harvest does not contain is one of:
   * **renamed / transferred** -- GitHub answers `/repos/{old}` with a redirect to
     the repo's canonical endpoint, and the response body carries the *current*
     `full_name`;
-  * **deleted, private, or taken down** (404 / 403 / 451);
+  * **deleted, private, or taken down** (404 / 451 or a non-public response);
   * **dropped below the star threshold** (star purges happen);
   * **live but unindexed** by search (recently transferred, spam-filtered).
 
@@ -26,6 +26,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
+
+from harvest_enumerate import Limiter
 
 API = "https://api.github.com"
 
@@ -52,28 +54,31 @@ def harvest_keys(path: str) -> set:
     return keys
 
 
-def resolve(token: str, key: str, min_stars: int):
+def resolve(token: str, key: str, min_stars: int, limiter: Limiter):
     owner, _, name = key.partition("/")
     req = urllib.request.Request(
         f"{API}/repos/{owner}/{name}",
         headers={"Authorization": f"Bearer {token}", "User-Agent": "GitScour-Reconcile",
                  "Accept": "application/vnd.github+json"})
-    for attempt in range(3):
+    for attempt in range(4):
+        limiter.wait()
         try:
             with urllib.request.urlopen(req, timeout=40) as resp:
                 body = json.loads(resp.read().decode())
                 break
         except urllib.error.HTTPError as exc:
             retry_after = exc.headers.get("Retry-After") if exc.headers else None
-            throttled = exc.code == 429 or (exc.code == 403 and (retry_after or exc.headers.get("X-RateLimit-Remaining") == "0"))
-            if throttled:
-                time.sleep(float(retry_after) if retry_after else 5.0 * (attempt + 1))
+            if exc.code in (403, 429) and (retry_after or exc.code == 429 or
+                                          b"rate limit" in exc.read().lower()):
+                limiter.pause(float(retry_after) if retry_after else 60)
                 continue
             if exc.code == 404:
                 return {"key": key, "verdict": "deleted"}
-            if exc.code in (451, 403, 401):
-                # legal takedown, private, or access denied -> not listable
+            if exc.code == 451:
                 return {"key": key, "verdict": "blocked", "http": exc.code}
+            if exc.code >= 500:
+                time.sleep(2.0 * (attempt + 1))
+                continue
             if exc.code in (409, 422):
                 # 409 = exists but has no commits
                 return {"key": key, "verdict": "empty_repo"}
@@ -83,6 +88,10 @@ def resolve(token: str, key: str, min_stars: int):
     else:
         return {"key": key, "verdict": "error"}
 
+    if body.get("private") or body.get("visibility") in ("internal", "private"):
+        return {"key": key, "verdict": "blocked"}
+    if not (body.get("full_name") and body.get("name") and (body.get("owner") or {}).get("login")):
+        return {"key": key, "verdict": "error"}
     stars = int(body.get("stargazers_count") or 0)
     current = (body.get("full_name") or "").lower()
     lic = body.get("license") or {}
@@ -97,6 +106,8 @@ def resolve(token: str, key: str, min_stars: int):
         "license": (lic.get("spdx_id") or lic.get("name") or "Unknown") if isinstance(lic, dict) else "Unknown",
         "topics": body.get("topics") or [],
         "pushed_at": body.get("pushed_at"),
+        "created_at": body.get("created_at"),
+        "is_archived": body.get("archived"),
     }
     if stars < min_stars:
         return {"key": key, "verdict": "below_threshold", "stars": stars}
@@ -113,6 +124,7 @@ def main() -> int:
     ap.add_argument("--out", default="/home/user/harvest/reconcile.json")
     ap.add_argument("--min-stars", type=int, default=500)
     ap.add_argument("--concurrency", type=int, default=12)
+    ap.add_argument("--rps", type=float, default=8, help="global request cap per second")
     ap.add_argument("--limit", type=int, default=0, help="only inspect the first N unmatched rows")
     args = ap.parse_args()
 
@@ -124,6 +136,7 @@ def main() -> int:
     catalog = catalog_keys(args.packed)
     harvested = harvest_keys(args.harvest)
     unmatched = sorted(set(catalog) - harvested)
+    unmatched_count = len(unmatched)
     print(f"catalog {len(catalog):,} rows | harvest {len(harvested):,} rows | unmatched {len(unmatched):,}")
     if args.limit:
         unmatched = unmatched[: args.limit]
@@ -131,8 +144,9 @@ def main() -> int:
 
     t0 = time.time()
     verdicts = []
+    limiter = Limiter(args.rps)
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as pool:
-        for i, res in enumerate(pool.map(lambda k: resolve(token, k, args.min_stars), unmatched), 1):
+        for i, res in enumerate(pool.map(lambda k: resolve(token, k, args.min_stars, limiter), unmatched), 1):
             verdicts.append(res)
             if i % 200 == 0:
                 rate = i / max(1e-6, time.time() - t0)
@@ -143,6 +157,8 @@ def main() -> int:
     for res in verdicts:
         v = res["verdict"]
         tally[v] = tally.get(v, 0) + 1
+        if v == "error":
+            print(f"  Unresolved: {res['key']} (HTTP {res.get('http', 'unknown')})", file=sys.stderr)
         if v in ("deleted", "blocked", "below_threshold", "empty_repo"):
             drop.append(res["key"])
         elif v in ("renamed", "live_unindexed"):
@@ -158,6 +174,9 @@ def main() -> int:
                 update[res["key"]] = {**res["record"], "current": current or res["key"]}
 
     print(f"\nverdicts: {json.dumps(tally, indent=2)}")
+    if tally.get("error") or len(unmatched) < unmatched_count:
+        print("Refusing to write a partial reconciliation patch.", file=sys.stderr)
+        return 1
     payload = {"drop": drop, "update": update, "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                "inspected": len(verdicts)}
     os.makedirs(os.path.dirname(args.out), exist_ok=True)

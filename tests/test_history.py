@@ -96,6 +96,21 @@ class TestDiffSnapshots(unittest.TestCase):
         self.assertEqual(len(out["top_movers"]), TOP_MOVERS)
         self.assertEqual(out["mover_count"], TOP_MOVERS + 20)
 
+    def test_additions_and_removals_are_not_truncated(self):
+        old = {f"old/{i}": 500 for i in range(TOP_MOVERS + 1)}
+        new = {f"new/{i}": 500 for i in range(TOP_MOVERS + 3)}
+        out = diff_snapshots(_snap("o", old)[1], _snap("n", new)[1], {}, "o", "n")
+        self.assertEqual(len(out["added"]), len(new))
+        self.assertEqual(len(out["removed"]), len(old))
+
+    def test_case_only_rename_preserves_star_history(self):
+        history = [_snap("o", {"Org/Repo": 500}), _snap("n", {"org/repo": 600})]
+        out = build_changelog(history, {}, "n")
+        self.assertEqual(out["added_count"], 0)
+        self.assertEqual(out["removed_count"], 0)
+        self.assertEqual(out["top_movers"][0]["full_name"], "org/repo")
+        self.assertEqual(out["top_movers"][0]["series"], [["o", 500], ["n", 600]])
+
     def test_mover_series_across_snapshots(self):
         hist = [_snap("2026-07-01", {"a/alpha": 100}),
                 _snap("2026-08-01", {"a/alpha": 300}),

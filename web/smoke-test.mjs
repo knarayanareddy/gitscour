@@ -5,6 +5,7 @@
 // exact module App.jsx uses, so the gate exercises the shipped algorithm.
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'node:url';
 import { performance } from 'perf_hooks';
 import { rankQuery, tokenize } from './src/search-core.mjs';
 
@@ -195,7 +196,7 @@ if (packed.activity !== undefined) {
   for (const a of packed.activity) {
     if (!Array.isArray(a) || !allowed.has(a[0])) badStatus++;
     else if (a[0] === null) unknown++;
-    else if (!(a[1] > 0)) badTs++;
+    else if (!(a[1] > 0) && !(a[0] === 'archived' && a[1] === null)) badTs++;
   }
   check(badStatus === 0, `${badStatus} activity entries with bad status`);
   check(badTs === 0, `${badTs} non-null activity entries without a pushed timestamp`);
@@ -253,7 +254,7 @@ check(!isReadOnlySql("DROP TABLE repos;"), 'DROP accepted by read-only guard');
 
 {
   const { default: initSqlJs } = await import('sql.js');
-  const SQL = await initSqlJs({ locateFile: (f) => join('node_modules/sql.js/dist', f) });
+  const SQL = await initSqlJs({ locateFile: (f) => fileURLToPath(new URL(`./node_modules/sql.js/dist/${f}`, import.meta.url)) });
   const db = new SQL.Database();
   db.run(`CREATE TABLE repos (${SQL_COLUMNS.map((c) =>
     `${c} ${['id', 'stars', 'forks'].includes(c) ? 'INTEGER' : 'TEXT'}`).join(', ')})`);
@@ -419,6 +420,8 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   check(typeof cl.generated === 'string' && cl.generated.length > 0, 'changelog.generated missing');
   if (cl.period) {
     check(cl.period.from < cl.period.to, 'changelog period not ordered');
+    check(cl.added.length === cl.added_count && cl.removed.length === cl.removed_count,
+      'changelog must include every added and removed repository');
     const deltas = cl.top_movers.map((m) => Math.abs(m.delta));
     check(deltas.every((d) => d > 0), 'zero-delta mover present');
     for (let i = 1; i < deltas.length; i++) check(deltas[i] <= deltas[i - 1], 'movers not |delta|-desc');
@@ -432,12 +435,20 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   const snaps = existsSync(histDir)
     ? readdirSync(histDir).filter((f) => f.endsWith('-stars.json')) : [];
   check(snaps.length >= 1, 'no history snapshots');
-  const first = JSON.parse(readFileSync(join(histDir, snaps.sort()[0]), 'utf8'));
-  check(Array.isArray(first.names) && first.names.length === first.stars.length
-    && first.names.length === rows.length, 'snapshot alignment/count mismatch');
-  if (snaps.length === 1) {
-    check(first.names[0] === `${unpacked[0].owner}/${unpacked[0].name}`
-      && first.stars[0] === unpacked[0].stars, 'seeded snapshot != packed head row');
+  snaps.sort();
+  let latest;
+  for (const file of snaps) {
+    latest = JSON.parse(readFileSync(join(histDir, file), 'utf8'));
+    check(latest.count === latest.names?.length && latest.count === latest.stars?.length,
+      `${file}: snapshot alignment/count mismatch`);
+  }
+  check(latest?.count === rows.length && unpacked.every((row, i) =>
+    latest.names?.[i] === `${row.owner}/${row.name}` && latest.stars?.[i] === row.stars),
+  'latest snapshot does not match the packed rows');
+  check(latest?.date === cl.generated, 'changelog date does not match latest snapshot');
+  if (snaps.length >= 2) {
+    check(`${cl.period?.from}-stars.json` === snaps.at(-2) && cl.period?.to === latest?.date,
+      'changelog period does not match the last two snapshots');
   }
   console.log(`changelog: ${snaps.length} snapshot(s), generated ${cl.generated}, ` +
     `${cl.top_movers.length} movers, +${cl.added_count}/-${cl.removed_count}` +
@@ -471,16 +482,19 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
         `edge count ${c} exceeds df for ${t.name}/${other}`);
     }
   }
-  // per-domain topic counts must never exceed the global count
-  const globalT = new Map((facets.topics || []).map((t) => [t.name, t.count]));
+  // Global facets expose only the 60 most common topics. A valid domain
+  // topic need not be on that list, so recount it from the packed rows.
   const tbd = facets.topics_by_domain || {};
+  const topicCounts = new Map();
+  for (const row of unpacked) {
+    if (!topicCounts.has(row.domain)) topicCounts.set(row.domain, new Map());
+    const counts = topicCounts.get(row.domain);
+    for (const topic of row.topics) counts.set(topic, (counts.get(topic) || 0) + 1);
+  }
   for (const [dom, list] of Object.entries(tbd)) {
-    for (const e of list) {
-      if (globalT.size) {
-        check(e.count <= (globalT.get(e.name) ?? 0),
-          `topics_by_domain[${dom}] ${e.name} exceeds its global count`);
-      }
-      check(e.count > 0, `zero count in topics_by_domain[${dom}]`);
+    for (const { name, count } of list) {
+      check(count > 0 && count === topicCounts.get(dom)?.get(name),
+        `topics_by_domain[${dom}] ${name} count does not match packed rows`);
     }
   }
   console.log(`topic map: ${tm.topics.length} topics / ${tm.pairs_considered} pairs considered | ` +
@@ -493,7 +507,7 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
 {
   const bpDoc = JSON.parse(readFileSync(new URL('./src/blueprints.json', import.meta.url), 'utf8'));
   const bps = bpDoc.blueprints || [];
-  const repoSet = new Set(rows.map(r => `${r[2]}/${r[1]}`));
+  const repoSet = new Set(rows.map(r => `${r[2]}/${r[1]}`.toLowerCase()));
   const subSet = new Set(Object.values(subsystems));
 
   check(bps.length >= 6, `blueprint library must exceed the original 4 (got ${bps.length})`);
@@ -515,7 +529,7 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
         `${b.id}/${r.label}: unknown category ${r.category}`);
       for (const s of (r.seeds || [])) {
         seedTotal++;
-        check(repoSet.has(s), `${b.id}/${r.label}: seed ${s} not in packed catalog`);
+        check(repoSet.has(s.toLowerCase()), `${b.id}/${r.label}: seed ${s} not in packed catalog`);
       }
       if (r.requiredSubsystem) {
         check(subSet.has(r.requiredSubsystem), `${b.id}/${r.label}: unknown subsystem ${r.requiredSubsystem}`);
@@ -542,7 +556,7 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
     security: unpacked.filter(r => r.domain === 'Security & Cryptography'),
   };
   for (const [k, v] of Object.entries(buckets)) check(v.length > 0, `engine bucket ${k} empty`);
-  const lookup = new Map(unpacked.map(r => [`${r.owner}/${r.name}`, r]));
+  const lookup = new Map(unpacked.map(r => [`${r.owner}/${r.name}`.toLowerCase(), r]));
 
   const bp0 = bps[0];
   const s1 = completeStack(bp0, buckets, lookup, mulberry32('same'));
@@ -553,7 +567,7 @@ check(typeof light[0].searchCorpus === 'string' && light[0].searchCorpus.length 
   for (const comp of s1.components) {
     const role = bp0.roles.find(r => r.label === comp.role);
     if (comp.via === 'seed') {
-      check((role.seeds || []).includes(`${comp.repo.owner}/${comp.repo.name}`),
+      check((role.seeds || []).some((seed) => seed.toLowerCase() === `${comp.repo.owner}/${comp.repo.name}`.toLowerCase()),
         `${comp.role}: via=seed but ${comp.repo.owner}/${comp.repo.name} not in role seeds`);
     } else {
       check(comp.repo.domain || comp.repo.stars >= 500, `${comp.role}: via=${comp.via} repo lacks identity`);
