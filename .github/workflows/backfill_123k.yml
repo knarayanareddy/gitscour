@@ -7,11 +7,16 @@ on:
         description: 'Lowest star threshold to enumerate'
         required: true
         default: '500'
+      checkpoint_run_id:
+        description: 'Optional same-branch run ID whose completed harvest was captured today'
+        required: false
+        type: string
   schedule:
     # Runs monthly on the 1st at 00:00 UTC for deep backfill
     - cron: '0 0 1 * *'
 
 permissions:
+  actions: read
   contents: write
   pull-requests: write
 
@@ -25,6 +30,7 @@ jobs:
     timeout-minutes: 180
     env:
       MIN_STARS: ${{ github.event.inputs.min_stars || '500' }}
+      CHECKPOINT_RUN_ID: ${{ inputs.checkpoint_run_id }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -42,12 +48,58 @@ jobs:
       - name: Unit Tests (no network)
         run: python -m pytest tests/ -q
 
+      - name: Verify checkpoint source
+        if: inputs.checkpoint_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$CHECKPOINT_RUN_ID" =~ ^[0-9]+$ ]]
+          SOURCE=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CHECKPOINT_RUN_ID")
+          test "$(jq -r .head_branch <<< "$SOURCE")" = "$GITHUB_REF_NAME"
+          test "$(jq -r '.path | split("@")[0]' <<< "$SOURCE")" = '.github/workflows/backfill_123k.yml'
+          test "$(jq -r .status <<< "$SOURCE")" = 'completed'
+          test "$(jq -r '.created_at[:10]' <<< "$SOURCE")" = "$(date -u +%F)"
+          SOURCE_SHA=$(jq -r .head_sha <<< "$SOURCE")
+          git fetch --depth=1 origin "$SOURCE_SHA"
+          git diff --quiet "$SOURCE_SHA" HEAD -- web/public
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CHECKPOINT_RUN_ID/jobs" | jq -e '
+            any(.jobs[]; .name == "enumerate-and-rebuild" and
+              any(.steps[]; .name == "Reconcile stale rows against the live API" and .conclusion == "success"))'
+
+      - name: Restore today's completed harvest
+        if: inputs.checkpoint_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: harvest-checkpoint
+          path: harvest
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.checkpoint_run_id }}
+
+      - name: Validate restored harvest
+        if: inputs.checkpoint_run_id != ''
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path("harvest")
+          stats = json.loads((root / "stats.json").read_text())
+          assert stats["windows_planned"] == stats["windows_done"] > 0, stats
+          assert stats["windows_failed"] == stats["windows_truncated"] == 0, stats
+          min_stars = int(os.environ["MIN_STARS"])
+          with (root / "raw_repos.jsonl").open() as entries:
+              floor = min(json.loads(line)["stars"] for line in entries if line.strip())
+          assert stats.get("min_stars", floor) == min_stars, "checkpoint uses a different star floor"
+          assert (root / "reconcile.json").is_file(), "reconciliation patch missing"
+          PY
+
       # A single job, not a star-window matrix: GitHub truncates every search
       # query at 1,000 results, so the old 12-way matrix could never capture
       # more than ~12,000 records per run and could never share a resume point.
       # The enumerator instead partitions the star continuum into ~180 windows
       # that each fit under that cap and checkpoints each window it finishes.
       - name: Enumerate every repository above the threshold
+        if: inputs.checkpoint_run_id == ''
         env:
           GITHUB_TOKEN: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -61,6 +113,7 @@ jobs:
       # deleted, star-purged, live-but-unindexed) get resolved against the live
       # API and emitted as a patch, instead of leaving duplicate/stale rows.
       - name: Reconcile stale rows against the live API
+        if: inputs.checkpoint_run_id == ''
         env:
           GITHUB_TOKEN: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -110,7 +163,17 @@ jobs:
         run: npm run lint
 
       - name: Smoke test regenerated artefacts
-        run: node web/smoke-test.mjs web/public
+        run: |
+          set -euo pipefail
+          if ! node web/smoke-test.mjs web/public 2>&1 | tee harvest/smoke.log; then
+            python3 - <<'PY'
+          from pathlib import Path
+          text = Path('harvest/smoke.log').read_text()
+          detail = text.split('FAILED (', 1)[-1] if 'FAILED (' in text else '\n'.join(text.splitlines()[-15:])
+          print('::error title=Catalog smoke failure::' + detail.strip().replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          PY
+            exit 1
+          fi
 
       - name: Generate catalog snapshot report
         run: |

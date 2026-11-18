@@ -479,6 +479,7 @@ def main() -> int:
     with open(stats_path, "w", encoding="utf-8") as fh:
         json.dump({
             "started": start_wall,
+            "min_stars": args.min_stars,
             "elapsed_s": round(time.time() - t0, 1),
             "windows_planned": len(windows),
             "windows_done": sum(clause_key(w) in ckpt.done for w in windows),
