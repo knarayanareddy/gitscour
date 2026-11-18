@@ -151,6 +151,12 @@ try {
   await show(mobile.getByRole('heading', { name: 'SQL Studio' }));
   console.log('PASS narrow-screen catalog and navigation');
   assert.deepEqual(problems, [], 'Browser emitted uncaught errors');
+} catch (error) {
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    const detail = `${page.url()}\n${error.message}\nBrowser errors: ${problems.join('; ')}\nHTTP errors: ${network.join('; ')}`;
+    console.error(`::error title=Production browser test::${detail.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}`);
+  }
+  throw error;
 } finally {
   await browser.close();
 }
